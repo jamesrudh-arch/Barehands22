@@ -550,7 +550,8 @@ func _update_audio_and_lights(delta: float, night: bool) -> void:
 	for c in get_children():
 		if c is MeshInstance3D and c != _tail_mi and c != _light_bar and c.material_override and c.material_override.emission == Color(1.0, 0.95, 0.8):
 			c.material_override.emission_energy_multiplier = 2.5 if lights_on else 0.0
-	_head_l.light_energy = 5.0 if lights_on else 0.0
+	if _head_l:
+		_head_l.light_energy = 5.0 if lights_on else 0.0
 	if is_police and _siren_on:
 		var tmod := fmod(Time.get_ticks_msec() / 1000.0, 0.8)
 		var lm: StandardMaterial3D = _light_bar.material_override

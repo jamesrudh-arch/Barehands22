@@ -261,9 +261,9 @@ func _draw_map() -> void:
 				for p in path:
 					rp.append(to_screen.call(Vector2(p.x, p.z)))
 				v.draw_polyline(rp, Color(0.23, 0.91, 0.69, 0.95), 3.0)
-			var dp := to_screen.call(Vector2(pl.global_position.x, pl.global_position.z))
+			var dp: Vector2 = to_screen.call(Vector2(pl.global_position.x, pl.global_position.z))
 			v.draw_circle(dp, 5.0, Color(0.95, 0.72, 0.25))
-		var tp := to_screen.call(Vector2(WorldState.gps_target.x, WorldState.gps_target.z))
+		var tp: Vector2 = to_screen.call(Vector2(WorldState.gps_target.x, WorldState.gps_target.z))
 		v.draw_circle(tp, 6.0, Color(0.23, 0.91, 0.69))
 		v.draw_circle(tp, 9.0, Color(0.23, 0.91, 0.69, 0.4), false, 2.0)
 	# POIs
@@ -778,7 +778,7 @@ func _show_threads(list: VBoxContainer) -> void:
 		b.text = "%s%s — %s" % [str(ch.get("name", tid)), (" (%d new)" % unread) if unread > 0 else "", last.get("text", "")]
 		b.add_theme_font_size_override("font_size", 13)
 		b.custom_minimum_size = Vector2(0, 64)
-		var tidc := tid
+		var tidc: String = str(tid)
 		b.pressed.connect(func(): _open_thread(tidc))
 		list.add_child(b)
 

@@ -329,12 +329,12 @@ func _police_tick(delta: float, player: Node) -> void:
 
 func _police_see_player(player: Node) -> bool:
 	# any unit within 55 m with unobstructed LOS keeps the chase honest
-	var space := player.get_world_3d().direct_space_state
+	var space: PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
 	for u in police_units:
 		if not is_instance_valid(u["node"]):
 			continue
 		var n: Node3D = u["node"]
-		var d := (player.global_position - n.global_position).length()
+		var d: float = (player.global_position - n.global_position).length()
 		if d > 55.0:
 			continue
 		var from: Vector3 = n.global_position + Vector3(0, 1.4, 0)
@@ -342,7 +342,7 @@ func _police_see_player(player: Node) -> bool:
 		var q := PhysicsRayQueryParameters3D.create(from, to)
 		q.exclude = [n.get_rid(), player.get_rid()]
 		q.collision_mask = 1   # static world only — units never block each other
-		var hit := space.intersect_ray(q)
+		var hit: Dictionary = space.intersect_ray(q)
 		if hit.is_empty():
 			return true
 	return false

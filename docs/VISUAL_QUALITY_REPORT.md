@@ -68,15 +68,21 @@ software concept renderer (`tools/concept/render_concept.py`) are the evidence.
   shift dips + forged shift clunks, tyre skid SFX, reverse lights, per-style
   engine pitch. Footstep surfaces already covered (5 surfaces × walk/run).
 - **W8 Device verification** — PENDING. XOGOT passes §B–§E with this report
-  as baseline. All runtime checks 50–54 await the rebuilt engine binary
-  (headless harness) — see honesty ledger.
+  as baseline.
+
+**Runtime verification (2026-11-23):** engine 4.7.2 rebuilt in sandbox;
+headless `--import` clean; harness run **checks=45 fails=0** — all of
+checks 50–55 (triangle budgets, phone ring/decline/log, GPS A* route,
+tactics surface, drive-animation wiring, fog persistence) now TESTED, not
+just IMPLEMENTED. Fixes made during verification: typed-inference parse
+errors (phone_ui/city/npc/city_life), bike `_head_l` null guard, HUD
+armor/current_district property names, phone WAV path consolidation,
+route-graph k-NN stitching (lane loops were disconnected islands).
 
 ## 5. Open items
 
-- Fog-of-war / district discovery on the map (drawn districts are currently
-  always visible; discovery masking not implemented).
-- Runtime verification of harness checks 50–54 (engine rebuild in progress).
-- XOGOT/iPhone device verification of touch layout, audio mix, performance.
+- XOGOT/iPhone device verification of touch layout, audio mix, performance
+  (W8).
 
 ## 4. Honesty ledger
 

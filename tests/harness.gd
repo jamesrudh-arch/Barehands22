@@ -205,10 +205,16 @@ func _process(_delta: float) -> bool:
 					if ch is MeshInstance3D and ch.mesh is ArrayMesh:
 						vmi = ch
 						break
-			if vmi and vmi.mesh:
-				for si in vmi.mesh.get_surface_count():
-					var va: Array = vmi.mesh.surface_get_arrays(si)
-					vtris += va[Mesh.ARRAY_INDEX].size() / 3
+			if vmi and vmi.mesh is ArrayMesh:
+				var am: ArrayMesh = vmi.mesh
+				for si in am.get_surface_count():
+					var va: Array = am.surface_get_arrays(si)
+					var idx = va[Mesh.ARRAY_INDEX]
+					var vtx = va[Mesh.ARRAY_VERTEX]
+					if idx != null and not (idx is PackedInt32Array and (idx as PackedInt32Array).size() == 0):
+						vtris += int(idx.size()) / 3
+					elif vtx != null:
+						vtris += int(vtx.size()) / 3
 			_check(vtris >= 200 and vtris <= 9000, "vehicle v2 triangle budget (%d)" % vtris)
 			veh.queue_free()
 		51:
@@ -217,10 +223,15 @@ func _process(_delta: float) -> bool:
 			_check(cm != null, "CallManager autoload present")
 			if cm:
 				_check(cm.state == 0, "call manager idle at boot")
+				var gm = root.get_node("Game")
+				gm.set_state(gm.State.PLAYING)
+				var ws3 = root.get_node("WorldState")
+				ws3.set_wanted(0)          # earlier step left wanted=3; calls defer when hot
 				cm.schedule_call("marcus", "checkin")
 				_check(cm.state == 1, "incoming call rings")
 				cm.decline_call()
-				var lg: Array = WorldState.call_log
+				var ws = root.get_node("WorldState")
+				var lg: Array = ws.call_log
 				_check(lg.size() > 0 and lg[-1].get("result") == "missed", "declined call logged as missed")
 				cm.send_message("ruth", "t1", "harness ping")
 				_check(cm.unread_count() >= 1, "unread message counted")
@@ -232,12 +243,13 @@ func _process(_delta: float) -> bool:
 			_check("_call_for_help" in src and "_flank_side" in src and "_attack_pool" in src, "npc has flank/help/pool tactics")
 		52:
 			# GPS: A* route over the lane graph
-			if WorldGen.lanes.size() > 0:
+			var wg = root.get_node("WorldGen")
+			if wg.lanes.size() > 0:
 				var a := Vector3(-240, 0, 43)
 				var b := Vector3(120, 0, -80)
-				var path := WorldGen.route_world(a, b)
+				var path: PackedVector3Array = wg.route_world(a, b)
 				_check(path.size() >= 2, "GPS route found between distant points")
-				_check(WorldGen.route_length(path) > (b - a).length() * 0.9, "route length plausible")
+				_check(wg.route_length(path) > (b - a).length() * 0.9, "route length plausible")
 			else:
 				_check(false, "lanes exist for GPS")
 		54:
@@ -248,9 +260,10 @@ func _process(_delta: float) -> bool:
 			_check("anim.mode = \"ride\"" in pl, "player rides visibly on bikes")
 		55:
 			# fog of war
-			_check(WorldState.visited_districts.size() >= 0, "visited_districts present")
-			WorldState.visited_districts.append("test_district")
-			var ser: Dictionary = WorldState.serialize()
+			var ws2 = root.get_node("WorldState")
+			_check(ws2.visited_districts.size() >= 0, "visited_districts present")
+			ws2.visited_districts.append("test_district")
+			var ser: Dictionary = ws2.serialize()
 			_check("test_district" in ser.get("visited_districts", []), "fog persists in save")
 		48:
 			# gunfire hitscan

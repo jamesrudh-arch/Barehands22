@@ -133,10 +133,9 @@ Waves 1–7 committed on arena/94fd4268-barehands22:
   HUD phone badge `c25fb6fa`
 
 ## Exact next action
-1. **Engine rebuild finishing** (/tmp/build2.log, process godot-build-2):
-   run headless `--import`, then harness — expect checks 1–55 green.
-   Runtime verification of checks 50–55 is the gate before claiming TESTED.
-2. Push branch; open PR when harness is green.
+1. ~~Engine rebuild~~ DONE 2026-11-23: 4.7.2 built, headless import clean,
+   **harness checks=45 fails=0** — checks 50–55 runtime-TESTED.
+2. ~~Open PR~~ DONE: PR #3 (arena/94fd4268-barehands22 → main).
 3. Device pass per docs/VERIFICATION_GUIDE.md §B–§E when an iPhone/XOGOT
    environment is available; flip DEVICE-ONLY rows with evidence (W8).
 

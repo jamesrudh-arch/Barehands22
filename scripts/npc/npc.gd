@@ -166,7 +166,7 @@ func _armor_visual() -> void:
 	var sk := get_node_or_null("Humanoid/Skeleton3D")
 	if sk == null:
 		return
-	var chest := sk.find_bone("chest")
+	var chest: int = sk.find_bone("chest")
 	if chest < 0:
 		return
 	var mi := MeshInstance3D.new()
@@ -508,7 +508,7 @@ func _call_for_help() -> void:
 	for n in get_tree().get_nodes_in_group("humanoid"):
 		if n == self or not is_instance_valid(n):
 			continue
-		var d := (n.global_position - global_position).length()
+		var d: float = (n.global_position - global_position).length()
 		if d < 45.0:
 			if n.has_method("react"):
 				n.react("combat_call", global_position)

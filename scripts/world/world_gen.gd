@@ -758,13 +758,38 @@ func _route_graph_build() -> void:
 			var c: float = (_rg_nodes[a] - _rg_nodes[b]).length()
 			_rg_adj[a].append([b, c])
 			_rg_adj[b].append([a, c])
-	# transfers: near-coincident nodes across loops
+	# transfers: near-coincident nodes
 	var n := _rg_nodes.size()
 	for i in n:
 		for j in range(i + 1, n):
 			if (_rg_nodes[i] - _rg_nodes[j]).length() < 5.0:
 				_rg_adj[i].append([j, 2.0])
 				_rg_adj[j].append([i, 2.0])
+	# k-NN stitching: lane loops are per-block islands; connect every node to
+	# its 2 nearest neighbours (cap 70 m) so the whole road network is one
+	# navigable graph with cycles.
+	for i in _rg_nodes.size():
+		var best := [[1e18, -1], [1e18, -1]]
+		for j in _rg_nodes.size():
+			if i == j:
+				continue
+			var dd := (_rg_nodes[i] - _rg_nodes[j]).length_squared()
+			if dd < best[0][0]:
+				best[1] = best[0]
+				best[0] = [dd, j]
+			elif dd < best[1][0]:
+				best[1] = [dd, j]
+		for b in best:
+			if b[1] >= 0 and b[0] < 70.0 * 70.0:
+				var c: float = sqrt(b[0])
+				var dup := false
+				for e in _rg_adj[i]:
+					if e[0] == b[1]:
+						dup = true
+						break
+				if not dup:
+					_rg_adj[i].append([b[1], c])
+					_rg_adj[b[1]].append([i, c])
 	_rg_built = true
 
 

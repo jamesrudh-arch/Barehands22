@@ -518,7 +518,7 @@ func _process(delta: float) -> void:
 	if player.combat:
 		_hp_bar.value = player.combat.hp / player.combat.max_hp * 100.0
 		_st_bar.value = player.combat.stamina / player.combat.max_stamina * 100.0
-		_ar_bar.value = clampf(player.combat.armor, 0.0, 100.0)
+		_ar_bar.value = clampf(player.combat.armor_prot * 100.0, 0.0, 100.0)
 	# phone badge pulse while ringing; periodic refresh for unread counts
 	_phone_t += delta
 	if CallManager.state == 1:
@@ -529,7 +529,7 @@ func _process(delta: float) -> void:
 		_refresh_phone_badge()
 	# clock/weather/district
 	_clock_lbl.text = "%s  •  %s  •  DAY %d" % [WorldState.hour_of_day_string(), WorldState.weather_name().to_upper(), WorldState.day]
-	var d := Db.district(WorldState.current_district)
+	var d := Db.district(Game.current_district)
 	_district_lbl.text = d.get("name", "").to_upper()
 	# objective
 	var mm := get_node_or_null("/root/MissionManager")

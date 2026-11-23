@@ -253,7 +253,7 @@ func _on_gamble(opt: Dictionary) -> void:
 
 
 func _start_fightclub() -> void:
-	var purse := 150 + WorldState.stats.get("fights_won", 0) * 25
+	var purse: int = 150 + int(WorldState.stats.get("fights_won", 0)) * 25
 	var opts := [
 		{"label": "Step into the ring (%d cr purse)" % purse, "fight": true},
 		{"label": "Not tonight", "fight": false},
