@@ -1,5 +1,16 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 25: the coach learns the new verbs
+
+- Three new contextual tutorial steps: **lockpick** (fires the first
+  time you touch a locked car — pick quiet vs smash loud), **driveby**
+  (fires on your first shot fired from a car — bikes exempt, speed
+  wobble explained), **garage** (fires on your first theft — KEEP THIS
+  RIDE + SUMMON explained).
+- All routed through the existing `Bus.tutorial_hint` relay; one-shot
+  like every other coaching step.
+- Harness **111 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 24: jobs for the new verbs
 
 Three new side jobs that only exist because of waves 17–23:

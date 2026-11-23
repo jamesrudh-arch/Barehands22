@@ -623,6 +623,8 @@ func _try_driveby(delta: float) -> void:
 	weapons.aim = false
 	var before: int = weapons.mag
 	weapons.try_fire(true, delta, muz, dir, true)
+	if weapons.mag < before:
+		Bus.tutorial_hint.emit("driveby")
 	if weapons.mag < before and cam_rig:
 		cam_rig.pitch = clampf(cam_rig.pitch + weapons._pattern_pitch * 0.2, cam_rig.PITCH_MIN, cam_rig.PITCH_MAX)
 
@@ -758,6 +760,7 @@ func _request_enter(v: Node) -> void:
 	if not bool(v.get("locked")):
 		enter_vehicle(v)
 		return
+	Bus.tutorial_hint.emit("lockpick")
 	if WorldState.inventory.get("lockpick", 0) > 0:
 		_hotwire_target = v
 		_hotwire_t = 2.2
@@ -801,6 +804,7 @@ func enter_vehicle(v: Node, loud: bool = false) -> void:
 		if loud:
 			sev = mini(5, sev + 1)   # smashed glass finds witnesses itself
 		Bus.crime_committed.emit("theft", sev, global_position)
+		Bus.tutorial_hint.emit("garage")
 		WorldState.stats["thefts"] = WorldState.stats.get("thefts", 0) + 1
 		if sev == 3:
 			Bus.notification.emit("CARJACKED!", "warn")

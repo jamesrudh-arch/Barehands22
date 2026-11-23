@@ -23,6 +23,9 @@ const STEPS := [
 	{"id": "cover", "hint": "Crouch behind walls and cars for soft COVER: incoming damage drops and you can blindfire."},
 	{"id": "stealth", "hint": "Crouch behind an unaware enemy and press DODGE for a silent TAKEDOWN. Hide bodies before civilians find them."},
 	{"id": "climb", "hint": "Jump at a fire escape to CLIMB to the roof. Jump at waist-high ledges to VAULT them."},
+	{"id": "lockpick", "hint": "Locked car? With LOCKPICKs in the BAG, stand still to pick it quietly. Otherwise the window smashes — loud, and the block notices."},
+	{"id": "driveby", "hint": "Guns work from cars (not bikes — bikes need both hands). Speed throws your aim off: drive-bys are statements, not sniping."},
+	{"id": "garage", "hint": "Stolen wheels can be KEPT: phone → GARAGE files the ride you're sitting in as yours, and SUMMON delivers owned rides to your curb."},
 ]
 
 
