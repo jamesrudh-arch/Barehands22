@@ -448,7 +448,13 @@ func _guard(dt: float, player: Node, dist: float) -> void:
 	to_p.y = 0
 	var facing := -global_transform.basis.z
 	var sees := false
-	if dist < 26.0:
+	# weather shortens sightlines: fog swallows the street, rain blurs it
+	var sight: float = 26.0
+	if WorldState.weather == WorldState.Weather.FOG:
+		sight = 15.0
+	elif WorldState.weather == WorldState.Weather.RAIN:
+		sight = 21.0
+	if dist < sight:
 		var in_cone: bool = facing.normalized().dot(to_p.normalized()) > (0.25 if dist > 6.0 else -0.2)
 		if in_cone and _los_clear(player):
 			sees = true
@@ -469,6 +475,8 @@ func _guard(dt: float, player: Node, dist: float) -> void:
 			rate *= 1.7
 		if WorldState.weather == WorldState.Weather.RAIN and dist > 10.0:
 			rate *= 0.7
+		if WorldState.weather == WorldState.Weather.FOG and dist > 8.0:
+			rate *= 0.55
 		var before: float = suspicion
 		suspicion = minf(100.0, suspicion + rate * dt)
 		_last_known = player.global_position

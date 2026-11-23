@@ -515,7 +515,13 @@ func _police_see_player(player: Node) -> bool:
 			continue
 		var n: Node3D = u["node"]
 		var d: float = (player.global_position - n.global_position).length()
-		if d > 55.0:
+		# weather caps how far units can actually see you
+		var see_range := 55.0
+		if WorldState.weather == WorldState.Weather.FOG:
+			see_range = 32.0
+		elif WorldState.weather == WorldState.Weather.RAIN:
+			see_range = 44.0
+		if d > see_range:
 			continue
 		var from: Vector3 = n.global_position + Vector3(0, 1.4, 0)
 		var to: Vector3 = player.global_position + Vector3(0, 1.0, 0)
