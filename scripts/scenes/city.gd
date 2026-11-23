@@ -215,12 +215,47 @@ func _apply_weather(kind: String) -> void:
 		AudioDirector.ambient_off("rain")
 
 
+func _enter_safehouse(pid: String, data: Dictionary) -> void:
+	# rest: save the game, heal, clear minor heat
+	Bus.poi_discovered.emit(pid)
+	if player:
+		player.combat.heal(player.combat.max_hp)
+	Game.request_autosave()
+	SaveSystem.save_game(1, {"district": Game.current_district})
+	AudioDirector.sfx("shop_bell", 0.3)
+	Bus.notification.emit("SAFEHOUSE — %s. Saved. Wounds patched." % data.get("name", "rest stop"), "info")
+	if WorldState.wanted == 1:
+		WorldState.set_wanted(0)
+		Bus.notification.emit("You lay low. Heat cooled.", "info")
+
+
+func _open_stash(pid: String, data: Dictionary) -> void:
+	Bus.poi_discovered.emit(pid)
+	if pid in WorldState.collected:
+		Bus.notification.emit("Already picked clean.", "info")
+		return
+	WorldState.collected.append(pid)
+	var rew: Dictionary = data.get("reward", {})
+	if int(rew.get("money", 0)) > 0:
+		WorldState.add_money(int(rew["money"]))
+	if rew.get("item", "") != "":
+		WorldState.add_item(rew["item"], 1)
+	AudioDirector.sfx("cash", 0.4)
+	Bus.notification.emit("HIDDEN STASH: %s (+%s cr%s)" % [data.get("name", "stash"),
+		rew.get("money", 0), ", +%s" % rew["item"] if rew.get("item", "") != "" else ""], "mission")
+	Game.request_autosave()
+
+
 func _on_world_event(event_id: String, payload: Dictionary) -> void:
 	match event_id:
 		"poi_enter":
 			var data: Dictionary = payload.get("data", {})
 			var pid: String = payload.get("poi", "")
-			if data.has("interior"):
+			if data.get("kind", "") == "safehouse":
+				_enter_safehouse(pid, data)
+			elif data.get("kind", "") == "hidden":
+				_open_stash(pid, data)
+			elif data.has("interior"):
 				InteriorManager.enter(data["interior"], pid)
 			else:
 				Bus.notification.emit(data.get("name", "Here"), "info")

@@ -325,7 +325,7 @@ func _reserved_cells(d: Dictionary, x0: float, z0: float, block: float, nx: int,
 	for lm in d.get("landmarks", []):
 		add.call(lm["at"][0], lm["at"][1], "landmark", lm)
 	for p in d.get("pois", []):
-		if p.get("kind", "") in ["home", "shop", "faction", "place", "activity", "law"]:
+		if p.get("kind", "") in ["home", "shop", "faction", "place", "activity", "law", "safehouse"]:
 			add.call(p["at"][0], p["at"][1], "poi_block", p)
 	return out
 

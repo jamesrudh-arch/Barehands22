@@ -139,6 +139,16 @@
     ],
     "kind": "place",
     "exterior": true
+   },
+   {
+    "id": "poi_safehouse_kiln",
+    "name": "Padre's Back Room",
+    "at": [
+     -268,
+     84
+    ],
+    "interior": "int_apartment",
+    "kind": "safehouse"
    }
   ]
  },
@@ -245,6 +255,16 @@
      -345
     ],
     "kind": "view"
+   },
+   {
+    "id": "poi_safehouse_docks",
+    "name": "Berth 7 Office Cot",
+    "at": [
+     -30,
+     -96
+    ],
+    "interior": "int_berth7",
+    "kind": "safehouse"
    }
   ]
  },
@@ -352,6 +372,16 @@
     ],
     "kind": "place",
     "exterior": true
+   },
+   {
+    "id": "poi_safehouse_furnace",
+    "name": "Smokeline Bolt-Hole",
+    "at": [
+     214,
+     -166
+    ],
+    "interior": "int_apartment",
+    "kind": "safehouse"
    }
   ]
  },
@@ -438,6 +468,19 @@
      80
     ],
     "kind": "place"
+   },
+   {
+    "id": "poi_stash_neon",
+    "name": "Loose Vent, Alley 9",
+    "at": [
+     76,
+     214
+    ],
+    "kind": "hidden",
+    "reward": {
+     "money": 450,
+     "item": "lockpick"
+    }
    }
   ]
  },
@@ -544,6 +587,19 @@
     ],
     "kind": "place",
     "exterior": true
+   },
+   {
+    "id": "poi_stash_slag",
+    "name": "Crane Cab Stash",
+    "at": [
+     -140,
+     -220
+    ],
+    "kind": "hidden",
+    "reward": {
+     "money": 600,
+     "item": "armor_light"
+    }
    }
   ]
  },
@@ -625,6 +681,18 @@
      60
     ],
     "kind": "view"
+   },
+   {
+    "id": "poi_stash_crown",
+    "name": "Observatory Loose Brick",
+    "at": [
+     236,
+     190
+    ],
+    "kind": "hidden",
+    "reward": {
+     "money": 900
+    }
    }
   ]
  }
