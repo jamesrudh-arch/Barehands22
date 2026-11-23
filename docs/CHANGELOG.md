@@ -1,5 +1,15 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 27: the papers watch YOUR career
+
+- **Fame milestones**: six one-shot headlines fire as your career stats
+  cross thresholds — 5 thefts, 25 KOs, 8 jobs done, 10k in pocket,
+  3 ghost runs, 3 race wins. Each persists as a flag (never re-fires),
+  pushed through the same NEWS pipeline as district heat.
+- The city now narrates you, not just the neighborhoods you bleed in.
+- Harness **114 checks, 0 fails, 0 script errors** (incl. live fame
+  firing test).
+
 ## 2026-11-23 — DEPTH WAVE 26: the map learns to talk
 
 - **District heat bleeds onto the phone map**: angry neighborhoods glow

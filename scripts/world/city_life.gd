@@ -75,6 +75,8 @@ func _process(delta: float) -> void:
 	_spike_check(player)
 	# faction grudges
 	_grudge_tick(delta, player)
+	# fame: the papers notice careers, not just neighborhoods
+	_fame_tick(delta)
 	# radio
 	_radio_tick(delta, player)
 	# adaptive music (explore -> tension -> combat -> chase)
@@ -929,6 +931,41 @@ const TURF_TAG := {"crew": "crew", "corp": "corp"}
 ## Faction grudges: walk onto the turf of a faction you've burned (rep deep
 ## negative) and they send collectors. Scales with Difficulty — late game
 ## the collections arrive heavier.
+const FAME_MILESTONES := [
+	["fame_thefts5", "thefts", 5, "Grand theft wave: five cars gone in %s nights. Owners 'left them running,' police say."],
+	["fame_kos25", "kos", 25, "Twenty-five bodies this season. The city stops naming them; the numbers keep counting."],
+	["fame_jobs8", "jobs_done", 8, "Eight jobs pulled off clean. Whoever's running this crew doesn't leave witnesses OR paperwork."],
+	["fame_rich10k", "money", 10000, "New money in Cinder: someone's spending five figures in a city that runs on ones."],
+	["fame_ghost3", "ghost_runs", 3, "Three jobs, zero sightings. Security firms are calling it 'the ghost problem.'"],
+	["fame_races3", "races_won", 3, "Street racing's new name keeps winning. Bookies at the Quay are 'adjusting odds.'"],
+]
+
+
+var _fame_t := 5.0
+
+
+func _fame_tick(delta: float) -> void:
+	## Career milestones make the papers — one shot each, persisted as flags.
+	_fame_t -= delta
+	if _fame_t > 0.0:
+		return
+	_fame_t = 6.0
+	for m in FAME_MILESTONES:
+		if WorldState.get_flag(m[0], false):
+			continue
+		var v := 0.0
+		if m[1] == "money":
+			v = float(WorldState.money)
+		else:
+			v = float(WorldState.stats.get(m[1], 0))
+		if v >= float(m[2]):
+			WorldState.set_flag(m[0], true)
+			var line := str(m[3])
+			if line.contains("%"):
+				line = line % WorldState.day
+			PhoneUI.push_news(line)
+
+
 func _grudge_tick(delta: float, player: Node) -> void:
 	_grudge_cd -= delta
 	if _grudge_cd > 0.0 or WorldState.wanted > 0 or Game.state != Game.State.PLAYING:

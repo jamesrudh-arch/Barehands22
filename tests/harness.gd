@@ -459,6 +459,23 @@ func _process(_delta: float) -> bool:
 			_check('"lockpick"' in tutsrc and '"driveby"' in tutsrc and '"garage"' in tutsrc, "tutorial coaches the new verbs")
 			_check('tutorial_hint.emit("lockpick")' in plsrc4 and 'tutorial_hint.emit("garage")' in plsrc4 and 'tutorial_hint.emit("driveby")' in plsrc4, "new-verb hints fire from gameplay")
 			_check("district_heat01" in phsrc2 and "owned_properties" in phsrc2, "map shows district heat + owned businesses")
+			_check("FAME_MILESTONES" in clsrc2 and "_fame_tick" in clsrc2, "career milestones reach the papers")
+			# live fame test: fake the stat, tick, expect the flag + a news line
+			var ws9 = root.get_node("WorldState")
+			ws9.stats["thefts"] = 6
+			var cln = root.get_node_or_null("City/CityLife")
+			if cln == null:
+				var clg: Array = root.get_children()
+				for c in clg:
+					var inner: Array = c.get_children() if c.has_method("get_children") else []
+					for n2 in inner:
+						if str(n2.name) == "CityLife":
+							cln = n2
+			if cln != null:
+				cln._fame_t = 0.0
+				cln.call("_fame_tick", 0.1)
+				_check(ws9.get_flag("fame_thefts5", false), "fame milestone fires once and persists")
+			ws9.stats["thefts"] = 0
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
