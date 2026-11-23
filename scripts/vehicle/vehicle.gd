@@ -457,6 +457,24 @@ func traffic_tick(delta: float) -> void:
 			if not cl.traffic_green_at(global_position + fwd2 * 10.0):
 				blocked = true
 	var desired := 0.0 if blocked else _traffic_speed
+	# living traffic: rain slows everyone; sirens nearby pull cars to the
+	# curb; a player car blocking the lane earns a horn
+	if WorldState.weather == WorldState.Weather.RAIN:
+		desired *= 0.72
+	elif WorldState.weather == WorldState.Weather.FOG:
+		desired *= 0.85
+	_siren_t -= delta
+	if _siren_t <= 0.0:
+		_siren_t = 0.7
+		if _police_siren_near():
+			_yield_t = 4.0
+	if _yield_t > 0.0:
+		_yield_t -= delta
+		desired *= 0.35
+	if blocked and _horn_ai_t <= 0.0 and _blocker_is_player():
+		_horn_ai_t = randf_range(2.5, 5.0)
+		AudioDirector.sfx_at("veh_horn", global_position, 0.7)
+	_horn_ai_t -= delta
 	var sp := speed_kmh() / 3.6
 	if sp < desired:
 		engine_force = float(d.get("power", 100)) * 14.0
@@ -560,6 +578,8 @@ func _update_audio_and_lights(delta: float, night: bool) -> void:
 
 func set_siren(on: bool) -> void:
 	_siren_on = on
+	if on and not is_in_group("police_car"):
+		add_to_group("police_car")
 	if on and not _engine_player.playing:
 		_engine_player.play()
 	if on:
@@ -650,6 +670,27 @@ func _explode() -> void:
 
 var _prev_vel := Vector3.ZERO
 var _crash_cd := 0.0
+var _siren_t := 0.0
+var _yield_t := 0.0
+var _horn_ai_t := 0.0
+
+
+func _police_siren_near() -> bool:
+	for n in get_tree().get_nodes_in_group("police_car"):
+		if is_instance_valid(n) and (n.global_position - global_position).length() < 34.0:
+			return true
+	return false
+
+
+func _blocker_is_player() -> bool:
+	var g := get_tree().get_nodes_in_group("player")
+	if g.is_empty():
+		return false
+	var p: Node3D = g[0]
+	if p.in_vehicle != null:
+		p = p.in_vehicle
+	var ahead: Vector3 = global_position + (-global_transform.basis.z) * 7.0
+	return (Vector3(p.global_position.x, 0, p.global_position.z) - Vector3(ahead.x, 0, ahead.z)).length() < 4.5
 
 
 func _physics_process(delta: float) -> void:

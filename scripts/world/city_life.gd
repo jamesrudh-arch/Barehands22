@@ -592,6 +592,17 @@ func _spawn_event(pp: Vector3) -> void:
 				f.setup_enemy("thug_light", pos, "none")
 				f.hostile = false
 				event_actors.append(f)
+		"turf_war":
+			# rival factions tear into each other; the player is a spectator
+			# (or an opportunist) until someone spots them
+			for side in [["thug_light", "thug_grappler", "crew"], ["halcyon_guard", "crowe_gunman", "corp"]]:
+				for i in 2:
+					var n := CharacterBody3D.new()
+					n.set_script(load(PED_SCENE))
+					get_parent().add_child(n)
+					n.setup_enemy(side[i % 2], pos + Vector3(randf_range(-5, 5), 0, randf_range(-5, 5)) + (Vector3(6, 0, 0) if side[2] == "corp" else Vector3(-6, 0, 0)), side[2])
+					event_actors.append(n)
+			Bus.notification.emit("Turf war brewing — Syndicate and Halcyon are squaring up.", "warn")
 		"traffic_collision":
 			for i in 2:
 				var v := VehicleBody3D.new()
