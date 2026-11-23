@@ -386,6 +386,16 @@ func _process(_delta: float) -> bool:
 			_check("SOUND PROPAGATION" in clsrc2, "loud-crime panic ripple wired")
 			var phsrc2 := FileAccess.get_file_as_string("res://scripts/ui/phone_ui.gd")
 			_check("_show_garage" in phsrc2 and "_summon_vehicle" in phsrc2 and "_keep_ride" in phsrc2, "garage app wired (keep ride + summon)")
+			var wssrc := FileAccess.get_file_as_string("res://scripts/core/world_state.gd")
+			var ctsrc := FileAccess.get_file_as_string("res://scripts/scenes/city.gd")
+			_check("advance_hours" in wssrc and "advance_hours(8.0)" in ctsrc, "safehouse sleep skips 8 hours")
+			var ws7 = root.get_node("WorldState")
+			var h0: float = ws7.game_hour
+			var d0: int = ws7.day
+			ws7.advance_hours(8.0)
+			_check(absf(ws7.game_hour - fmod(h0 + 8.0, 24.0)) < 0.001, "advance_hours wraps the clock")
+			ws7.game_hour = h0
+			ws7.day = d0
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

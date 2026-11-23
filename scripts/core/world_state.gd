@@ -199,6 +199,15 @@ func district_heat01(did: String) -> float:
 	return clampf(district_heat.get(did, 0.0) / 100.0, 0.0, 1.0)
 
 
+func advance_hours(h: float) -> void:
+	## Sleep/skip: move the clock forward, rolling days properly.
+	game_hour += h
+	while game_hour >= 24.0:
+		game_hour -= 24.0
+		day += 1
+	Bus.hour_changed.emit(game_hour)
+
+
 func set_wanted(level: int) -> void:
 	var v := clampi(level, 0, 5)
 	if v != wanted:
