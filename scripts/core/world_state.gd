@@ -51,6 +51,7 @@ var discovered_pois: Array = []
 var visited_districts: Array = []   # fog of war
 var collected: Array = []
 var owned_vehicles: Array = []
+var owned_properties: Array = []     # buyable businesses paying daily income
 
 # --- phone ---
 var phone_station: String = ""
@@ -67,7 +68,7 @@ var calls_made: Array = []
 var news_queue: Array = []
 var last_news: String = ""
 
-const SAVE_VERSION := 4   # v4: progression, district heat, attachments
+const SAVE_VERSION := 5   # v5: owned properties (businesses)
 
 
 func _ready() -> void:
@@ -108,6 +109,7 @@ func reset_all() -> void:
 	visited_districts = []
 	collected = []
 	owned_vehicles = []
+	owned_properties = []
 	phone_station = ""
 	messages_read = []
 	messages_pending = ["msg_intro_ruth"]
@@ -125,6 +127,7 @@ func _process(delta: float) -> void:
 	if game_hour >= 24.0:
 		game_hour -= 24.0
 		day += 1
+		_pay_property_income()
 	if int(prev) != int(game_hour):
 		Bus.hour_changed.emit(game_hour)
 	# weather drift
@@ -205,7 +208,21 @@ func advance_hours(h: float) -> void:
 	while game_hour >= 24.0:
 		game_hour -= 24.0
 		day += 1
+		_pay_property_income()
 	Bus.hour_changed.emit(game_hour)
+
+
+func _pay_property_income() -> void:
+	## Owned businesses pay out once per in-game day.
+	if owned_properties.is_empty():
+		return
+	var total := 0
+	for pid in owned_properties:
+		total += int(Db.properties.get(str(pid), {}).get("income", 0))
+	if total > 0:
+		add_money(total)
+		Bus.notification.emit("Property income: +%d cr." % total, "mission")
+		AudioDirector.sfx("cash", 0.3)
 
 
 func set_wanted(level: int) -> void:
@@ -295,6 +312,7 @@ func serialize() -> Dictionary:
 		"visited_districts": visited_districts.duplicate(),
 		"collected": collected.duplicate(),
 		"owned_vehicles": owned_vehicles.duplicate(),
+		"owned_properties": owned_properties.duplicate(),
 		"phone_station": phone_station,
 		"call_log": call_log,
 		"gps_active": gps_active,
@@ -333,6 +351,7 @@ func deserialize(d: Dictionary) -> void:
 	visited_districts = d.get("visited_districts", [])
 	collected = d.get("collected", [])
 	owned_vehicles = d.get("owned_vehicles", [])
+	owned_properties = d.get("owned_properties", [])
 	phone_station = d.get("phone_station", 0)
 	call_log = d.get("call_log", [])
 	gps_active = d.get("gps_active", false)

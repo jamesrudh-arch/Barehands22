@@ -121,7 +121,7 @@ func _show_home() -> void:
 		["CALLS", "i_call", _show_contacts], ["BAG", "i_gun", _show_inventory], ["MSGS", "i_msg", _show_msgs],
 		["SAVE", "i_phone", _show_save], ["SETUP", "i_armor", _show_settings], ["NEWS", "i_star", _show_news],
 		["STATS", "i_star", _show_stats], ["GARAGE", "i_map", _show_garage],
-		["TAXI", "i_money", _show_taxi],
+		["TAXI", "i_money", _show_taxi], ["BIZ", "i_money", _show_biz],
 	]
 	for a in apps:
 		var b := Button.new()
@@ -741,6 +741,61 @@ func _stat_line(title: String, sub: String) -> VBoxContainer:
 func _player() -> Node:
 	var g := get_tree().get_nodes_in_group("player")
 	return g[0] if g.size() else null
+
+
+func _show_biz() -> void:
+	_clear()
+	_app = "biz"
+	_header("BUSINESSES")
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_top = 50
+	_screen.add_child(scroll)
+	var vb := VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 10)
+	scroll.add_child(vb)
+	var note := Label.new()
+	note.text = "Buy in. Every business pays its cut once a day."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 13)
+	note.add_theme_color_override("font_color", Color(0.7, 0.68, 0.62))
+	vb.add_child(note)
+	for pid in Db.properties:
+		var pr: Dictionary = Db.properties[pid]
+		var owned: bool = pid in WorldState.owned_properties
+		var b := Button.new()
+		b.text = "%s — %s" % [pr.get("name", pid), "OWNED (+%d cr/day)" % int(pr.get("income", 0)) if owned else "%d cr (+%d cr/day)" % [int(pr.get("price", 0)), int(pr.get("income", 0))]]
+		b.tooltip_text = str(pr.get("blurb", ""))
+		b.custom_minimum_size = Vector2(0, 56)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 14)
+		b.disabled = owned
+		if not owned:
+			b.pressed.connect(_buy_property.bind(str(pid)))
+		vb.add_child(b)
+		if not owned and str(pr.get("blurb", "")) != "":
+			var l := Label.new()
+			l.text = "   " + str(pr.get("blurb", ""))
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.add_theme_font_size_override("font_size", 12)
+			l.add_theme_color_override("font_color", Color(0.6, 0.58, 0.52))
+			vb.add_child(l)
+
+
+func _buy_property(pid: String) -> void:
+	var pr: Dictionary = Db.properties.get(pid, {})
+	var price := int(pr.get("price", 0))
+	if WorldState.money < price:
+		Bus.notification.emit("You need %d cr for this buy-in." % price, "error")
+		AudioDirector.sfx("ui_error", 0.2)
+		return
+	WorldState.add_money(-price)
+	WorldState.owned_properties.append(pid)
+	AudioDirector.sfx("cash", 0.5)
+	Bus.notification.emit("You own %s now. Payouts daily." % pr.get("name", pid), "mission")
+	Game.request_autosave()
+	_show_biz()
 
 
 func _show_taxi() -> void:

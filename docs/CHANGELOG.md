@@ -1,5 +1,18 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 22: the portfolio
+
+- **Six buyable businesses** (`data/properties.json`): Aunt Adaeze's
+  Noodle Stall (1500 cr → 90/day) up to the Noir Lounge Back Room
+  (6000 cr → 340/day) — laundromat, cab medallion, dock sublease,
+  radio ad slot. Each pays its cut once per in-game day (both clock
+  paths: real time and safehouse sleep/taxi skips).
+- **BIZ phone app**: browse, read the blurbs, buy in; owned businesses
+  show their daily payout. Autosaves on purchase.
+- `owned_properties` serialized — **SAVE_VERSION 5**.
+- Harness **101 checks, 0 fails, 0 script errors** (incl. live payout
+  test: own the noodle stall, roll 24 h, cash lands).
+
 ## 2026-11-23 — DEPTH WAVE 21: taxis
 
 - **TAXI phone app**: hail a cab to any discovered POI more than 60 m
