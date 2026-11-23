@@ -110,5 +110,12 @@
   "price": 180,
   "blurb": "Hand-loaded rounds hit harder and kick harder.",
   "slot": "ammo"
+ },
+ "ammo_357": {
+  "name": ".357 Speedloader",
+  "kind": "ammo",
+  "for": "gun_magnum",
+  "amount": 12,
+  "price": 45
  }
 }

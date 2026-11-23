@@ -868,7 +868,7 @@ func _drop_loot() -> void:
 	var cash := int(randf_range(8.0, 26.0) * (1.0 + Difficulty.threat()))
 	WorldState.add_money(cash)
 	AudioDirector.sfx_at("cash", global_position + Vector3(0, 0.4, 0), 0.5)
-	var ammo_map := {"gun_pistol": "ammo_9mm", "gun_smg": "ammo_smg", "gun_shotgun": "ammo_12g", "gun_rifle": "ammo_308"}
+	var ammo_map := {"gun_pistol": "ammo_9mm", "gun_smg": "ammo_smg", "gun_shotgun": "ammo_12g", "gun_rifle": "ammo_308", "gun_magnum": "ammo_357", "gun_machine_pistol": "ammo_9mm"}
 	if ammo_map.has(_weapon_id) and randf() < 0.65:
 		_spawn_loot_pickup(ammo_map[_weapon_id])
 	elif _weapon_id.begins_with("melee_") and randf() < 0.3:
