@@ -1030,8 +1030,16 @@ func _grudge_tick(delta: float, player: Node) -> void:
 		return
 	_grudge_cd = randf_range(100.0, 160.0)
 	var count: int = Difficulty.scale_count(2)
+	# ESCALATION: past -70 rep it stops being a collection and becomes a
+	# hit — armed squads, one more body, a different kind of message
+	var squad: bool = rep < -70.0
+	if squad:
+		count += 1
 	var ppos: Vector3 = player.global_position
-	Bus.notification.emit("%s collectors are here to talk. Bring bandages." % ("Syndicate" if fac == "crew" else "Halcyon"), "warn")
+	if squad:
+		Bus.notification.emit("%s isn't collecting anymore. They're finishing." % ("The Syndicate" if fac == "crew" else "Halcyon"), "error")
+	else:
+		Bus.notification.emit("%s collectors are here to talk. Bring bandages." % ("Syndicate" if fac == "crew" else "Halcyon"), "warn")
 	AudioDirector.sfx("shout_alert", 0.2)
 	for i in count:
 		var a := randf() * TAU
@@ -1040,9 +1048,16 @@ func _grudge_tick(delta: float, player: Node) -> void:
 		var n := CharacterBody3D.new()
 		n.set_script(load(PED_SCENE))
 		get_parent().add_child(n)
-		var kind: String = ["thug_light", "thug_grappler", "thug_heavy"][randi() % 3] if fac == "crew" else "halcyon_guard"
+		var kind: String
+		if squad:
+			kind = "crowe_gunman" if fac == "crew" else "halcyon_guard"
+		else:
+			kind = ["thug_light", "thug_grappler", "thug_heavy"][randi() % 3] if fac == "crew" else "halcyon_guard"
 		n.setup_enemy(kind, pos, TURF_TAG.get(fac, fac))
-		n.display_name = "Syndicate Collector" if fac == "crew" else "Halcyon Recovery"
+		if squad:
+			n.display_name = "Syndicate Hitman" if fac == "crew" else "Halcyon Cleaner"
+		else:
+			n.display_name = "Syndicate Collector" if fac == "crew" else "Halcyon Recovery"
 	# rep floor: surviving a collection cools the grudge slightly
 	WorldState.add_faction_rep(fac, 4.0)
 
