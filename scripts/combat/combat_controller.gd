@@ -260,10 +260,16 @@ func _resolve_hit() -> void:
 			Effects.add_shake(0.5 if is_player else 0.15)
 			if is_player:
 				Bus.notification.emit("FINISHER!", "warn")
+				Cinematics.hitstop(0.12)
+				Cinematics.fov_punch(5.0)
 		else:
 			AudioDirector.sfx_at(style_hit_sound(attack_kind), t.global_position + Vector3(0, 1.3, 0))
 			Effects.burst(t.global_position + Vector3(0, 1.3, 0) + fwd * 0.2, "blood", fwd)
 			Effects.add_shake(0.25 if is_player else 0.0)
+			if is_player and attack_kind in ["heavy", "haymaker", "axe_kick", "suplex", "ground_pound", "executioner", "swing_v", "env_slam", "kick_high"]:
+				Cinematics.hitstop(0.07)
+		if is_player and cc.dead:
+			_last_kill_check(t)
 		if is_player:
 			if counter_t > 0.0:
 				counter_t = 0.0
@@ -273,6 +279,18 @@ func _resolve_hit() -> void:
 			if cc.dead or (cc.knocked and not finisher):
 				Progression.add_xp(int(15.0 + cc.max_hp * 0.12), "KO")
 		attacked.emit(owner_node, t, dmg)
+
+
+func _last_kill_check(victim: Node3D) -> void:
+	## Last enemy within 30 m just died -> brief kill-cam slow-mo.
+	for n in owner_node.get_tree().get_nodes_in_group("enemy"):
+		if n == victim or not is_instance_valid(n):
+			continue
+		var c = n.get("combat")
+		if c != null and not c.dead and (n.global_position - victim.global_position).length() < 30.0:
+			return
+	Cinematics.slowmo(0.55, 0.3)
+	Cinematics.fov_punch(3.0)
 
 
 func style_hit_sound(kind: String) -> String:

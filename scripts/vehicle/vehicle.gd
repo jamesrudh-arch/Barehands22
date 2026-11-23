@@ -605,6 +605,10 @@ func _explode() -> void:
 	AudioDirector.sfx_at("veh_crash_heavy", global_position, 1.0, 0.02)
 	AudioDirector.sfx_at("fire_crackle", global_position)
 	Effects.add_shake(0.9)
+	Cinematics.fov_punch(7.0)
+	var g := get_tree().get_nodes_in_group("player")
+	if not g.is_empty() and (g[0].global_position - global_position).length() < 22.0:
+		Cinematics.slowmo(0.35, 0.45)   # nearby blast = a beat of slow-mo
 	Bus.crime_committed.emit("explosion", 3, global_position)
 	# scorch the shell
 	if _body_mi and _body_mi.material_override:

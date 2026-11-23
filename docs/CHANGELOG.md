@@ -1,5 +1,21 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 10: fight-feel cinematics
+
+- **Cinematics autoload** (`scripts/core/cinematics.gd`): micro-cinematic
+  time arbitration — hit-stop freeze frames, kill-cam slow-mo, FOV punches
+  through the camera rig. Cooperates with FOCUS bullet-time (whoever wants
+  the world slower wins; both restore cleanly; never fires during FOCUS).
+- Heavy connects (haymaker, axe kick, suplex, ground pound, executioner,
+  vertical swing, high kick) freeze-frame ~70 ms; ground finishers 120 ms
+  + FOV punch; environmental slams 100 ms + punch.
+- **Kill-cam**: dropping the last standing enemy within 30 m triggers a
+  0.55 s slow-mo beat (0.3×) — every fight ends on a film sting.
+- Vehicle explosions punch FOV and, within 22 m of the player, dip into
+  a 0.35 s slow-mo blast beat.
+- Harness still **76 checks, 0 fails, 0 script errors**.
+
+
 ## 2026-11-23 — DEPTH WAVE 9: consequences, rooftops, wrecks
 
 Second block of the deepening mandate (docs/LEVERAGE_VISION.md):
