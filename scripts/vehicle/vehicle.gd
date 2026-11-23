@@ -596,6 +596,20 @@ func set_siren(on: bool) -> void:
 var tires_flat := false
 
 
+func respray(col: Color) -> void:
+	## Fresh paint: cars carry the paint on mesh surface 0, bikes on the
+	## body material override.
+	color = col
+	if vehicle_type == "bike":
+		if _body_mi != null and _body_mi.material_override is StandardMaterial3D:
+			(_body_mi.material_override as StandardMaterial3D).albedo_color = col
+	else:
+		if _body_mi != null and _body_mi.mesh != null and _body_mi.mesh.get_surface_count() > 0:
+			var mat := _body_mi.mesh.surface_get_material(0)
+			if mat is StandardMaterial3D:
+				(mat as StandardMaterial3D).albedo_color = col
+
+
 func repair_full() -> void:
 	## Garage work: hull straightened, glass in, rubber new.
 	hp = 100.0

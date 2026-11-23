@@ -141,6 +141,7 @@ func _build_tabs(s: Dictionary) -> void:
 		tabs.append("mods")
 	if _shop_id == "motors":
 		tabs.append("repair")
+		tabs.append("paint")
 	for t in tabs:
 		var b := Button.new()
 		b.text = t.to_upper()
@@ -189,8 +190,65 @@ func _build_list() -> void:
 			_list.add_child(_row("Full treatment", "120 cr", "Patch every wound, top off stamina.", _heal))
 		"repair":
 			_build_repair()
+		"paint":
+			_build_paint()
 		"mods":
 			_build_mods()
+
+
+const PAINTS := [
+	["Cinder Red", Color(0.62, 0.12, 0.10)],
+	["Midnight", Color(0.09, 0.10, 0.14)],
+	["Brass", Color(0.72, 0.55, 0.20)],
+	["Teal Wave", Color(0.10, 0.50, 0.45)],
+	["Bone", Color(0.82, 0.80, 0.72)],
+	["Plum", Color(0.35, 0.14, 0.35)],
+	["Steel", Color(0.45, 0.47, 0.50)],
+	["Slag Orange", Color(0.85, 0.40, 0.10)],
+]
+
+
+func _build_paint() -> void:
+	## Resprays: 150 cr, any color, no questions about where the car
+	## came from. A fresh color is also a decent disguise.
+	var v: Node = _find_paint_target()
+	if v == null:
+		_list.add_child(_row("No car at the door.", "", "Drive one up, then pick a color.", null))
+		return
+	for p in PAINTS:
+		_list.add_child(_row(str(p[0]), "150 cr", "Respray", _make_paint.bind(v, p[1])))
+
+
+func _find_paint_target() -> Node:
+	var p := _player()
+	if p != null and p.in_vehicle != null and not bool(p.in_vehicle.get("_wrecked")):
+		return p.in_vehicle
+	var best = null
+	var bd := 10.0
+	if p != null:
+		for n in get_tree().get_nodes_in_group("vehicle"):
+			if not is_instance_valid(n) or bool(n.get("_wrecked")) or bool(n.get("is_traffic")):
+				continue
+			var d: float = (n.global_position - p.global_position).length()
+			if d < bd:
+				bd = d
+				best = n
+	return best
+
+
+func _make_paint(v: Node, col: Color) -> void:
+	if not is_instance_valid(v):
+		return
+	if WorldState.money < 150:
+		Bus.notification.emit("Resprays are 150 cr. Dex doesn't do tabs.", "error")
+		AudioDirector.sfx("ui_error", 0.2)
+		return
+	WorldState.add_money(-150)
+	v.respray(col)
+	AudioDirector.sfx("gear_shift", 0.4)
+	Bus.notification.emit("Fresh paint. Try not to scratch it.", "mission")
+	_refresh_money()
+	_build_list()
 
 
 func _build_repair() -> void:
