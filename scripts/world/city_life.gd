@@ -391,6 +391,12 @@ func _police_tick(delta: float, player: Node) -> void:
 				n._set_brake(6.0 if dist < 8.0 else 1.0)
 			if dist < 4.5 and player.in_vehicle == null and (pp - n.global_position).length() < 6.0:
 				_try_arrest(delta, player, dist)
+			# drive-by: at 2+ stars cruisers open fire through the glass —
+			# hits the player's vehicle when driving, the player on foot
+			u["shoot_t"] = float(u.get("shoot_t", randf_range(0.5, 2.0))) - delta
+			if wanted >= 2 and dist < 34.0 and dist > 6.0 and u["shoot_t"] <= 0.0:
+				u["shoot_t"] = randf_range(1.6, 3.2) * (1.35 - Difficulty.aggression() * 0.35)
+				_cruiser_shot(n, player, dist)
 		else:
 			if n.state != n.State.COMBAT and n.state != n.State.DEAD:
 				n.state = n.State.COMBAT
@@ -520,6 +526,31 @@ func _police_see_player(player: Node) -> bool:
 		if hit.is_empty():
 			return true
 	return false
+
+
+func _cruiser_shot(n: Node3D, player: Node, dist: float) -> void:
+	## Patrol-car drive-by: tracer, report, and a hit roll that damages
+	## whatever the player is riding (or the player). Accuracy scales with
+	## Difficulty; moving targets are genuinely hard to hit.
+	var muz: Vector3 = n.global_position + Vector3(0.55, 1.1, 0)
+	var tgt: Vector3 = player.global_position + Vector3(0, 1.0, 0)
+	if player.in_vehicle != null:
+		tgt = player.in_vehicle.global_position + Vector3(0, 0.7, 0)
+	var dir: Vector3 = (tgt - muz).normalized()
+	dir += Vector3(randf_range(-0.05, 0.05), randf_range(-0.02, 0.04), randf_range(-0.05, 0.05))
+	AudioDirector.sfx_at("shot_pistol", muz, 0.8)
+	Effects.burst(muz, "muzzle", dir)
+	Effects.tracer(muz, muz + dir * 45.0)
+	var speed_penalty: float = 0.0
+	if player.in_vehicle != null and player.in_vehicle.has_method("speed_kmh"):
+		speed_penalty = clampf(player.in_vehicle.speed_kmh() / 160.0, 0.0, 0.35)
+	var chance := clampf(0.42 - dist * 0.006 + Difficulty.accuracy_bonus() - speed_penalty, 0.05, 0.6)
+	if randf() < chance:
+		if player.in_vehicle != null and player.in_vehicle.has_method("damage"):
+			player.in_vehicle.damage(float(randf_range(4.0, 9.0)))
+			Effects.burst(tgt, "spark", dir)
+		elif player.combat:
+			player.combat.take_hit(float(randf_range(7.0, 13.0)) * Difficulty.enemy_dmg_mult(), dir, "bullet", n)
 
 
 func _try_arrest(delta: float, player: Node, dist: float) -> void:
