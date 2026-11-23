@@ -415,10 +415,13 @@ func player_drive(delta: float, mv: Vector2, brake: bool, handbrake: bool, horn:
 			if w is VehicleWheel3D and not w.use_as_steering:
 				w.wheel_friction_slip = 0.7
 	else:
+		# wet asphalt: road wetness eats up to 30% of tire grip — brakes
+		# and cornering get honest about the weather
+		var wet_grip: float = 1.0 - WorldState.wetness * 0.30
 		for w in get_children():
 			if w is VehicleWheel3D and not w.use_as_steering:
-				w.wheel_friction_slip = d.get("grip", 1.0) * 1.6
-	steering = move_toward(steering, mv.x * 0.55, delta * 2.4)
+				w.wheel_friction_slip = d.get("grip", 1.0) * 1.6 * wet_grip
+	steering = move_toward(steering, mv.x * 0.55 * (1.0 - WorldState.wetness * 0.18), delta * 2.4)
 	if horn and _horn_t <= 0.0:
 		AudioDirector.sfx_at("veh_horn", global_position)
 		_horn_t = 0.7

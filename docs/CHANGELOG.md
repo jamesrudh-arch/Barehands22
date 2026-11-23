@@ -1,5 +1,16 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 12: weather plays the game
+
+- **Fog** cuts NPC sightlines to 15 m (rain 21 m) and slows suspicion
+  build past 8 m — stealth jobs get a weather window.
+- **Police perception** caps at 32 m in fog / 44 m in rain (was always
+  55 m) — losing a tail in the soup is now actually possible.
+- **Wet asphalt**: road wetness eats up to 30% of tire grip and 18% of
+  steering response — the wetness sim (already drifting toward weather
+  targets) now reaches the driving feel. Rain chases slide.
+- Harness still **84 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 11: scripted chases
 
 - **Mission pursuits**: `drive_timed`/`race` stages accept a `pursuit`
