@@ -139,6 +139,8 @@ func _build_tabs(s: Dictionary) -> void:
 		tabs.append("heal")
 	if _shop_id == "gunsmith":
 		tabs.append("mods")
+	if _shop_id == "motors":
+		tabs.append("repair")
 	for t in tabs:
 		var b := Button.new()
 		b.text = t.to_upper()
@@ -185,8 +187,62 @@ func _build_list() -> void:
 				_list.add_child(_row(v.get("name", id), "%d cr" % int(v.get("price", 3000)), v.get("type", "car"), _make_buy_vehicle.bind(id)))
 		"heal":
 			_list.add_child(_row("Full treatment", "120 cr", "Patch every wound, top off stamina.", _heal))
+		"repair":
+			_build_repair()
 		"mods":
 			_build_mods()
+
+
+func _build_repair() -> void:
+	## Dex fixes what the city broke: hull damage by the point, new rubber
+	## for spike-shredded tires. Wrecks are wrecks — he can't help those.
+	var v: Node = _find_repair_target()
+	if v == null:
+		_list.add_child(_row("Nothing to fix.", "", "Bring a beat-up car to the door.", null))
+		return
+	var cost := int((100.0 - float(v.hp)) * 3.0)
+	if bool(v.tires_flat):
+		cost += 200
+	cost = maxi(cost, 0)
+	var dname: String = Db.vehicle(str(v.vehicle_def_id)).get("name", "ride")
+	var blurb := "Hull %d%%" % int(v.hp)
+	if bool(v.tires_flat):
+		blurb += ", tires shredded"
+	_list.add_child(_row("Full repair — %s" % dname, "%d cr" % cost, blurb, _make_repair.bind(v, cost)))
+
+
+func _find_repair_target() -> Node:
+	var p := _player()
+	if p != null and p.in_vehicle != null and not bool(p.in_vehicle.get("_wrecked")):
+		return p.in_vehicle
+	var best = null
+	var bd := 10.0
+	if p != null:
+		for n in get_tree().get_nodes_in_group("vehicle"):
+			if not is_instance_valid(n) or bool(n.get("_wrecked")):
+				continue
+			if float(n.get("hp")) >= 100.0 and not bool(n.get("tires_flat")):
+				continue
+			var d: float = (n.global_position - p.global_position).length()
+			if d < bd:
+				bd = d
+				best = n
+	return best
+
+
+func _make_repair(v: Node, cost: int) -> void:
+	if not is_instance_valid(v):
+		return
+	if WorldState.money < cost:
+		Bus.notification.emit("Dex wants %d cr first." % cost, "error")
+		AudioDirector.sfx("ui_error", 0.2)
+		return
+	if cost > 0:
+		WorldState.add_money(-cost)
+	v.repair_full()
+	Bus.notification.emit("Good as new. Mostly.", "mission")
+	_refresh_money()
+	_build_list()
 
 
 func _build_mods() -> void:

@@ -1,5 +1,32 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 29: fire you can hear and watch die
+
+- **Wrecks burn for 45 seconds**: flickering firelight (sine + noise),
+  `burning` group membership, then the flames go out and the light is
+  freed — explosions leave a scene, not a permanent lamp.
+- **fire_barrel street events actually burn** now: a 2-minute barrel
+  fire with its own light.
+- **Proximity fire ambience**: the previously-registered "fire" ambient
+  channel finally plays — `fire_crackle` loops, louder the closer you
+  stand to anything burning (fades out past 22 m).
+- Harness **117 checks, 0 fails, 0 script errors**.
+
+## 2026-11-23 — DEPTH WAVE 29: fire you can hear, and watch die
+
+- **Wrecks burn for 45 s**: flickering firelight (sine + noise jitter),
+  `burning` group membership, then the flames go out and the light frees
+  — an explosion leaves a scene, not a permanent lamp.
+- **fire_barrel street events actually burn**: a 90-second barrel fire
+  with its own flickering light.
+- **Proximity fire ambience**: the registered-but-unused "fire" ambient
+  channel finally plays — `fire_crackle` loops, louder the closer you
+  stand to anything burning, silent past 22 m.
+- **Dex's Garage REPAIR bay**: hull damage billed at 3 cr/point, new
+  rubber for spike-shredded tires +200 cr; drives the car you arrive in
+  (or the nearest beat-up one at the door). Wrecks stay wrecks.
+- Harness extended (burn timers, ambient wiring, barrel fires, repair).
+
 ## 2026-11-23 — DEPTH WAVE 28: gunplay feeds mastery
 
 - Landing shots grows the **WEAPON mastery** track (+1.2 XP per hit,

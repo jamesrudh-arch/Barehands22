@@ -77,6 +77,8 @@ func _process(delta: float) -> void:
 	_grudge_tick(delta, player)
 	# fame: the papers notice careers, not just neighborhoods
 	_fame_tick(delta)
+	# fires: lifetime + the crackle you hear walking past
+	_fire_tick(delta, player)
 	# radio
 	_radio_tick(delta, player)
 	# adaptive music (explore -> tension -> combat -> chase)
@@ -699,6 +701,31 @@ func _spawn_event(pp: Vector3) -> void:
 		"fire_barrel":
 			AudioDirector.sfx_at("fire_crackle", pos)
 			Effects.burst(pos + Vector3(0, 0.6, 0), "smoke")
+			# a barrel fire that actually burns: flickering light, crackle
+			# ambience for passersby, gone in 90 seconds
+			var barrel := Node3D.new()
+			barrel.global_position = pos
+			var bl := OmniLight3D.new()
+			bl.light_color = Color(1.0, 0.5, 0.18)
+			bl.light_energy = 1.6
+			bl.omni_range = 5.5
+			bl.position = Vector3(0, 0.7, 0)
+			barrel.add_child(bl)
+			get_parent().add_child(barrel)
+			barrel.add_to_group("burning")
+			get_tree().create_timer(90.0).timeout.connect(barrel.queue_free)
+			# a barrel fire that actually burns: light + crackle for 2 minutes
+			var fb := Node3D.new()
+			fb.global_position = pos
+			var fl := OmniLight3D.new()
+			fl.light_color = Color(1.0, 0.5, 0.18)
+			fl.light_energy = 1.8
+			fl.omni_range = 6.0
+			fl.position = Vector3(0, 0.7, 0)
+			fb.add_child(fl)
+			get_parent().add_child(fb)
+			fb.add_to_group("burning")
+			_fires.append({"node": fb, "t": 120.0})
 		"crowd_gathering":
 			for i in 4:
 				var n := CharacterBody3D.new()
@@ -931,6 +958,30 @@ const TURF_TAG := {"crew": "crew", "corp": "corp"}
 ## Faction grudges: walk onto the turf of a faction you've burned (rep deep
 ## negative) and they send collectors. Scales with Difficulty — late game
 ## the collections arrive heavier.
+var _fires: Array = []
+
+
+func _fire_tick(delta: float, player: Node) -> void:
+	for f in _fires.duplicate():
+		f["t"] -= delta
+		if f["t"] <= 0.0 or not is_instance_valid(f["node"]):
+			if is_instance_valid(f["node"]):
+				f["node"].queue_free()
+			_fires.erase(f)
+	# nearest burning thing drives the ambient crackle channel
+	var best := 1e9
+	if player != null:
+		for n in get_tree().get_nodes_in_group("burning"):
+			if is_instance_valid(n):
+				var d: float = (n.global_position - player.global_position).length()
+				if d < best:
+					best = d
+	if best < 22.0:
+		AudioDirector.ambient("fire", "res://assets/audio/sfx/fire_crackle.wav", clampf(0.5 * (1.0 - best / 22.0), 0.0, 0.5))
+	else:
+		AudioDirector.ambient_off("fire")
+
+
 const FAME_MILESTONES := [
 	["fame_thefts5", "thefts", 5, "Grand theft wave: five cars gone in %s nights. Owners 'left them running,' police say."],
 	["fame_kos25", "kos", 25, "Twenty-five bodies this season. The city stops naming them; the numbers keep counting."],
