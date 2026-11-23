@@ -11,6 +11,8 @@ var _fails := 0
 var _checks := 0
 var _db_v: Node = null
 var _db_en: Node = null
+var _lp_v: Node = null
+var _lp_n0 := 0
 
 
 func _initialize() -> void:
@@ -335,6 +337,42 @@ func _process(_delta: float) -> bool:
 				_city.add_child(_db_en)
 				_db_en.setup_enemy("thug_light", _db_v.global_position + Vector3(3.2, 0, 0), "test")
 				_check(_db_v != null and _player.in_vehicle == _db_v, "drive-by setup: player in sedan")
+		64:
+			# LIVE LOCKPICK part 1: park a locked car next to the player, start picking
+			if _player and _player.in_vehicle == null:
+				# the drive-by thug may have killed the player before cleanup;
+				# a dead player's _physics_process bails, so revive for this test
+				if _player.dead:
+					_player.dead = false
+					_player.combat.revive()
+				# mission cinematics/dialogue also freeze _physics_process; skip them
+				var dui10 = root.get_node("DialogueUI")
+				if dui10.is_open():
+					dui10.close()
+				root.get_node("Game").cutscene_active = false
+				var ws10 = root.get_node("WorldState")
+				ws10.add_item("lockpick", 1)
+				var _lp_n: int = int(ws10.inventory.get("lockpick", 0))
+				var cl10 = _city.get_node_or_null("CityLife")
+				_lp_v = cl10.give_player_vehicle("sedan", _player.global_position + Vector3(1.6, 0, 0))
+				_lp_v.locked = true
+				_lp_v.is_player_owned = false
+				_player._request_enter(_lp_v)
+				_check(_player._hotwire_target == _lp_v, "lockpick: picking started on locked car")
+				_lp_n0 = _lp_n
+		65:
+			# LIVE LOCKPICK part 2: 2.2s of frames later the lock gives — and the pick is spent
+			if _player and _lp_v != null:
+				# deterministically finish the 2.2s pick instead of waiting frames
+				for i in range(200):
+					if _player._hotwire_t > 0.0:
+						_player._hotwire_tick(0.05)
+				var ws10 = root.get_node("WorldState")
+				_check(_player.in_vehicle == _lp_v, "lockpick: car entered after pick completes")
+				_check(int(ws10.inventory.get("lockpick", 0)) == _lp_n0 - 1, "lockpick consumed by the job (%d -> %d)" % [_lp_n0, int(ws10.inventory.get("lockpick", 0))])
+				_player.exit_vehicle()
+				_lp_v.queue_free()
+				_lp_v = null
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):
