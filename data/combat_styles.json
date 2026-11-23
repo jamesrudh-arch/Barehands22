@@ -1,0 +1,49 @@
+{
+  "brawler": {
+    "index": 0, "label": "BRAWLER",
+    "blurb": "Dockyard boxing. Honest hands, honest damage.",
+    "punch_dmg": 11, "heavy_dmg": 24, "kick_dmg": 14,
+    "speed": 1.0, "reach": 1.0, "combo_len": 3,
+    "guard_strength": 0.7, "dodge_iframes": 0.28, "stamina_cost": 1.0,
+    "stance": {"lean": 0.12, "guard_h": 0.62, "feet": 0.5, "sway": 0.15},
+    "anim_profile": "boxing"
+  },
+  "kickboxing": {
+    "index": 1, "label": "KICKBOXING",
+    "blurb": "Long legs, longer reach. Kicks do the talking.",
+    "punch_dmg": 8, "heavy_dmg": 20, "kick_dmg": 19,
+    "speed": 1.08, "reach": 1.25, "combo_len": 4,
+    "guard_strength": 0.55, "dodge_iframes": 0.3, "stamina_cost": 1.05,
+    "stance": {"lean": 0.06, "guard_h": 0.7, "feet": 0.62, "sway": 0.22},
+    "kick_bonus": 1.35, "anim_profile": "kickbox"
+  },
+  "grappling": {
+    "index": 2, "label": "GRAPPLING",
+    "blurb": "Close is fine. Closer is better. Throws end arguments.",
+    "punch_dmg": 7, "heavy_dmg": 30, "kick_dmg": 10,
+    "speed": 0.94, "reach": 0.8, "combo_len": 2,
+    "guard_strength": 0.9, "dodge_iframes": 0.22, "stamina_cost": 1.25,
+    "stance": {"lean": 0.22, "guard_h": 0.45, "feet": 0.7, "sway": 0.08},
+    "grab_range": 1.15, "throw_dmg": 26, "stagger_bonus": 1.6,
+    "anim_profile": "grapple"
+  },
+  "drunken": {
+    "index": 3, "label": "DRUNKEN",
+    "blurb": "Stumble that isn't a stumble. Every miss of yours is his opening.",
+    "punch_dmg": 9, "heavy_dmg": 22, "kick_dmg": 12,
+    "speed": 0.9, "reach": 0.95, "combo_len": 3,
+    "guard_strength": 0.35, "dodge_iframes": 0.45, "stamina_cost": 0.8,
+    "stance": {"lean": 0.3, "guard_h": 0.3, "feet": 0.4, "sway": 0.6},
+    "dmg_variance": 0.45, "counter_window": 0.5,
+    "anim_profile": "drunken"
+  },
+  "weapon": {
+    "index": 4, "label": "WEAPON",
+    "blurb": "Whatever's in your hand is the style now.",
+    "punch_dmg": 6, "heavy_dmg": 18, "kick_dmg": 12,
+    "speed": 0.96, "reach": 1.0, "combo_len": 3,
+    "guard_strength": 0.65, "dodge_iframes": 0.26, "stamina_cost": 1.1,
+    "stance": {"lean": 0.15, "guard_h": 0.55, "feet": 0.55, "sway": 0.12},
+    "uses_weapon_moveset": true, "anim_profile": "weapon"
+  }
+}

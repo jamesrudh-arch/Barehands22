@@ -1,0 +1,186 @@
+{
+  "dlg_m01_marcus": {"start": "a", "nodes": {
+    "a": {"spk": "marcus", "text": "Don't start. Please. Not tonight, Eli.", "next": "b"},
+    "b": {"spk": "eli", "text": "I'm not starting. I'm looking at your face. Your face is starting things.", "next": "c"},
+    "c": {"spk": "marcus", "text": "It's nothing. A disagreement. About numbers.", "next": "d"},
+    "d": {"spk": "eli", "text": "Whose numbers?", "next": "e"},
+    "e": {"spk": "marcus", "text": "...Crowe's. Look, I had a system. The system had a bad week.", "next": "f"},
+    "f": {"spk": "ruth", "text": "Boy, sit down before you fall down. Both of you eat something. Then we talk like family, not like debtors.", "next": null}}},
+  "dlg_m01_choice": {"start": "a", "nodes": {
+    "a": {"spk": "marcus", "text": "Four hundred by Friday and it stops growing. That's all I need. That's ALL.", "options": [
+      {"label": "Give him the money", "next": "give"},
+      {"label": "Refuse", "next": "refuse"}]},
+    "give": {"spk": "marcus", "text": "You're— okay. Okay. I'll make it right, Eli. I swear on Ma.", "next": null},
+    "refuse": {"spk": "marcus", "text": "Fine. FINE. Then I'll handle it like a man. ...Don't look at me like that, that's exactly what I'm doing.", "next": null}}},
+  "dlg_m01_ruth": {"start": "a", "nodes": {
+    "a": {"spk": "ruth", "text": "Two men. Van with berth plates. Julian Crowe was walking beside them like he owned the alley. Because for tonight, he did.", "next": "b"},
+    "b": {"spk": "eli", "text": "Which way?", "next": "c"},
+    "c": {"spk": "ruth", "text": "Toward the water. They always go toward the water, child. That's where they keep their mistakes.", "next": "d"},
+    "d": {"spk": "ruth", "text": "You want your brother back, you go see Silas in daylight. Crowe respects daylight. It's the only thing he fears.", "next": null}}},
+  "dlg_m02_mags": {"start": "a", "nodes": {
+    "a": {"spk": "mags", "text": "Ledger? Crowe's book? Honey, that book has more bodyguards than the mayor.", "next": "b"},
+    "b": {"spk": "eli", "text": "I don't need the book. I need one page. Marcus's page.", "next": "c"},
+    "c": {"spk": "mags", "text": "Pages move. Julian tears them out to sell names he's finished with. I've seen three surface this month. I buy them quiet.", "next": "d"},
+    "d": {"spk": "mags", "text": "Bring me pages, I pay. Bring me twelve, I'll tell you who's been BUYING them. And that, sugar, is a different conspiracy.", "next": null}}},
+  "dlg_m02_route": {"start": "a", "nodes": {
+    "a": {"spk": "eli", "text": "Fifteen hundred by Friday. Options?", "options": [
+      {"label": "Ask Roz for work", "next": "crew"},
+      {"label": "Work it legit", "next": "jobs"},
+      {"label": "Shake down the collectors", "next": "shake"}]},
+    "crew": {"spk": "eli", "text": "Roz pays on delivery and never asks what's in the crate. That's either trust or a trap with good manners.", "next": null},
+    "jobs": {"spk": "eli", "text": "Legit. Slow. Clean hands, empty pockets by Sunday. Ma would've liked it.", "next": null},
+    "shake": {"spk": "eli", "text": "Julian's collectors carry envelopes and grudges. Take the envelopes. Make it loud enough that Crowe calls ME.", "next": null}}},
+  "dlg_m02_clerk": {"start": "a", "nodes": {
+    "a": {"spk": "clerk", "text": "We're closed. And open. Depending on your business and its volume.", "next": "b"},
+    "b": {"spk": "eli", "text": "Marcus Vane's note. Who holds it now?", "next": "c"},
+    "c": {"spk": "clerk", "text": "That's client information. That's— ...that's two hundred. And you didn't smell like cop when you came in, so I'll say it once.", "next": "d"},
+    "d": {"spk": "clerk", "text": "Mr. Crowe sold the note last Tuesday. Bought it out from under him: a Halcyon subsidiary. 'Halcyon Civic Holdings'. Whatever your brother stole, son, it wasn't money.", "next": null}}},
+  "dlg_m03_roz": {"start": "a", "nodes": {
+    "a": {"spk": "roz", "text": "Eli Vane. In my office. Either you're desperate or I'm dreaming, and I never dream about men with good jawlines.", "next": "b"},
+    "b": {"spk": "eli", "text": "Work. Paid tonight.", "next": "c"},
+    "c": {"spk": "roz", "text": "There's a crate van. Berth seven to Yard four, twenty minutes, no stops. The crate is none of your business. That's the job AND the paycheck.", "next": "d"},
+    "d": {"spk": "roz", "text": "One more thing. If blue lights show, you decide who you are before they decide for you. Everyone out here learns that arithmetic eventually.", "next": null}}},
+  "dlg_m03_sweep": {"start": "a", "nodes": {
+    "a": {"spk": "dex", "text": "Sweep ahead! Two cruisers, checkpoint, the whole theatre! Talk fast, Vane!", "options": [
+      {"label": "Dump the cargo", "next": "dump"},
+      {"label": "Run the blockade", "next": "run"}]},
+    "dump": {"spk": "eli", "text": "Crate goes in the channel. We go through empty and boring.", "next": null},
+    "run": {"spk": "eli", "text": "Hold on to something, Dex. Boring was never on the menu.", "next": null}}},
+  "dlg_m04_crane": {"start": "a", "nodes": {
+    "a": {"spk": "crane", "text": "Sit. The chair by the window; the light flatters honest men. ...You're not flattered. Interesting.", "next": "b"},
+    "b": {"spk": "eli", "text": "My brother's note. Price.", "next": "c"},
+    "c": {"spk": "crane", "text": "Fifteen hundred, plus the courtesy of not having your collectors' ribs inventoried last night. I keep receipts, Mr. Vane. Of everything.", "next": "d"},
+    "d": {"spk": "crane", "text": "Understand me: I am not your enemy. I am your brother's arithmetic. Enemies are much warmer people.", "options": [
+      {"label": "Pay the note", "next": "pay"},
+      {"label": "Beg a week", "next": "time"},
+      {"label": "Threaten him", "next": "threaten"}]},
+    "pay": {"spk": "crane", "text": "Counted twice, as is custom. The note is retired. Your brother, however, remains... in circulation.", "next": null},
+    "time": {"spk": "crane", "text": "A week. Seven sunrises. I'll mark it in the book in pencil, Mr. Vane. Pencil is the most expensive ink I own.", "next": null},
+    "threaten": {"spk": "crane", "text": "...There. Now we're acquainted. Take your hand off my desk before I invoice you for it.", "next": null}}},
+  "dlg_m04_reveal": {"start": "a", "nodes": {
+    "a": {"spk": "crane", "text": "A courtesy, since you asked so rudely. I no longer hold your brother's paper. It was purchased. Above me, considerably above.", "next": "b"},
+    "b": {"spk": "eli", "text": "By who?", "next": "c"},
+    "c": {"spk": "crane", "text": "Halcyon Civic Holdings. Which means your brother didn't borrow from me. He borrowed from the people who are buying this city by the debt. I merely introduced them.", "next": "d"},
+    "d": {"spk": "crane", "text": "Find what he took from them, Mr. Vane, and you will never need me again. You'll have much worse creditors.", "next": null}}},
+  "dlg_m05_tess": {"start": "a", "nodes": {
+    "a": {"spk": "tess", "text": "You still take your coffee like an insult, or did marriage fix that?", "next": "b"},
+    "b": {"spk": "eli", "text": "We weren't married, Tess.", "next": "c"},
+    "c": {"spk": "tess", "text": "Semantics. Sit. I have thirty minutes and a nondisclosure agreement with teeth.", "next": "d"},
+    "d": {"spk": "tess", "text": "Your brother lifted a drive from a Halcyon sub-basement. On it: every shell company buying Cinder City's paper. Including, fun fact, the Vane apartment building.", "next": "e"},
+    "e": {"spk": "tess", "text": "Vivian wants it back quietly. I want to be the one who brings it back quietly. Help me, and your family keeps its roof. That's the whole pitch.", "options": [
+      {"label": "Work with Tess", "next": "ally"},
+      {"label": "Refuse", "next": "refuse"}]},
+    "ally": {"spk": "tess", "text": "Smart. Rare for you. Don't make me regret the compliment, Eli.", "next": null},
+    "refuse": {"spk": "tess", "text": "Then we're on opposite sides of a very expensive table. I'll wave at you across it.", "next": null}}},
+  "dlg_m06_bishop": {"start": "a", "nodes": {
+    "a": {"spk": "bishop", "text": "The shelter feeds forty and hides one. Guess which number the city cares about.", "next": "b"},
+    "b": {"spk": "eli", "text": "Who are you hiding?", "next": "c"},
+    "c": {"spk": "bishop", "text": "A boy who saw your brother pulled into a van and had the sense to run to a church instead of a camera. That sense is why he's still breathing.", "next": "d"},
+    "d": {"spk": "bishop", "text": "Okoro's sweep will be here by ten. She's honest, which makes her dangerous in a different currency. Decide what the boy is to you: a witness, or a child.", "next": null}}},
+  "dlg_m06_choice": {"start": "a", "nodes": {
+    "a": {"spk": "okoro", "text": "Vane. I know why you're here and I don't care. Hand me the witness and it's testimony. Hide him and it's obstruction. Those are different bedrooms in the same jail.", "options": [
+      {"label": "Give Okoro the witness", "next": "law"},
+      {"label": "Spirit them out", "next": "spirit"}]},
+    "law": {"spk": "okoro", "text": "Smart. It'll be on record, signed, and it'll burn somebody with a tall building. I'll take that trade every day of my pension.", "next": null},
+    "spirit": {"spk": "bishop", "text": "Tunnels behind the slag heap. My grandfather dug them for cigarettes; tonight they dig a boy a future. Go.", "next": null}}},
+  "dlg_m07_julian": {"start": "a", "nodes": {
+    "a": {"spk": "crowe_jr", "text": "Look at it! The family charity case, sweating for pennies! Dad says you're 'disciplined'. Dad says a lot of things about dead people too.", "next": "b"},
+    "b": {"spk": "eli", "text": "Your father sent you to watch. That's not trust, Julian. That's a leash.", "next": "c"},
+    "c": {"spk": "crowe_jr", "text": "...Enjoy the purse, Vane. Spend it on your brother. Oh wait. Ha. Hm.", "next": null}}},
+  "dlg_m08_plan": {"start": "a", "nodes": {
+    "a": {"spk": "tess", "text": "Service lift, floor thirty-one, filing vault behind ARGUS's left eye. You have eight minutes between audit pings.", "next": "b"},
+    "b": {"spk": "eli", "text": "And if ARGUS blinks early?", "next": "c"},
+    "c": {"spk": "tess", "text": "Then you meet Halcyon's security staff. They're polite, unionized, and carry batons with serial numbers. Run anyway.", "next": null}}},
+  "dlg_m08_choice": {"start": "a", "nodes": {
+    "a": {"spk": "argus", "text": "Anomaly logged: vault mass variance, four grams. Please remain where you are. Compliance is comfort.", "next": "b"},
+    "b": {"spk": "tess", "text": "The copy is on your stick, Eli. Leave the original. Originals have fingerprints and funerals.", "options": [
+      {"label": "Take the original anyway", "next": "steal"},
+      {"label": "Leave it", "next": "copy"}]},
+    "steal": {"spk": "tess", "text": "You absolute— fine. FINE. Then we do this the loud way and I hate you slightly more per floor.", "next": null},
+    "copy": {"spk": "tess", "text": "Good. Quiet. See? We could've been functional together.", "next": null}}},
+  "dlg_m09_marcus": {"start": "a", "nodes": {
+    "a": {"spk": "marcus", "text": "I didn't get kidnapped, Eli. I WENT. I've been in Halcyon's guest cage for nine days trading them silence for your name staying off a list.", "next": "b"},
+    "b": {"spk": "eli", "text": "The grab at Ruth's—", "next": "c"},
+    "c": {"spk": "marcus", "text": "Was Julian improvising! He needed a show to flush the drive out. I played along because if Crowe's son thinks I'm his prisoner, Dad's— YOUR name stays out of the book. That was the whole plan. I'm an idiot, but it was a plan.", "next": "d"},
+    "d": {"spk": "eli", "text": "...You idiot.", "next": "e"},
+    "e": {"spk": "marcus", "text": "Yeah. Missed you too.", "next": null}}},
+  "dlg_m10_gunnar": {"start": "a", "nodes": {
+    "a": {"spk": "gunnar", "text": "Bulldozers at the Kiln line since dawn. Halcyon paper says 'blight remediation'. My crews say 'our street'.", "next": "b"},
+    "b": {"spk": "gunnar", "text": "You want the haulage trucks at the plaza Friday, you bring me one reason that isn't sentiment. I've got forty men's mortgages and one neck.", "next": null}}},
+  "dlg_m10_roz": {"start": "a", "nodes": {
+    "a": {"spk": "roz", "text": "Halcyon buys the docks next, make no mistake. They start with your bricks because bricks don't have a syndicate. Yet.", "next": "b"},
+    "b": {"spk": "roz", "text": "I'll stand at the plaza if the price is the berth leases back in my name. Romance dies; leases don't.", "next": null}}},
+  "dlg_m10_okoro": {"start": "a", "nodes": {
+    "a": {"spk": "okoro", "text": "The hearing's a theatre piece and everybody knows their seats. But if someone brings ACTUAL paper— filings, signatures, shells— then my badge stops being decoration.", "next": "b"},
+    "b": {"spk": "okoro", "text": "Bring paper, Vane. I'll bring the ugly uniform.", "next": null}}},
+  "dlg_m10_plan": {"start": "a", "nodes": {
+    "a": {"spk": "eli", "text": "Friday. One room. Every creditor in this city. So we pick which knife to be.", "options": [
+      {"label": "Expose Halcyon publicly", "next": "expose"},
+      {"label": "Burn the ledger, own the dark", "next": "burn"},
+      {"label": "Take Vivian's deal", "next": "deal"}]},
+    "expose": {"spk": "eli", "text": "Paper in daylight. Okoro's badge, Gunnar's trucks, the whole row watching. Halcyon survives scandals; it doesn't survive receipts.", "next": null},
+    "burn": {"spk": "eli", "text": "Crowe's book is every debt in the underworld, including mine. Ash has no signatures. Whoever holds the matches holds the city.", "next": null},
+    "deal": {"spk": "eli", "text": "Vivian offers the row stays standing if I hand her the drive and smile for the photo. Everyone eats. Everyone's owned. Everyone's alive.", "next": null}}},
+  "dlg_m11_vivian": {"start": "a", "nodes": {
+    "a": {"spk": "vivian", "text": "Mr. Vane. You've cost me eleven million and one board seat. I find I admire the ratio.", "next": "b"},
+    "b": {"spk": "vivian", "text": "Sign the transfer and Kiln Row remains residential in perpetuity. A clause I wrote myself, in pencil. Pencil, Mr. Vane. I too have learned your city's idioms.", "next": "c"},
+    "c": {"spk": "vivian", "text": "Or don't. The plaza is full of witnesses and I have already priced each of them. The pen is the only variable I cannot forecast.", "options": [
+      {"label": "Sign", "next": "sign"},
+      {"label": "Tear it up", "next": "tear"}]},
+    "sign": {"spk": "vivian", "text": "Sensible. Welcome to the adult table; the food is fine and the exits are monitored.", "next": null},
+    "tear": {"spk": "vivian", "text": "...Then we are both about to discover what this city does to people who refuse arithmetic. Do try to bleed on someone else's quarter.", "next": null}}},
+  "dlg_side_courier": {"start": "a", "nodes": {
+    "a": {"spk": "dex", "text": "Noodle Row, ninety seconds, don't lift the lid. The lid is structural. And emotional.", "next": null}}},
+  "dlg_side_nia": {"start": "a", "nodes": {
+    "a": {"spk": "nia", "text": "Two patients, two addresses, zero muggings. My malpractice insurer calls this 'optimism'.", "next": null}}},
+  "shop_ruths": {"start": "a", "nodes": {
+    "a": {"spk": "ruth", "text": "Eat first, shop after. That's the house rule and I am the house.", "next": null}}},
+  "shop_gunsmith": {"start": "a", "nodes": {
+    "a": {"spk": "mags", "text": "Eyes on the counter, hands where the light is. What'll it be?", "next": null}}},
+  "shop_pawn": {"start": "a", "nodes": {
+    "a": {"spk": "pawnkeep", "text": "Buying, selling, no questions. In that order of enthusiasm.", "next": null}}},
+  "shop_clinic": {"start": "a", "nodes": {
+    "a": {"spk": "nia", "text": "Cash up front, stories optional. Sit or shop, but stop hovering.", "next": null}}},
+  "shop_market": {"start": "a", "nodes": {
+    "a": {"spk": "vendor", "text": "Fresh today! Fresher yesterday! Prices honest both days!", "next": null}}},
+  "shop_motors": {"start": "a", "nodes": {
+    "a": {"spk": "dex", "text": "She's got two owners, one dent, and a heart of pure arson. Love her and she'll love you back at 190.", "next": null}}},
+  "chat_ruth": {"start": "a", "nodes": {
+    "a": {"spk": "ruth", "text": "You look like your father when he was about to do something stupid. Sit. Eat. Do it fed.", "next": null}}},
+  "chat_roz": {"start": "a", "nodes": {
+    "a": {"spk": "roz", "text": "The docks are calm this week. I made them calm. There's a difference and it's called me.", "next": null}}},
+  "chat_okoro": {"start": "a", "nodes": {
+    "a": {"spk": "okoro", "text": "If you're about to confess something, save it for a day I've had coffee.", "next": null}}},
+  "chat_marcus": {"start": "a", "nodes": {
+    "a": {"spk": "marcus", "text": "I'm clean now. Three weeks clean. Don't say 'proud', say 'buy me dinner'.", "next": null}}},
+  "chat_tess": {"start": "a", "nodes": {
+    "a": {"spk": "tess", "text": "Halcyon thinks I'm at a spa. Keep my secret and I'll keep yours; that's what exes are for.", "next": null}}},
+  "chat_bishop": {"start": "a", "nodes": {
+    "a": {"spk": "bishop", "text": "The refinery flare hasn't gone out since 1987. Some nights I preach to it. It's the only congregation that never argues.", "next": null}}},
+  "chat_gunnar": {"start": "a", "nodes": {
+    "a": {"spk": "gunnar", "text": "Crates don't lie. People do. I schedule accordingly.", "next": null}}},
+  "chat_dex": {"start": "a", "nodes": {
+    "a": {"spk": "dex", "text": "Bet you fifty I can idle this thing on two wheels. Don't tell Roz. Actually tell Roz, I need the credibility.", "next": null}}},
+  "chat_mags": {"start": "a", "nodes": {
+    "a": {"spk": "mags", "text": "Trigger discipline, sugar. Even in conversation.", "next": null}}},
+  "chat_nia": {"start": "a", "nodes": {
+    "a": {"spk": "nia", "text": "You're walking favorably for someone with your chart. Keep it up or keep paying me.", "next": null}}},
+  "chat_julian": {"start": "a", "nodes": {
+    "a": {"spk": "crowe_jr", "text": "Careful, Vane. My patience is inherited and it's in probate.", "next": null}}},
+  "chat_crane": {"start": "a", "nodes": {
+    "a": {"spk": "crane", "text": "Small talk is a loan, Mr. Vane. It accrues.", "next": null}}},
+  "chat_vivian": {"start": "a", "nodes": {
+    "a": {"spk": "vivian", "text": "You're standing in my sightline. That's either courage or unpaid rent.", "next": null}}},
+  "chat_padre": {"start": "a", "nodes": {
+    "a": {"spk": "padre_sol", "text": "Confession's free, as always. Though the good ones usually start with 'this will sound worse than it was'.", "next": null}}},
+  "call_tess_1": {"spk": "tess", "lines": [
+    "Don't hang up. You hung up last time and I still think about it.",
+    "Halcyon bought your brother's debt, Eli. All of it. Paper and person.",
+    "Noir Lounge. One hour. Wear the jacket you pretend not to love."]},
+  "call_roz_job": {"spk": "roz", "lines": [
+    "Berth seven. Tonight's crate is heavier and quieter than last week's.",
+    "Same rate. Same rules. Different consequences, probably."]},
+  "call_okoro_warn": {"spk": "det_okoro", "lines": [
+    "Vane. Your name surfaced in a Crowe audit. Coincidences exist; I've never met one.",
+    "Keep your hands boring and your evenings dull. That's the whole call."]}
+}

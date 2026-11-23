@@ -1,0 +1,6 @@
+{
+  "armor_none": {"name": "No Armor", "protection": 0.0, "speed_mod": 1.0, "price": 0, "slot": "torso"},
+  "armor_jacket": {"name": "Leather Jacket", "protection": 0.15, "speed_mod": 1.0, "price": 180, "slot": "torso", "blurb": "Turns a knife into a bruise. Sometimes."},
+  "armor_vest": {"name": "Security Vest", "protection": 0.35, "speed_mod": 0.96, "price": 650, "slot": "torso", "blurb": "Stops pistol rounds. Ruins shirts."},
+  "armor_plate": {"name": "Halcyon Plate Carrier", "protection": 0.55, "speed_mod": 0.88, "price": 1500, "slot": "torso", "blurb": "Corporate surplus. Heavy as a grudge."}
+}

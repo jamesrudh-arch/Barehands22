@@ -1,0 +1,14 @@
+{
+  "stations": [
+    {"id": "noir_fm", "name": "Noir FM 91.3", "tag": "after-hours Cinder City",
+     "tracks": ["music_explore_kiln", "music_explore_docks", "music_explore_heights", "music_menu"],
+     "news": true},
+    {"id": "static_88", "name": "Static 88", "tag": "the sound of the slag line",
+     "tracks": ["music_explore_neon", "music_explore_slag", "music_combat"],
+     "news": false},
+    {"id": "furnace_classic", "name": "Furnace Classic", "tag": "corporate-approved calm",
+     "tracks": ["music_explore_furnace", "music_ending"],
+     "news": true},
+    {"id": "off", "name": "Radio Off", "tag": "", "tracks": [], "news": false}
+  ]
+}
