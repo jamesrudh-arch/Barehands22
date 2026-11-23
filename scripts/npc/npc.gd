@@ -13,6 +13,10 @@ var anim: AnimDriver
 var combat: CombatController
 var skeleton: Skeleton3D
 var state: int = State.ROUTINE
+var _chat_idle := false             # nightlife: stand and chat
+var suspicion: float = 0.0          # 0..100 stealth awareness meter
+var _last_known := Vector3.ZERO     # where the player was last spotted
+var _search_t := 0.0
 var hostile: bool = false
 # --- combat tactics (wave 4) ---
 var _tactics_t := 0.0
@@ -153,9 +157,21 @@ func setup_enemy(kind: String, pos: Vector3, faction: String) -> void:
 			combat.armor_prot = 0.20
 		_:
 			_style_id = ["brawler", "kickboxing", "drunken"][randi() % 3]
+	# late-game thugs arrive armed/armoured as the city gets meaner
+	if kind.begins_with("thug") and _weapon_id == "":
+		var roll: float = Difficulty.loadout_roll()
+		if roll > 0.55 and randf() < roll * 0.5:
+			_weapon_id = "gun_pistol"
+			_style_id = "weapon"
+		elif roll > 0.3 and randf() < roll * 0.6:
+			_weapon_id = "melee_bat"
+			combat.armor_prot = 0.10
 	if _weapon_id != "":
-		var wd := Db.weapon(_weapon_id)
+		var wd: Dictionary = Db.weapon(_weapon_id)
 		_mag = int(wd.get("mag", 12))
+	# escalating difficulty: enemy vitals scale with story threat
+	combat.max_hp *= Difficulty.enemy_hp_mult()
+	combat.hp = combat.max_hp
 	combat.set_style(_style_id)
 	state = State.COMBAT
 	add_to_group("enemy")
@@ -271,7 +287,44 @@ func _player() -> Node:
 	return g[0] if g.size() else null
 
 
+var _body_t := 0.0
+
+
+func _body_scan(dt: float) -> void:
+	## Hitman-style consequence: leave a body where a patroller can see it
+	## and the district learns about it. Discovery = alarm + crime report
+	## at the body's position (witnesses point the police at YOUR trail).
+	if hostile or state in [State.COMBAT, State.DEAD, State.FLEE]:
+		return
+	_body_t -= dt
+	if _body_t > 0.0:
+		return
+	_body_t = 0.8
+	for c in get_tree().get_nodes_in_group("corpse"):
+		if c == self or not is_instance_valid(c):
+			continue
+		var to: Vector3 = c.global_position - global_position
+		to.y = 0
+		if to.length() > 16.0:
+			continue
+		var fwd := -global_transform.basis.z
+		if fwd.normalized().dot(to.normalized()) < 0.3:
+			continue
+		if not _los_clear(c):
+			continue
+		# discovered!
+		_bark("body")
+		Bus.notification.emit("A body has been found!", "error")
+		Bus.crime_committed.emit("body_found", 3, c.global_position)
+		WorldState.stats["bodies_found"] = WorldState.stats.get("bodies_found", 0) + 1
+		state = State.FLEE
+		_flee_from = c.global_position
+		anim.sprint = true
+		return
+
+
 func _routine(dt: float, player: Node, dist: float) -> void:
+	_body_scan(dt)
 	# react to nearby crime/violence
 	if player and dist < 18.0:
 		if WorldState.wanted > 0 and randf() < 0.01:
@@ -282,8 +335,16 @@ func _routine(dt: float, player: Node, dist: float) -> void:
 	if _wait_t > 0.0:
 		_wait_t -= dt
 		velocity = Vector3.ZERO
-		anim.mode = "listen" if randf() < 0.5 else "locomote"
+		if _chat_idle and _day_part() == "nightlife":
+			anim.mode = "talk" if randf() < 0.6 else "listen"
+			anim.talk_t = maxf(anim.talk_t, 0.0) + dt
+		elif WorldState.weather == WorldState.Weather.RAIN:
+			anim.mode = "listen"       # huddled, arms in, waiting out the rain
+		else:
+			anim.mode = "listen" if randf() < 0.5 else "locomote"
 		anim.tick(dt, {})
+		if _wait_t <= 0.0:
+			_chat_idle = false
 		return
 	var to := _target - global_position
 	to.y = 0
@@ -302,9 +363,50 @@ func _walk_speed() -> float:
 	return d.get("speed", 1.2)
 
 
+## Sims-like day part: the same citizen does different things at 8am and 2am.
+func _day_part() -> String:
+	var h: float = WorldState.game_hour
+	if h < 6.0:
+		return "night"
+	if h < 9.5:
+		return "commute_am"
+	if h < 17.0:
+		return "work"
+	if h < 20.0:
+		return "commute_pm"
+	return "nightlife"
+
+
 func _pick_next_routine() -> void:
 	var d: Dictionary = Db.peds.get(ped_id, {})
 	var routine: String = d.get("routine", "wander")
+	var part := _day_part()
+	# --- schedule layer: overrides base routine by time of day ---
+	match part:
+		"commute_am", "commute_pm":
+			if routine in ["commute", "work", "courier"]:
+				# purposeful long walk: commuters cross the district
+				_target = _home + Vector3(randf_range(-70, 70), 0, randf_range(-70, 70))
+				return
+		"work":
+			if routine in ["work", "courier", "commute"]:
+				_target = _home + Vector3(randf_range(-12, 12), 0, randf_range(-12, 12))
+				_wait_t = randf_range(3.0, 8.0)
+				return
+		"nightlife":
+			if randf() < 0.45:
+				# cluster near neon: bars, stalls, corners — stand and talk
+				_target = _home + Vector3(randf_range(-6, 6), 0, randf_range(-6, 6))
+				_wait_t = randf_range(4.0, 10.0)
+				_chat_idle = randf() < 0.4
+				return
+		"night":
+			if routine in ["commute", "work", "jog", "courier"] and randf() < 0.7:
+				# sensible citizens are home: short shuffle, mostly still
+				_target = _home + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
+				_wait_t = randf_range(6.0, 14.0)
+				return
+	# --- base routine ---
 	match routine:
 		"work":
 			_target = _home + Vector3(randf_range(-14, 14), 0, randf_range(-14, 14))
@@ -316,6 +418,8 @@ func _pick_next_routine() -> void:
 			_wait_t = randf_range(1.0, 4.0)
 		"jog":
 			_target = _home + Vector3(randf_range(-50, 50), 0, randf_range(-50, 50))
+			if part == "night":
+				_target = _home + Vector3(randf_range(-6, 6), 0, randf_range(-6, 6))
 		"courier":
 			_target = _home + Vector3(randf_range(-60, 60), 0, randf_range(-60, 60))
 		"stumble":
@@ -332,16 +436,90 @@ func _face(dir: Vector3, dt: float) -> void:
 
 
 func _guard(dt: float, player: Node, dist: float) -> void:
-	velocity = Vector3.ZERO
-	if player and dist < 8.0:
+	## Stealth-aware guard: vision cone feeds a suspicion meter
+	## (0 calm -> 45 suspicious -> 100 alert). Broken line of sight sends
+	## them to search the last known position, then cool off.
+	if player == null or player.dead:
+		suspicion = maxf(0.0, suspicion - dt * 12.0)
+		velocity = Vector3.ZERO
+		anim.tick(dt, {})
+		return
+	var to_p: Vector3 = player.global_position - global_position
+	to_p.y = 0
+	var facing := -global_transform.basis.z
+	var sees := false
+	if dist < 26.0:
+		var in_cone: bool = facing.normalized().dot(to_p.normalized()) > (0.25 if dist > 6.0 else -0.2)
+		if in_cone and _los_clear(player):
+			sees = true
+	if sees:
+		# crouch + distance + weather slow detection; sprinting right at them is suicide
+		var rate: float = 34.0 * (1.6 - dist / 26.0)
+		# DISGUISE: matching outfit halves suspicion — unless you're blatant
+		# (gun out or sprinting). Hitman-lite: clothes are a tool, not magic.
+		var dis: String = Db.outfits.get(WorldState.equipped_outfit, {}).get("disguise", "")
+		if dis != "" and dis == faction_tag:
+			var blatant: bool = (player.weapons != null and player.weapons.weapon_id != "" and player.weapons.is_gun()) or player.sprint_held
+			rate *= 1.0 if blatant else 0.45
+		if player.crouch_held:
+			rate *= 0.4
+		if player.sprint_held:
+			rate *= 1.7
+		if WorldState.weather == WorldState.Weather.RAIN and dist > 10.0:
+			rate *= 0.7
+		var before: float = suspicion
+		suspicion = minf(100.0, suspicion + rate * dt)
+		_last_known = player.global_position
+		_face(to_p.normalized(), dt * 2.0)
+		if before < 45.0 and suspicion >= 45.0:
+			_bark("suspicious")
+			Bus.prompt_hint.emit("A guard is getting suspicious...")
+		if suspicion >= 100.0:
+			_bark("alert")
+			hostile = true
+			set_meta("hostile", true)
+			state = State.COMBAT
+			_alert_nearby()
+			return
+		velocity = Vector3.ZERO
 		anim.mode = "listen"
-		var to: Vector3 = (player.global_position - global_position).normalized()
-		anim.look_dir = to
-		_face(to, dt)
+		anim.look_dir = to_p.normalized()
 	else:
-		anim.mode = "listen"
-		anim.look_dir = Vector3.ZERO
+		suspicion = maxf(0.0, suspicion - dt * (14.0 if suspicion < 100.0 else 8.0))
+		if suspicion > 45.0 and _last_known != Vector3.ZERO:
+			# SEARCH: walk to where they last saw you, look around
+			_search_t -= dt
+			var to_lk := _last_known - global_position
+			to_lk.y = 0
+			if to_lk.length() > 1.4:
+				velocity = to_lk.normalized() * 2.4
+				_face(to_lk.normalized(), dt)
+				anim.mode = "locomote"
+			else:
+				velocity = Vector3.ZERO
+				anim.mode = "listen"
+				var sweep := Vector3(sin(Time.get_ticks_msec() * 0.002), 0, cos(Time.get_ticks_msec() * 0.002))
+				_face(sweep, dt)
+				anim.look_dir = sweep
+			if suspicion <= 45.0:
+				_search_t = 0.0
+				Bus.prompt_hint.emit("")
+		else:
+			velocity = Vector3.ZERO
+			anim.mode = "listen"
+			anim.look_dir = Vector3.ZERO
 	anim.tick(dt, {})
+
+
+func _los_clear(target: Node3D) -> bool:
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.new()
+	var duck: float = 0.45 if target.get("crouch_held") else 0.0
+	q.from = global_position + Vector3(0, 1.5, 0)
+	q.to = target.global_position + Vector3(0, 1.1 - duck, 0)
+	q.exclude = [get_rid()]
+	var hit := space.intersect_ray(q)
+	return hit.is_empty() or hit.get("collider") == target
 
 
 func _talk_state(dt: float) -> void:
@@ -405,9 +583,10 @@ func _combat_state(dt: float, player: Node) -> void:
 	# --- re-evaluate tactics every ~1.2 s ---
 	_tactics_t -= dt
 	if _tactics_t <= 0.0:
-		_tactics_t = randf_range(0.9, 1.5)
+		var aggr: float = Difficulty.aggression()
+		_tactics_t = randf_range(1.5, 2.2) - aggr * 0.9
 		var allies := _nearby_allies(22.0)
-		if allies.size() >= 2 and randf() < 0.55:
+		if allies.size() >= 2 and randf() < 0.3 + aggr * 0.45:
 			_flank_side = 1.0 if randf() < 0.5 else -1.0   # pincer: opposite sides converge
 		elif randf() < 0.25:
 			_flank_side = 1.0 if randf() < 0.5 else -1.0
@@ -432,9 +611,9 @@ func _combat_state(dt: float, player: Node) -> void:
 			Effects.burst(muz, "muzzle", dir)
 			Effects.tracer(muz, muz + dir * 40.0)
 			# hit chance by distance
-			if randf() < clampf(0.55 - dist * 0.008, 0.08, 0.55) and player.combat:
-				player.combat.take_hit(float(w.get("dmg", 18)), -dir, "bullet", self)
-			_attack_cd = 60.0 / float(w.get("rpm", 300)) * randf_range(2.5, 4.5)
+			if randf() < clampf(0.55 - dist * 0.008 + Difficulty.accuracy_bonus(), 0.08, 0.72) and player.combat:
+				player.combat.take_hit(float(w.get("dmg", 18)) * Difficulty.enemy_dmg_mult(), -dir, "bullet", self)
+			_attack_cd = 60.0 / float(w.get("rpm", 300)) * randf_range(2.5, 4.5) * (1.35 - Difficulty.aggression() * 0.35)
 			anim.aiming = true
 			_mag -= 1
 			if _mag <= 0:
@@ -500,6 +679,11 @@ func _nearby_allies(radius: float) -> Array:
 		if n != self and is_instance_valid(n) and (n.global_position - global_position).length() < radius:
 			out.append(n)
 	return out
+
+
+func _alert_nearby() -> void:
+	## Shout the alarm: hostiles within 40 m converge on the fight.
+	_call_for_help()
 
 
 func _call_for_help() -> void:
@@ -598,6 +782,7 @@ func _on_died(_cause: String) -> void:
 	velocity = Vector3.ZERO
 	set_meta("hostile", false)
 	remove_from_group("enemy")
+	add_to_group("corpse")
 	if hostile:
 		WorldState.stats["kos"] += 1
 		for n in get_tree().get_nodes_in_group("enemy"):

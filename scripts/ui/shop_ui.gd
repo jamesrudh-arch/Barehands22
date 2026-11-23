@@ -124,6 +124,8 @@ func _build_tabs(s: Dictionary) -> void:
 		tabs = ["vehicles"]
 	if _shop_id == "clinic":
 		tabs.append("heal")
+	if _shop_id == "gunsmith":
+		tabs.append("mods")
 	for t in tabs:
 		var b := Button.new()
 		b.text = t.to_upper()
@@ -170,6 +172,59 @@ func _build_list() -> void:
 				_list.add_child(_row(v.get("name", id), "%d cr" % int(v.get("price", 3000)), v.get("type", "car"), _make_buy_vehicle.bind(id)))
 		"heal":
 			_list.add_child(_row("Full treatment", "120 cr", "Patch every wound, top off stamina.", _heal))
+		"mods":
+			_build_mods()
+
+
+func _build_mods() -> void:
+	## Ghost Recon-lite workbench: pick a gun you own, then buy/fit
+	## attachments per slot. Bought parts live in inventory until fitted;
+	## fitting is free and swappable — loadouts per weapon persist in saves.
+	for wid in WorldState.owned_weapons:
+		var w := Db.weapon(wid)
+		if w.get("kind", "") != "gun":
+			continue
+		var fitted: Dictionary = WorldState.weapon_attachments.get(wid, {})
+		var fitted_txt := ", ".join(fitted.values()) if not fitted.is_empty() else "stock"
+		_list.add_child(_row(w.get("name", wid), "", "fitted: %s" % fitted_txt, null))
+		for aid in Db.weapons:
+			var a := Db.weapon(aid)
+			if a.get("kind", "") != "attachment":
+				continue
+			if wid not in a.get("fits", []):
+				continue
+			var owned_part: bool = WorldState.inventory.get(aid, 0) > 0
+			var slot: String = a.get("slot", "misc")
+			var label: String = "%s — %s" % [a.get("name", aid), slot]
+			if fitted.get(slot, "") == aid:
+				_list.add_child(_row("   " + label, "FITTED", a.get("blurb", ""), null))
+			elif owned_part:
+				_list.add_child(_row("   " + label, "own part", "fit it", _fit_attachment.bind(wid, aid)))
+			else:
+				_list.add_child(_row("   " + label, "%d cr" % int(a.get("price", 100)), a.get("blurb", ""), _make_buy_attachment.bind(wid, aid, int(a.get("price", 100)))))
+
+
+func _make_buy_attachment(wid: String, aid: String, price: int) -> void:
+	if WorldState.money < price:
+		Bus.notification.emit("Not enough credits.", "error")
+		AudioDirector.sfx("ui_error", 0.2)
+		return
+	WorldState.add_money(-price)
+	WorldState.add_item(aid, 1)
+	_fit_attachment(wid, aid)
+
+
+func _fit_attachment(wid: String, aid: String) -> void:
+	var a := Db.weapon(aid)
+	var slot: String = a.get("slot", "misc")
+	if not WorldState.weapon_attachments.has(wid):
+		WorldState.weapon_attachments[wid] = {}
+	WorldState.weapon_attachments[wid][slot] = aid
+	WorldState.remove_item(aid, 1)
+	AudioDirector.sfx("reload_magin", 0.15)
+	Bus.notification.emit("%s fitted to %s." % [a.get("name", aid), Db.weapon(wid).get("name", wid)], "info")
+	_refresh_money()
+	_build_list()
 
 
 func _stock_entry(id: String) -> Dictionary:

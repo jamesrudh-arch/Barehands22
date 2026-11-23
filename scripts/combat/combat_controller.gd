@@ -42,6 +42,7 @@ var dodge_dir: Vector3 = Vector3.FORWARD
 var iframes: float = 0.0
 
 # states
+var counter_t: float = 0.0        # post-parry counter window
 var stagger: float = 0.0          # accumulates; threshold -> knockdown
 var stagger_decay: float = 0.0
 var knocked: bool = false
@@ -58,6 +59,11 @@ const TIMELINES := {
 	"kick_r": [0.22, 0.14, 0.30], "kick_l": [0.22, 0.14, 0.30], "teep": [0.25, 0.12, 0.32],
 	"heavy": [0.30, 0.14, 0.40], "throw": [0.25, 0.20, 0.45],
 	"swing_h": [0.28, 0.14, 0.38], "swing_v": [0.30, 0.16, 0.42], "stab": [0.14, 0.08, 0.20],
+	# mastery unlocks (Progression LADDER)
+	"haymaker": [0.34, 0.16, 0.46], "kick_high": [0.26, 0.14, 0.34],
+	"axe_kick": [0.36, 0.16, 0.48], "suplex": [0.30, 0.18, 0.52],
+	"ground_pound": [0.24, 0.14, 0.40], "sway_strike": [0.18, 0.10, 0.26],
+	"flurry": [0.10, 0.08, 0.16], "executioner": [0.30, 0.14, 0.44],
 }
 
 
@@ -142,6 +148,7 @@ func tick(delta: float, move_dir: Vector3) -> Vector3:
 				owner_node.on_combat_end()
 	# iframes
 	iframes = maxf(0.0, iframes - delta)
+	counter_t = maxf(0.0, counter_t - delta)
 	hit_flash = maxf(0.0, hit_flash - delta)
 	# stagger decay
 	if stagger > 0.0:
@@ -177,7 +184,10 @@ func tick(delta: float, move_dir: Vector3) -> Vector3:
 		if attack_t >= 1.0:
 			attacking = false
 			combo_window = 0.35
-			combo_idx = (combo_idx + 1) % maxi(1, int(style.get("combo_len", 3)))
+			var clen: int = int(style.get("combo_len", 3))
+			if is_player:
+				clen += Progression.combo_bonus(style_id)
+			combo_idx = (combo_idx + 1) % maxi(1, clen)
 			if queued_attack != "":
 				var q := queued_attack
 				queued_attack = ""
@@ -236,14 +246,33 @@ func _resolve_hit() -> void:
 		var cc: CombatController = t.get("combat")
 		if cc == null:
 			continue
+		# GROUND FINISHER: hitting a knocked target is a cinematic finisher
+		var finisher := cc.knocked and not cc.dead
+		if finisher:
+			dmg *= 2.2
+		if attack_kind == "executioner" and cc.stagger > 30.0:
+			dmg *= 1.5                  # executioner bonus vs reeling targets
 		cc.take_hit(dmg, fwd, attack_kind, owner_node)
 		# connect feedback
-		AudioDirector.sfx_at(style_hit_sound(attack_kind), t.global_position + Vector3(0, 1.3, 0))
-		Effects.burst(t.global_position + Vector3(0, 1.3, 0) + fwd * 0.2, "blood", fwd)
-		Effects.add_shake(0.25 if is_player else 0.0)
-		attacked.emit(owner_node, t, dmg)
+		if finisher:
+			AudioDirector.sfx_at("slam", t.global_position + Vector3(0, 1.0, 0))
+			Effects.burst(t.global_position + Vector3(0, 1.0, 0) + fwd * 0.3, "blood", fwd)
+			Effects.add_shake(0.5 if is_player else 0.15)
+			if is_player:
+				Bus.notification.emit("FINISHER!", "warn")
+		else:
+			AudioDirector.sfx_at(style_hit_sound(attack_kind), t.global_position + Vector3(0, 1.3, 0))
+			Effects.burst(t.global_position + Vector3(0, 1.3, 0) + fwd * 0.2, "blood", fwd)
+			Effects.add_shake(0.25 if is_player else 0.0)
 		if is_player:
-			WorldState.stats["kos"] += 0  # counted on knockdown instead
+			if counter_t > 0.0:
+				counter_t = 0.0
+				AudioDirector.sfx_at("parry_clang", t.global_position + Vector3(0, 1.4, 0), 0.6)
+				Bus.notification.emit("COUNTER!", "info")
+			Progression.add_style_xp(style_id, 2.0 if finisher else 1.0)
+			if cc.dead or (cc.knocked and not finisher):
+				Progression.add_xp(int(15.0 + cc.max_hp * 0.12), "KO")
+		attacked.emit(owner_node, t, dmg)
 
 
 func style_hit_sound(kind: String) -> String:
@@ -269,6 +298,20 @@ func _damage_for(kind: String) -> float:
 		"swing_h": base = s.get("heavy_dmg", 22) * 1.1
 		"swing_v": base = s.get("heavy_dmg", 22) * 1.2
 		"stab": base = s.get("punch_dmg", 10) * 1.1
+		"haymaker": base = s.get("heavy_dmg", 22) * 1.55
+		"kick_high": base = s.get("kick_dmg", 13) * s.get("kick_bonus", 1.0) * 1.45
+		"axe_kick": base = s.get("kick_dmg", 13) * s.get("kick_bonus", 1.0) * 1.9
+		"suplex": base = s.get("throw_dmg", 26) * 1.5
+		"ground_pound": base = s.get("heavy_dmg", 22) * 2.2
+		"sway_strike": base = s.get("punch_dmg", 10) * 1.35
+		"flurry": base = s.get("punch_dmg", 10) * 0.6
+		"executioner": base = s.get("heavy_dmg", 22) * 1.7
+	if counter_t > 0.0:
+		base *= 1.6                     # parry -> counter strike
+	if is_player:
+		base *= Progression.dmg_mult(style_id)
+	else:
+		base *= Difficulty.enemy_dmg_mult()
 	var wid := ""
 	if owner_node.has_method("melee_weapon_id"):
 		wid = owner_node.melee_weapon_id()
@@ -295,6 +338,7 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 			var ac: CombatController = attacker.get("combat")
 			if ac:
 				ac.apply_stagger(45.0, -dir)
+			counter_t = 0.9 * Progression.counter_window_mult(style_id)
 			return
 		var gs: float = style.get("guard_strength", 0.6)
 		dmg *= (1.0 - gs * 0.8)
@@ -302,7 +346,20 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 		apply_stagger(6.0, dir)
 	else:
 		dmg *= (1.0 - armor_prot)
-		apply_stagger(dmg * style.get("stagger_bonus", 1.0) * 0.9, dir)
+		# SOFT COVER: crouched behind geometry halves incoming damage and
+		# kills stagger (you're braced), but you still can't camp forever —
+		# flanking AI (aggression) punishes turtles.
+		if is_player and owner_node.get("in_cover"):
+			dmg *= 0.45
+			AudioDirector.sfx_at("block_hit", owner_node.global_position + Vector3(0, 0.8, 0), 0.5)
+			hp -= dmg
+			if hp <= 0.0:
+				_die(kind, attacker)
+			return
+		var stag := dmg * float(style.get("stagger_bonus", 1.0)) * 0.9
+		if is_player:
+			stag *= 1.0 - Progression.stagger_resist(style_id)
+		apply_stagger(stag, dir)
 		AudioDirector.sfx_at("grunt_m_hit" if not _fem() else "grunt_f_hit",
 			owner_node.global_position + Vector3(0, 1.4, 0))
 		Effects.burst(owner_node.global_position + Vector3(0, 1.3, 0), "blood", dir)

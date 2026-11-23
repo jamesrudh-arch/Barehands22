@@ -72,6 +72,7 @@ func _process(delta: float) -> void:
 			v.traffic_tick(delta)
 	# police
 	_police_tick(delta, player)
+	_spike_check(player)
 	# radio
 	_radio_tick(player)
 	# adaptive music (explore -> tension -> combat -> chase)
@@ -111,13 +112,34 @@ func _manage_crowds(pp: Vector3) -> void:
 	# spawn to density
 	var did := WorldGen.district_at(pp)
 	var dens: float = Db.district(did).get("ped_density", 0.7)
-	var want := int(_ped_target * dens)
+	var want: int = int(Difficulty.ped_target(_ped_target) * dens * _hour_crowd_mult(did))
 	var active := 0
 	for p in peds:
 		if (p.global_position - pp).length() < 90.0:
 			active += 1
 	if peds.size() < want:
 		_spawn_ped(pp, did)
+
+
+## Living-city rhythm: crowds breathe with the clock and the district.
+## Rush hours pack the avenues; deep night thins most streets while the
+## neon district and docks stay loud. Weather pushes everyone indoors.
+func _hour_crowd_mult(did: String) -> float:
+	var h: float = WorldState.game_hour
+	var m := 1.0
+	if h >= 7.5 and h < 9.5:
+		m = 1.45                      # morning rush
+	elif h >= 17.0 and h < 19.5:
+		m = 1.55                      # evening rush
+	elif h >= 21.0 or h < 1.0:
+		m = 1.3 if did in ["neon_mile", "ashfall_docks"] else 0.75   # nightlife vs quiet
+	elif h < 5.5:
+		m = 0.3                       # dead of night
+	elif h < 7.5:
+		m = 0.6                       # early risers
+	if WorldState.weather == WorldState.Weather.RAIN:
+		m *= 0.6
+	return m
 
 
 func _spawn_ped(pp: Vector3, did: String) -> void:
@@ -162,7 +184,7 @@ func _manage_traffic(pp: Vector3) -> void:
 		if (v.global_position - pp).length() > 170.0:
 			v.queue_free()
 			traffic.erase(v)
-	if traffic.size() < _traffic_target:
+	if traffic.size() < Difficulty.traffic_target(_traffic_target):
 		_spawn_traffic(pp)
 	# parked cars once per district visit
 	if parked.size() < 18:
@@ -181,7 +203,22 @@ func _spawn_traffic(pp: Vector3) -> void:
 	var start: Vector3 = loop[0]
 	if (start - pp).length() < 20.0 or (start - pp).length() > 120.0:
 		return
-	var defs := ["sedan", "sedan", "van", "taxi", "muscle", "bike", "truck"]
+	# district-flavored traffic: the docks get work trucks, the Heights get
+	# limousines... er, sports cars; the Mile gets taxis and bikes.
+	var defs: Array
+	match did:
+		"ashfall_docks":
+			defs = ["truck", "truck", "van", "pickup", "sedan", "bus"]
+		"crown_heights":
+			defs = ["sports", "sedan", "sedan", "taxi", "ambulance"]
+		"neon_mile":
+			defs = ["taxi", "taxi", "sedan", "bike", "muscle", "sports"]
+		"slagworks":
+			defs = ["truck", "van", "pickup", "sedan", "bus"]
+		"the_furnace":
+			defs = ["van", "sedan", "sedan", "muscle", "ambulance", "pickup"]
+		_:
+			defs = ["sedan", "sedan", "van", "taxi", "muscle", "bike", "truck", "pickup", "bus"]
 	var vid: String = defs[randi() % defs.size()]
 	var v := VehicleBody3D.new()
 	v.set_script(load(VEH_SCENE))
@@ -237,9 +274,9 @@ func _on_crime(crime: String, severity: int, pos: Vector3) -> void:
 
 
 func _dispatch(pos: Vector3, severity: int) -> void:
-	var count := clampi(WorldState.wanted, 1, 4)
+	var count: int = Difficulty.dispatch_count(WorldState.wanted)
 	for i in count:
-		if police_units.size() >= 8:
+		if police_units.size() >= Difficulty.police_cap():
 			return
 		_spawn_police(pos, i == 0)
 
@@ -263,8 +300,7 @@ func _spawn_police(near: Vector3, with_car: bool) -> void:
 		get_parent().add_child(n)
 		n.setup_enemy("cop", pos, "law")
 		n.display_name = "CCPD Officer"
-		n.combat.max_hp = 120
-		n.combat.hp = 120
+		# setup_enemy already applied Difficulty.enemy_hp_mult to the 120 base
 		police_units.append({"node": n, "kind": "foot", "t": 0.0})
 
 
@@ -281,6 +317,10 @@ func _police_tick(delta: float, player: Node) -> void:
 					police_units.erase(u)
 		if _roadblock_nodes.size():
 			_clear_roadblocks()
+		for sp in _spikes.duplicate():
+			if is_instance_valid(sp["node"]):
+				sp["node"].queue_free()
+			_spikes.erase(sp)
 		return
 	var pp: Vector3 = player.global_position
 	# --- perception: units only know where they last SAW you ---
@@ -325,6 +365,106 @@ func _police_tick(delta: float, player: Node) -> void:
 	# roadblocks at 3+
 	if wanted >= 3 and _roadblock_nodes.is_empty():
 		_make_roadblock(pp)
+	# --- pursuit escalation: the deeper the heat, the nastier the tactics ---
+	_spike_t -= delta
+	if wanted >= 4 and player.in_vehicle != null and _spike_t <= 0.0:
+		_spike_t = 18.0
+		_drop_spike_strips(pp)
+	if wanted >= 3 and player.in_vehicle != null:
+		_pit_tick(delta, player)
+
+
+var _spike_t := 0.0
+var _spikes: Array = []
+var _pit_cd := 0.0
+
+
+func _drop_spike_strips(pp: Vector3) -> void:
+	## 4-star answer to a fast car: belts of spikes across the lanes ahead.
+	## Driving one shreds tyres — the vehicle limps and takes damage.
+	Bus.notification.emit("SPIKE STRIPS AHEAD!", "warn")
+	AudioDirector.sfx("ui_notify", 0.3)
+	for i in 3:
+		var ang := randf() * TAU
+		var pos := pp + Vector3(cos(ang), 0, sin(ang)) * randf_range(30.0, 55.0)
+		pos.y = 0.06
+		var m := MeshInstance3D.new()
+		var am := ArrayMesh.new()
+		var verts := PackedVector3Array()
+		for sx in range(-3, 4):
+			for sz in [-1, 1]:
+				var x := float(sx) * 0.6
+				verts.append(Vector3(x - 0.25, 0.0, float(sz) * 0.25))
+				verts.append(Vector3(x + 0.25, 0.0, float(sz) * 0.25))
+				verts.append(Vector3(x, 0.16, 0.0))
+		var arr := []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = verts
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		m.mesh = am
+		var mi := StandardMaterial3D.new()
+		mi.albedo_color = Color(0.15, 0.15, 0.18)
+		mi.metallic = 0.7
+		mi.metallic_specular = 0.4
+		am.surface_set_material(0, mi)
+		get_parent().add_child(m)
+		m.global_position = pos
+		_spikes.append({"node": m, "pos": pos, "used": false})
+
+
+func _spike_check(player: Node) -> void:
+	if player.in_vehicle == null:
+		return
+	for sp in _spikes.duplicate():
+		if sp["used"] or not is_instance_valid(sp["node"]):
+			continue
+		if (player.global_position - sp["pos"]).length() < 2.4:
+			sp["used"] = true
+			var v: Node = player.in_vehicle
+			if v.has_method("damage"):
+				v.damage(28.0)
+			v.puncture_tires()
+			AudioDirector.sfx_at("tire_burst", player.global_position)
+			Bus.notification.emit("TYRES SHREDDED!", "error")
+			Effects.burst(player.global_position + Vector3(0, 0.4, 0), "spark")
+			sp["node"].queue_free()
+			_spikes.erase(sp)
+
+
+func _pit_tick(delta: float, player: Node) -> void:
+	## PIT maneuver: at 3+ stars a cruiser alongside your rear quarter will
+	## shove the back end out. Real consequence for hot-car escapes.
+	_pit_cd -= delta
+	if _pit_cd > 0.0 or player.in_vehicle == null:
+		return
+	var pv: Node = player.in_vehicle
+	var pvel: Vector3 = pv.velocity if "velocity" in pv else Vector3.ZERO
+	if pvel.length() < 9.0:
+		return                          # PIT needs speed to matter
+	for u in police_units:
+		if not is_instance_valid(u["node"]) or u["kind"] != "car":
+			continue
+		var n: Node3D = u["node"]
+		var off: Vector3 = n.global_position - player.global_position
+		off.y = 0
+		var d := off.length()
+		if d > 5.5 or d < 2.0:
+			continue
+		var side := off.normalized().dot(-pv.global_transform.basis.x)
+		if absf(side) < 0.35:
+			continue                    # not alongside
+		_pit_cd = 9.0
+		# the shove: spin impulse + damage
+		pv.apply_central_impulse(off.normalized() * pv.mass * 3.2)
+		pv.apply_torque_impulse(Vector3.UP * (2600.0 if side > 0 else -2600.0))
+		if pv.has_method("damage"):
+			pv.damage(12.0)
+		if n.has_method("damage"):
+			n.damage(8.0)
+		AudioDirector.sfx_at("crash_metal", player.global_position)
+		Effects.add_shake(0.55)
+		Bus.notification.emit("PIT MANEUVER — they're spinning you out!", "error")
+		return
 
 
 func _police_see_player(player: Node) -> bool:

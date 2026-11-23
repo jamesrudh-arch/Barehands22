@@ -28,6 +28,11 @@ var touch_move := Vector2.ZERO      # virtual stick (HUD touch controls)
 var _story_started := false
 var dead := false
 var height_scale := 1.0
+# gunplay: focus (bullet-time) meter + soft cover
+var focus := 0.0                    # 0..100 bullet-time meter
+var focus_active := false
+var in_cover := false               # soft cover: crouched behind geometry
+var _cover_prop: Node3D = null
 
 signal entered_vehicle(v)
 signal exited_vehicle()
@@ -176,8 +181,11 @@ func _physics_process(delta: float) -> void:
 			AudioDirector.sfx("land_thud", 0.1)
 		anim.air_t = 0.0
 		if Input.is_action_just_pressed("jump") and not combat.knocked:
-			velocity.y = 5.6
-			AudioDirector.sfx("jump_effort", 0.08)
+			if _try_vault(forward, wish):
+				pass
+			else:
+				velocity.y = 5.6
+				AudioDirector.sfx("jump_effort", 0.08)
 	if anim.land_t > 0.0:
 		anim.land_t -= delta * 4.0
 	# facing: toward move dir, or lock target, or aim dir
@@ -194,6 +202,8 @@ func _physics_process(delta: float) -> void:
 		var cur_angle := rotation.y
 		var diff := wrapf(target_angle - cur_angle, -PI, PI)
 		rotation.y = cur_angle + diff * minf(1.0, delta * 14.0)
+	if vault_t > 0.0:
+		_vault_tick(delta)
 	move_and_slide()
 	# footstep audio by surface + distance
 	_step_tick(delta)
@@ -224,7 +234,246 @@ func _step_tick(delta: float) -> void:
 		AudioDirector.sfx("foot_%s_%s_%d" % [surf, "run" if sp > RUN else "walk", randi() % 3], 0.06, 0.5)
 
 
+func _env_takedown() -> bool:
+	## Environmental takedown: shove a reeling enemy into the wall/prop
+	## behind them. Requires stagger + solid geometry within 1.2 m of them.
+	var fwd := -global_transform.basis.z
+	var space := get_world_3d().direct_space_state
+	for n in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(n) or n.combat == null or n.combat.dead or n.combat.knocked:
+			continue
+		if n.combat.stagger < 18.0:
+			continue
+		var to: Vector3 = n.global_position - global_position
+		to.y = 0
+		if to.length() > 1.8 or to.normalized().dot(fwd) < 0.35:
+			continue
+		var q := PhysicsRayQueryParameters3D.new()
+		q.from = n.global_position + Vector3(0, 1.0, 0)
+		q.to = q.from + to.normalized() * 1.3
+		q.exclude = [get_rid(), n.get_rid()]
+		var hit := space.intersect_ray(q)
+		if hit.is_empty():
+			continue
+		# slam!
+		var cc: CombatController = n.combat
+		cc.take_hit(cc.max_hp * 0.55, to.normalized(), "env_slam", self)
+		cc.apply_stagger(60.0, to.normalized())
+		AudioDirector.sfx_at("slam", n.global_position + Vector3(0, 1.1, 0))
+		AudioDirector.sfx_at("block_hit", n.global_position + Vector3(0, 1.1, 0), 0.7)
+		Effects.burst(n.global_position + Vector3(0, 1.2, 0) + to.normalized() * 0.4, "blood", to.normalized())
+		Effects.add_shake(0.45)
+		Bus.notification.emit("ENVIRONMENTAL TAKEDOWN!", "warn")
+		combat.stamina = maxf(0.0, combat.stamina - 10.0)
+		Progression.add_style_xp(combat.style_id, 2.0)
+		if cc.dead:
+			Progression.add_xp(25, "takedown")
+		return true
+	return false
+
+
+func _heavy_move() -> String:
+	# best heavy the current style has earned; downed enemies invite finishers
+	var sid: String = combat.style_id
+	var downed := _downed_target_in_reach()
+	if downed and Progression.has_move(sid, "ground_pound"):
+		return "ground_pound"
+	if downed and Progression.has_move(sid, "axe_kick"):
+		return "axe_kick"
+	if downed:
+		return "executioner" if Progression.has_move(sid, "executioner") else "heavy"
+	match sid:
+		"brawler":
+			return "haymaker" if Progression.has_move(sid, "haymaker") else ("swing_v" if melee_weapon_id() != "" else "heavy")
+		"grappling":
+			return "suplex" if Progression.has_move(sid, "suplex") else "heavy"
+		"drunken":
+			return "sway_strike" if Progression.has_move(sid, "sway_strike") else "heavy"
+		"weapon":
+			return "swing_v" if melee_weapon_id() != "" else ("executioner" if Progression.has_move(sid, "executioner") else "heavy")
+		_:
+			return "swing_v" if melee_weapon_id() != "" else "heavy"
+
+
+func _kick_move() -> String:
+	var sid: String = combat.style_id
+	if sid == "kickboxing":
+		if Progression.has_move(sid, "axe_kick"):
+			return ["kick_r", "kick_high", "axe_kick"][combat.combo_idx % 3]
+		if Progression.has_move(sid, "kick_high"):
+			return ["kick_r", "kick_high"][combat.combo_idx % 2]
+	if sid == "drunken" and Progression.has_move(sid, "flurry"):
+		return "flurry"
+	return "kick_r" if combat.combo_idx % 2 == 0 else "teep"
+
+
+func _downed_target_in_reach() -> bool:
+	var fwd := -global_transform.basis.z
+	for n in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(n) or n.combat == null:
+			continue
+		if n.combat.knocked and not n.combat.dead:
+			var to: Vector3 = n.global_position - global_position
+			to.y = 0
+			if to.length() < 2.0 and to.normalized().dot(fwd) > 0.2:
+				return true
+	return false
+
+
+var vault_t: float = 0.0            # >0 while vaulting
+var vault_dir := Vector3.ZERO
+var vault_height: float = 0.0
+
+
+func _try_vault(forward: Vector3, wish: Vector3) -> bool:
+	## Parkour-lite vault: knee-to-chest-high ledges in front of you while
+	## moving get flowed over instead of stopping you. Probes a waist ray
+	## (must hit) and a head ray (must be clear).
+	if dead or in_vehicle or combat.knocked or not is_on_floor():
+		return false
+	var dir := wish if wish.length_squared() > 0.01 else forward
+	dir = dir.normalized()
+	dir.y = 0
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.new()
+	q.from = global_position + Vector3(0, 0.95, 0)
+	q.to = q.from + dir * 1.35
+	q.exclude = [get_rid()]
+	var low := space.intersect_ray(q)
+	if low.is_empty():
+		return false                      # nothing to vault
+	var q2 := PhysicsRayQueryParameters3D.new()
+	q2.from = global_position + Vector3(0, 1.75, 0)
+	q2.to = q2.from + dir * 1.35
+	q2.exclude = [get_rid()]
+	var high := space.intersect_ray(q2)
+	if not high.is_empty():
+		return false                      # too tall — wall, not a ledge
+	# ground check beyond the ledge
+	var q3 := PhysicsRayQueryParameters3D.new()
+	q3.from = global_position + Vector3(0, 1.6, 0) + dir * 1.5
+	q3.to = q3.from + Vector3(0, -2.6, 0)
+	q3.exclude = [get_rid()]
+	var ground := space.intersect_ray(q3)
+	if ground.is_empty():
+		return false
+	vault_t = 0.42
+	vault_dir = dir
+	vault_height = clampf(global_position.y - float(ground["position"].y) - 0.9, 0.0, 1.2)
+	anim.mode = "locomote"
+	AudioDirector.sfx("cloth_rustle", 0.1)
+	combat.stamina = maxf(0.0, combat.stamina - 6.0)
+	return true
+
+
+func _vault_tick(delta: float) -> void:
+	if vault_t <= 0.0:
+		return
+	vault_t -= delta
+	velocity = vault_dir * 7.2
+	velocity.y = 2.2 if vault_t > 0.2 else -3.0
+	anim.air_t = 0.12
+	if vault_t <= 0.0:
+		AudioDirector.sfx("land_thud", 0.08)
+
+
+func _tick_focus(delta: float) -> void:
+	## Max Payne-style focus: while aiming, hold FOCUS to slow the world.
+	var want := Input.is_action_pressed("focus") and weapons.aim and focus > 2.0 and not dead
+	if want != focus_active:
+		focus_active = want
+		AudioDirector.sfx("focus_on" if want else "focus_off", 0.1)
+		if want:
+			Bus.notification.emit("FOCUS", "info")
+	if focus_active:
+		focus = maxf(0.0, focus - delta * 22.0)
+		Engine.time_scale = 0.35
+		if not _focus_ducked:
+			_focus_ducked = true
+			var mi: int = AudioServer.get_bus_index("Master")
+			_focus_prev_db = AudioServer.get_bus_volume_db(mi)
+			AudioServer.set_bus_volume_db(mi, _focus_prev_db - 7.0)
+		if focus <= 0.0:
+			focus_active = false
+			Engine.time_scale = 1.0
+			_restore_audio()
+	else:
+		focus = minf(100.0, focus + delta * (7.0 if weapons.aim else 4.5))
+		if Engine.time_scale != 1.0:
+			Engine.time_scale = 1.0
+			_restore_audio()
+
+
+var _focus_ducked := false
+var _focus_prev_db := 0.0
+
+
+func _restore_audio() -> void:
+	if _focus_ducked:
+		_focus_ducked = false
+		AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), _focus_prev_db)
+
+
+func _tick_cover() -> void:
+	## Soft cover: crouching with something solid in front = damage break +
+	## blindfire lane. No sticky cover states — the city is the cover.
+	var was := in_cover
+	in_cover = false
+	_cover_prop = null
+	if crouch_held and not dead and not in_vehicle:
+		var fwd := -global_transform.basis.z
+		var space := get_world_3d().direct_space_state
+		var q := PhysicsRayQueryParameters3D.new()
+		q.from = global_position + Vector3(0, 0.55, 0)
+		q.to = q.from + fwd * 1.15
+		q.exclude = [get_rid()]
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty() and hit.has("collider"):
+			in_cover = true
+			var c = hit["collider"]
+			if c is Node3D:
+				_cover_prop = c
+	if in_cover != was:
+		Bus.notification.emit("IN COVER — fire blind or slip away" if in_cover else "", "info")
+
+
+func _try_stealth_takedown() -> bool:
+	var fwd := -global_transform.basis.z
+	var best: Node = null
+	var best_dot := 0.62
+	for n in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(n) or n.combat == null or n.combat.dead:
+			continue
+		if not (n.state in [n.State.ROUTINE, n.State.IDLE_ACT, n.State.TALK, n.State.GAWK, n.State.GUARD]):
+			continue  # already alerted — no free kills
+		var to: Vector3 = n.global_position - global_position
+		to.y = 0
+		if to.length() > 1.9:
+			continue
+		# behind them: our approach opposite to their facing
+		var nfwd: Vector3 = -n.global_transform.basis.z
+		if nfwd.normalized().dot(to.normalized()) < best_dot:
+			continue
+		best = n
+		best_dot = nfwd.normalized().dot(to.normalized())
+	if best == null:
+		return false
+	var cc: CombatController = best.combat
+	cc.take_hit(cc.max_hp * 1.6, fwd * 0.5, "stealth_kill", self)
+	AudioDirector.sfx_at("takedown", best.global_position + Vector3(0, 1.3, 0))
+	Effects.burst(best.global_position + Vector3(0, 1.2, 0), "blood", fwd)
+	Effects.add_shake(0.3)
+	focus = minf(100.0, focus + 14.0)
+	Bus.notification.emit("SILENT TAKEDOWN", "info")
+	Progression.add_style_xp(combat.style_id, 2.5)
+	if cc.dead:
+		Progression.add_xp(20, "takedown")
+	return true
+
+
 func _handle_combat_input(delta: float) -> void:
+	_tick_focus(delta)
+	_tick_cover()
 	weapons.tick(delta)
 	# lock-on toggle
 	if Input.is_action_just_pressed("lock_on"):
@@ -246,10 +495,14 @@ func _handle_combat_input(delta: float) -> void:
 				kind = ["swing_h", "stab", "swing_h"][combat.combo_idx % 3]
 			combat.request_attack(kind)
 		if Input.is_action_just_pressed("heavy_attack"):
-			combat.request_attack("heavy" if melee_weapon_id() == "" else "swing_v")
+			if not _env_takedown():
+				combat.request_attack(_heavy_move())
 		if Input.is_action_just_pressed("kick"):
-			combat.request_attack("kick_r" if combat.combo_idx % 2 == 0 else "teep")
+			combat.request_attack(_kick_move())
 	if Input.is_action_just_pressed("dodge"):
+		# stealth takedown first: crouched behind an unaware target
+		if crouch_held and _try_stealth_takedown():
+			return
 		var mv := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		var fwd := -global_transform.basis.z
 		var rgt := global_transform.basis.x
@@ -279,7 +532,13 @@ func _try_shoot(delta: float) -> void:
 	# recoil pitch kick
 	dir = dir.rotated(cam.global_transform.basis.x, deg_to_rad(weapons.recoil * 0.35))
 	var muz: Vector3 = global_position + global_transform.basis * MUZZLE_POS
+	var before: int = weapons.mag
 	weapons.try_fire(true, delta, muz, dir, true)
+	if weapons.mag < before and cam_rig:
+		# felt recoil: camera climbs along the weapon's pattern
+		var scale_r: float = 0.55 if weapons.aim else 1.0
+		cam_rig.pitch = clampf(cam_rig.pitch + weapons._pattern_pitch * scale_r * 0.35, cam_rig.PITCH_MIN, cam_rig.PITCH_MAX)
+		cam_rig.yaw += weapons._pattern_yaw * scale_r * 0.3
 
 
 const MUZZLE_POS := Vector3(0.15, 1.42, 0.5)

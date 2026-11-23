@@ -1,5 +1,58 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 8: escalation + progression + stealth/gunplay depth
+
+Per the user mandate (difficulty must escalate; nothing capped by earlier
+numbers; see docs/LEVERAGE_VISION.md):
+
+- **Difficulty director** (`scripts/core/difficulty.gd`, autoload): threat =
+  story×0.75 + level×0.35 − death relief, clamped 0..1.6. Scales enemy
+  HP/damage/accuracy/counts, police cap 4+12t, dispatch, peds/traffic,
+  fight-club purse, and late-game thug loadout rolls (guns/bats/armor).
+- **Progression spine** (`scripts/core/progression.gd`, autoload): XP/levels
+  (raise HP/stamina/damage), per-style mastery ranks 1–5 grown by *using*
+  the style; ranks unlock real moves — haymaker, high kick, axe kick,
+  suplex, ground pound, sway strike, drunken flurry, vertical swing,
+  executioner — plus passives (extended combos, throw dmg, counter window,
+  iron jaw, fast reloads). Missions carry `rewards.xp`. Saved/loaded.
+- **Combat cinematic layer**: parry now opens a 0.9 s counter window (×1.6
+  dmg, "COUNTER!" sting); ground finishers on knocked targets (×2.2,
+  "FINISHER!"); environmental takedowns (heavy attack slams a staggered
+  enemy into geometry behind them, 55% max-HP + forced knockdown); stealth
+  takedowns (crouch-dodge behind an unaware NPC = instant kill, +focus).
+- **Gunplay weight**: FOCUS bullet-time (Q / RT-focus / touch FOCUS btn,
+  meter drains 22/s, world at 0.35× time, spread ×0.55); per-weapon recoil
+  climb + lateral patterns in weapons.json applied as camera kick; soft
+  cover (crouch behind geometry: incoming damage ×0.45, no stagger,
+  blindfire lane).
+- **Stealth/awareness**: guard vision cones feed a suspicion meter
+  (calm→45 suspicious bark→100 alarm), LOS checks, rain/distance/crouch
+  modifiers, search-last-known-position sweeps; disguises via outfit
+  `disguise` faction tags (×0.45 detection unless blatant); corpse group +
+  body discovery (civilians find bodies → flee + crime report at body).
+- **Living city**: NPC day parts (commute_am/work/commute_pm/nightlife/
+  night) override base routines — commuters cross districts, workers hover,
+  nightlife clusters chat, sensible folks shuffle home at 3am; crowd
+  density breathes with hour/district/weather (rush ×1.5, neon/docks
+  nightlife ×1.3, dead of night ×0.3, rain ×0.6).
+- **Pursuit escalation**: 3★+ PIT maneuvers (spin-out impulse + damage +
+  shake), 4★ spike strips across lanes ahead (tyres shred → limp mode via
+  `vehicle.puncture_tires()`), strips clear when heat dies.
+- **Vehicle variety**: bus, ambulance, pickup added; traffic is now
+  district-flavored (docks=trucks, Heights=sports, Mile=taxis/bikes).
+- **Weapon attachments** (Ghost Recon-lite): suppressor (quiet + no gunfire
+  crime report), extended mag, foregrip (recoil ×0.65 incl. pattern),
+  scope ×4, laser sight (hip-fire), hot load (+18% dmg, +30% recoil);
+  fitted per weapon at the gunsmith MODS bench; persists in saves.
+- **Movement**: vaulting (jump at knee–chest-high ledges: 3-ray probe,
+  timed arc over, stamina cost) instead of face-planting into crates.
+- New forged SFX: focus_on/off, takedown, shot_suppressed, tire_burst,
+  crash_metal. New barks: suspicious/alert/body.
+- Harness: 45 → **64 checks, 0 fails, 0 script errors** (progression,
+  threat math, recoil patterns, focus/cover hooks, suspicion brain,
+  attachments def() merge, schedules, PIT/spikes, vault/env-takedown).
+
+
 ## 2026-11-23 — CINEMATIC OVERHAUL WAVE 1 (visual rebuild)
 
 Ordered overhaul: replace toy-like presentation with grounded, cinematic

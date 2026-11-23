@@ -386,7 +386,7 @@ func _spawn_enemies() -> void:
 	var kind: String = stage.get("enemy", "thug_light")
 	if kind == "thug_random":
 		kind = ["thug_light", "thug_grappler", "thug_heavy"][randi() % 3]
-	var count := int(stage.get("count", 1))
+	var count: int = Difficulty.scale_count(int(stage.get("count", 1)))
 	var base: Vector3 = player.global_position
 	var ang := randf() * TAU
 	for i in count:
@@ -657,6 +657,7 @@ func _complete(success: bool) -> void:
 	if success:
 		completed[mid] = true
 		failed.erase(mid)
+		Difficulty.note_mission_cleared()
 		var rew: Dictionary = m.get("rewards", {})
 		if int(rew.get("money", 0)) != 0:
 			WorldState.add_money(int(rew["money"]))
@@ -670,6 +671,7 @@ func _complete(success: bool) -> void:
 			WorldState.stats[rew["stats"][0]] = WorldState.stats.get(rew["stats"][0], 0) + int(rew["stats"][1])
 		AudioDirector.sfx("ui_confirm", 0.4)
 		Bus.notification.emit("JOB COMPLETE: %s (+%d cr)" % [m.get("title", mid), int(rew.get("money", 0))], "mission")
+		Progression.add_xp(int(rew.get("xp", 150)) if rew.has("xp") else 150, m.get("title", mid))
 		if WorldState.get_flag("game_complete", false):
 			Bus.world_event.emit("game_complete", {})
 		Game.request_autosave()
@@ -701,6 +703,7 @@ func _on_busted() -> void:
 
 
 func _on_died(_cause: String) -> void:
+	Difficulty.note_death()
 	var player := _player()
 	if player:
 		player.global_position = _poi_pos("poi_clinic") + Vector3(0, 0.1, 3.0)

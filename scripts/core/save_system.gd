@@ -48,6 +48,7 @@ func save_game(slot: int, extra: Dictionary = {}) -> bool:
 		"world": WorldState.serialize(),
 		"player": extra.get("player", {}),
 		"missions": extra.get("missions", {}),
+		"progression": Progression.serialize(),
 		"worldgen": extra.get("worldgen", {}),
 	}
 	var f := FileAccess.open(_slot_path(slot), FileAccess.WRITE)
