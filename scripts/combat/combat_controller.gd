@@ -339,6 +339,8 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 			if ac:
 				ac.apply_stagger(45.0, -dir)
 			counter_t = 0.9 * Progression.counter_window_mult(style_id)
+			if is_player:
+				Bus.tutorial_hint.emit("counter")
 			return
 		var gs: float = style.get("guard_strength", 0.6)
 		dmg *= (1.0 - gs * 0.8)

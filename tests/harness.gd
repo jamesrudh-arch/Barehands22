@@ -339,6 +339,43 @@ func _process(_delta: float) -> bool:
 			_check("suspicion" in np and "_los_clear" in np, "guard suspicion/vision cone present")
 			var cc := FileAccess.get_file_as_string("scripts/combat/combat_controller.gd")
 			_check("haymaker" in cc and "ground_pound" in cc and "counter_t" in cc, "unlock moves + counter window in combat controller")
+		61:
+			# district heat, fire escapes, vehicle wrecks, ghost runs
+			var ws5 = root.get_node("WorldState")
+			ws5.add_district_heat("neon_mile", 30.0)
+			_check(ws5.district_heat01("neon_mile") > 0.25, "district heat accrues")
+			ws5.add_district_heat("neon_mile", -100.0)
+			_check(ws5.district_heat01("neon_mile") == 0.0, "heat clamps at zero")
+			var wg2 = root.get_node("WorldGen")
+			_check(wg2.climb_points.size() > 0, "fire-escape climb points generated (%d)" % wg2.climb_points.size())
+			if wg2.climb_points.size() > 0:
+				var cp: Dictionary = wg2.climb_points[0]
+				_check(cp["top"].y > cp["bottom"].y + 5.0, "climb point reaches a roof")
+			var pl4 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			_check("_try_climb" in pl4 and "_climb_tick" in pl4, "climb verb wired into player")
+			var vh := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
+			_check("_explode" in vh and "puncture_tires" in vh, "vehicle wreck/explosion present")
+			var mm3 = root.get_node("MissionManager")
+			var msrc := FileAccess.get_file_as_string("res://scripts/missions/mission_manager.gd")
+			_check("GHOST RUN" in msrc, "stealth missions reward silent runs")
+			# faction ripples + grudges + shop consequences
+			var ws6 = root.get_node("WorldState")
+			var rep0: float = ws6.factions.get("crew", 0.0)
+			var docks: Vector3 = Vector3(0, 0, 0)
+			var db = root.get_node("Db")
+			var dd: Dictionary = db.district("ashfall_docks")
+			if dd.has("center"):
+				docks = Vector3(dd["center"][0], 0, dd["center"][1])
+			root.get_node("Bus").crime_committed.emit("gunfire", 3, docks)
+			_check(ws6.district_heat01("ashfall_docks") > 0.05, "crime leaves district heat (%.2f)" % ws6.district_heat01("ashfall_docks"))
+			_check(ws6.factions.get("crew", 0.0) < rep0, "crew rep drops for docks violence")
+			var clsrc := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
+			_check("_grudge_tick" in clsrc and "TURF" in clsrc, "faction grudge ambushes wired")
+			var shsrc := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
+			_check("_grudge" in shsrc, "shopkeeper grudge markup present")
+			var phsrc := FileAccess.get_file_as_string("res://scripts/ui/phone_ui.gd")
+			_check("_show_stats" in phsrc and "push_news" in phsrc, "phone dossier + news feed wired")
+			ws6.factions["crew"] = rep0
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()

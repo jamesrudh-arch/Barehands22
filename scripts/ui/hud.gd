@@ -22,6 +22,7 @@ var _buttons: Dictionary = {}        # name -> Button
 var _hp_bar: ProgressBar
 var _xp_bar: ProgressBar
 var _focus_bar: ProgressBar
+var _focus_vignette: ColorRect
 var _lvl_lbl: Label
 var _st_bar: ProgressBar
 var _ar_bar: ProgressBar
@@ -76,6 +77,7 @@ func _ready() -> void:
 	Bus.notification.connect(_notify)
 	Bus.interaction_available.connect(_prompt_show)
 	Bus.interaction_cleared.connect(func(): _prompt_lbl.text = "")
+	Bus.prompt_hint.connect(_on_prompt_hint)
 	Bus.money_changed.connect(func(m): _money_lbl.text = "%d CR" % m)
 	Bus.wanted_changed.connect(func(w): _stars_lbl.text = "*".repeat(w))
 	Bus.ammo_changed.connect(_on_ammo)
@@ -257,6 +259,13 @@ func _build_bars() -> void:
 	_focus_bar = _bar(Color(0.45, 0.75, 1.0), 190.0)
 	_focus_bar.visible = false
 	vb.add_child(_focus_bar)
+	# bullet-time vignette: cold blue edges while FOCUS is active
+	_focus_vignette = ColorRect.new()
+	_focus_vignette.color = Color(0.35, 0.55, 0.95, 0.10)
+	_focus_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_focus_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_focus_vignette.visible = false
+	_root.add_child(_focus_vignette)
 	_lvl_lbl = Label.new()
 	_lvl_lbl.add_theme_font_size_override("font_size", 12)
 	_lvl_lbl.add_theme_color_override("font_color", Color(0.23, 0.91, 0.69))
@@ -540,6 +549,11 @@ func _process(delta: float) -> void:
 		if gun_out:
 			_focus_bar.value = player.focus
 			_focus_bar.modulate = Color(1, 1, 1) if not player.focus_active else Color(1.4, 1.5, 2.0)
+	if _focus_vignette != null:
+		var fa: bool = bool(player.get("focus_active"))
+		_focus_vignette.visible = fa
+		if fa:
+			_focus_vignette.color.a = 0.08 + 0.05 * sin(Time.get_ticks_msec() * 0.004)
 	# progression
 	if _xp_bar != null:
 		_xp_bar.value = float(Progression.xp) / float(Progression.xp_for_next()) * 100.0
@@ -582,6 +596,12 @@ func _process(delta: float) -> void:
 	for bn in ["aim", "fire", "reload", "focus"]:
 		_buttons[bn].visible = has_gun and not player.in_vehicle
 	_crosshair.visible = has_gun and player.weapons.aim
+	# hint expiry (don't clobber a live interaction prompt)
+	if _hint_t > 0.0:
+		_hint_t -= delta
+		if _hint_t <= 0.0:
+			_prompt_lbl.text = ""
+			_prompt_lbl.modulate = Color(1, 1, 1)
 	# toasts
 	_tick_toasts(delta)
 
@@ -699,6 +719,20 @@ func _draw_minimap() -> void:
 
 
 # ----------------------------------------------------------------- toasts --
+var _hint_t := 0.0
+
+
+func _on_prompt_hint(text: String) -> void:
+	## transient stealth/tutorial hints along the interaction prompt line
+	_hint_t = 3.0 if text != "" else 0.0
+	if _hint_t > 0.0:
+		_prompt_lbl.text = text
+		_prompt_lbl.modulate = Color(1.0, 0.85, 0.45)
+	else:
+		_prompt_lbl.text = ""
+		_prompt_lbl.modulate = Color(1, 1, 1)
+
+
 func _notify(text: String, kind: String) -> void:
 	var col := Color(0.9, 0.88, 0.82)
 	match kind:

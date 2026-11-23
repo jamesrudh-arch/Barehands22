@@ -25,6 +25,7 @@ A = KICK, B = DODGE — and B doubles as contextual INTERACT outside combat.
 | `aim` | Gun aim (hold) | R | LT | **AIM** button (visible with gun) |
 | `fire` | Gun fire (hold = auto) | F | RT | **FIRE** button (visible with gun) |
 | `reload` | Reload | R | X-hold | **RLD** button |
+| `focus` | Bullet-time FOCUS (hold while aiming; drains meter) | V | RT-click/R3 | **FOCUS** button (visible with gun) |
 | `lock_on` | Cycle hostile targets (<25 m) | T | RS press | **LOCK** button |
 | `style_next` | Cycle fighting style | G | D-pad up | **STY** button |
 | `weapon_next/prev` | Cycle owned weapons | 1..5 / wheel | D-pad left/right | BAG app (phone) |
@@ -77,7 +78,7 @@ A = KICK, B = DODGE — and B doubles as contextual INTERACT outside combat.
 - **CAR** appears only when a vehicle is within 3.2 m or while driving
   (then it exits); **BRK/HORN/RADIO** only while driving; **AIM/FIRE/RLD**
   only with a gun equipped on foot (incl. **FOCUS** — hold while aiming to
-  slow the world, Max Payne-style; keyboard Q, touch FOCUS button);
+  slow the world, Max Payne-style; keyboard V, touch FOCUS button);
   **X/Y/A/BLK/LOCK/STY/RUN/CRCH** hidden while driving (pad declutters).
   **Jump at a waist-high ledge vaults it**; crouch-dodge behind an unaware
   NPC is a stealth takedown; heavy attack near a staggered enemy + wall is

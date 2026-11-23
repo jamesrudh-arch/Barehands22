@@ -138,6 +138,12 @@ func _physics_process(delta: float) -> void:
 		return
 	if dead:
 		return
+	if climbing:
+		_climb_tick(delta)
+		if _look_delta.length_squared() > 0.0001:
+			cam_rig.look(_look_delta.x, _look_delta.y)
+		_look_delta = Vector2.ZERO
+		return
 	# camera look
 	if _look_delta.length_squared() > 0.0001:
 		cam_rig.look(_look_delta.x, _look_delta.y)
@@ -181,7 +187,9 @@ func _physics_process(delta: float) -> void:
 			AudioDirector.sfx("land_thud", 0.1)
 		anim.air_t = 0.0
 		if Input.is_action_just_pressed("jump") and not combat.knocked:
-			if _try_vault(forward, wish):
+			if _try_climb():
+				pass
+			elif _try_vault(forward, wish):
 				pass
 			else:
 				velocity.y = 5.6
@@ -323,6 +331,74 @@ func _downed_target_in_reach() -> bool:
 var vault_t: float = 0.0            # >0 while vaulting
 var vault_dir := Vector3.ZERO
 var vault_height: float = 0.0
+# fire-escape climbing
+var climb_point: Dictionary = {}
+var climbing := false
+var climb_t := 0.0
+var climb_from := Vector3.ZERO
+var climb_to := Vector3.ZERO
+
+
+func _find_climb_point() -> Dictionary:
+	## Nearest fire-escape entry within 2.2 m (bottom or rooftop top).
+	var best: Dictionary = {}
+	var best_d := 2.2
+	for cp in WorldGen.climb_points:
+		var db: float = (global_position - cp["bottom"]).length()
+		if db < best_d and global_position.y < cp["top"].y - 2.0:
+			best_d = db
+			best = {"cp": cp, "dir": "up"}
+		var dt2: float = (global_position - cp["top"]).length()
+		if dt2 < best_d and global_position.y > cp["bottom"].y + 2.0:
+			best_d = dt2
+			best = {"cp": cp, "dir": "down"}
+	return best
+
+
+func _try_climb() -> bool:
+	if dead or in_vehicle or combat.knocked or combat.attacking:
+		return false
+	var found := _find_climb_point()
+	if found.is_empty():
+		return false
+	if combat.stamina < 15.0:
+		Bus.notification.emit("Too winded to climb.", "warn")
+		return false
+	climb_point = found["cp"]
+	climbing = true
+	climb_t = 0.0
+	climb_from = global_position
+	climb_to = climb_point["top"] if found["dir"] == "up" else climb_point["bottom"]
+	combat.stamina -= 12.0
+	AudioDirector.sfx("cloth_rustle", 0.1)
+	return true
+
+
+func _climb_tick(delta: float) -> void:
+	if not climbing:
+		return
+	var dist := climb_from.distance_to(climb_to)
+	var dur := clampf(dist / 3.4, 0.6, 4.0)   # ~3.4 m/s hand-over-hand
+	climb_t += delta / dur
+	var k := clampf(climb_t, 0.0, 1.0)
+	var eased := k * k * (3.0 - 2.0 * k)       # smoothstep
+	global_position = climb_from.lerp(climb_to, eased)
+	velocity = Vector3.ZERO
+	# face the ladder
+	var face := (climb_to - climb_from)
+	face.y = 0
+	if face.length_squared() > 0.01:
+		rotation.y = atan2(face.x, face.z)
+	anim.mode = "locomote"
+	anim.speed = 2.2
+	anim.speed01 = 0.5
+	anim.air_t = 0.0
+	if climb_t >= 1.0:
+		climbing = false
+		AudioDirector.sfx("land_thud", 0.1)
+		if climb_to.y > 4.0:
+			Bus.notification.emit("ROOFTOP — the city sprawls below.", "info")
+		Bus.tutorial_hint.emit("climb")
 
 
 func _try_vault(forward: Vector3, wish: Vector3) -> bool:
@@ -384,7 +460,7 @@ func _tick_focus(delta: float) -> void:
 		focus_active = want
 		AudioDirector.sfx("focus_on" if want else "focus_off", 0.1)
 		if want:
-			Bus.notification.emit("FOCUS", "info")
+			Bus.tutorial_hint.emit("focus")
 	if focus_active:
 		focus = maxf(0.0, focus - delta * 22.0)
 		Engine.time_scale = 0.35
@@ -433,8 +509,9 @@ func _tick_cover() -> void:
 			var c = hit["collider"]
 			if c is Node3D:
 				_cover_prop = c
-	if in_cover != was:
-		Bus.notification.emit("IN COVER — fire blind or slip away" if in_cover else "", "info")
+	if in_cover and not was:
+		Bus.tutorial_hint.emit("cover")
+		Bus.notification.emit("IN COVER — fire blind or slip away", "info")
 
 
 func _try_stealth_takedown() -> bool:
@@ -465,6 +542,7 @@ func _try_stealth_takedown() -> bool:
 	Effects.add_shake(0.3)
 	focus = minf(100.0, focus + 14.0)
 	Bus.notification.emit("SILENT TAKEDOWN", "info")
+	Bus.tutorial_hint.emit("stealth")
 	Progression.add_style_xp(combat.style_id, 2.5)
 	if cc.dead:
 		Progression.add_xp(20, "takedown")
@@ -587,6 +665,13 @@ func _near_hostile() -> bool:
 
 # ------------------------------------------------------------- interaction --
 func _handle_interact(delta: float) -> void:
+	# body hiding takes priority — the clock is always ticking on a corpse
+	var body := _find_body()
+	if body != null:
+		Bus.interaction_available.emit("Hide body")
+		if Input.is_action_just_pressed("interact") and not combat.in_combat:
+			body.hide_body()
+		return
 	interact_target = _find_interact()
 	if interact_target:
 		Bus.interaction_available.emit(str(interact_target.get("interact_label")) if interact_target.get("interact_label") != null else "Interact")
@@ -594,6 +679,19 @@ func _handle_interact(delta: float) -> void:
 			interact_target.interact(self)
 	else:
 		Bus.interaction_cleared.emit()
+
+
+func _find_body() -> Node:
+	var best: Node = null
+	var bd := 1.8
+	for n in get_tree().get_nodes_in_group("corpse"):
+		if not is_instance_valid(n) or not n.has_method("hide_body"):
+			continue
+		var d: float = (n.global_position - global_position).length()
+		if d < bd:
+			bd = d
+			best = n
+	return best
 	# vehicle enter
 	if Input.is_action_just_pressed("vehicle_enter"):
 		var v := _find_vehicle()

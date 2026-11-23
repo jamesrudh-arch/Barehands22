@@ -90,6 +90,19 @@ func open_shop(shop_id: String) -> void:
 	if s.is_empty():
 		return
 	_shop_id = shop_id
+	# FACTION CONSEQUENCES AT THE TILL: burn a keeper's faction and the
+	# welcome curdles — surly service at +25% prices, and past -60 rep
+	# they refuse you outright.
+	_grudge = 0.0
+	var kf: String = Db.character(str(s.get("keeper", ""))).get("faction", "")
+	if kf != "" and kf != "family" and WorldState.factions.has(kf):
+		var rep: float = WorldState.factions[kf]
+		if rep < -60.0:
+			Bus.notification.emit("%s won't serve you. Not after what you did." % s.get("name", "They"), "error")
+			AudioDirector.sfx("ui_error", 0.3)
+			return
+		if rep < -25.0:
+			_grudge = 0.25
 	open = true
 	_panel.visible = true
 	_title.text = s.get("name", shop_id)
@@ -273,7 +286,11 @@ func _row(name: String, price: String, blurb: String, cb) -> Control:
 	return h
 
 
+var _grudge := 0.0     # price markup when the keeper's faction hates you
+
+
 func _make_buy(id: String, price: int) -> void:
+	price = int(price * (1.0 + _grudge))
 	if WorldState.money < price:
 		Bus.notification.emit("Not enough credits.", "error")
 		AudioDirector.sfx("ui_error", 0.2)

@@ -457,6 +457,8 @@ func _guard(dt: float, player: Node, dist: float) -> void:
 		var rate: float = 34.0 * (1.6 - dist / 26.0)
 		# DISGUISE: matching outfit halves suspicion — unless you're blatant
 		# (gun out or sprinting). Hitman-lite: clothes are a tool, not magic.
+		# district heat: a neighborhood on edge spots trouble faster
+		rate *= 1.0 + WorldState.district_heat01(WorldGen.district_at(global_position)) * 0.6
 		var dis: String = Db.outfits.get(WorldState.equipped_outfit, {}).get("disguise", "")
 		if dis != "" and dis == faction_tag:
 			var blatant: bool = (player.weapons != null and player.weapons.weapon_id != "" and player.weapons.is_gun()) or player.sprint_held
@@ -775,6 +777,24 @@ func end_talk() -> void:
 	anim.talk_t = -1.0
 	if state == State.TALK:
 		state = State.ROUTINE
+
+
+func hide_body() -> void:
+	## Drag the body out of sight (dumpster, alcove, car trunk — the city
+	## is full of them). Hidden bodies never get discovered, so heat and
+	## faction heat never spike. Stashed kills are the professional's path.
+	if state != State.DEAD:
+		return
+	remove_from_group("corpse")
+	WorldState.stats["bodies_hidden"] = WorldState.stats.get("bodies_hidden", 0) + 1
+	AudioDirector.sfx_at("cloth_rustle", global_position + Vector3(0, 0.6, 0))
+	AudioDirector.sfx_at("body_fall", global_position, 0.5)
+	Bus.notification.emit("Body hidden. Out of sight, out of the papers.", "info")
+	var t := create_tween()
+	t.set_parallel(true)
+	t.tween_property(self, "scale", Vector3(0.2, 0.2, 0.2), 0.5)
+	t.tween_property(self, "global_position:y", global_position.y - 0.6, 0.5)
+	t.chain().tween_callback(queue_free)
 
 
 func _on_died(_cause: String) -> void:

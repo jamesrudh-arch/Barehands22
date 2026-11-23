@@ -541,8 +541,9 @@
    {
     "id": "infiltrate",
     "type": "stealth",
-    "text": "Get to floor 31 without tripping ARGUS.",
-    "poi": "poi_halcyon_tower"
+    "text": "Get to floor 31 without tripping ARGUS. A Charcoal Suit would help you blend in.",
+    "poi": "poi_halcyon_tower",
+    "xp": 200
    },
    {
     "id": "retrieve",
@@ -982,6 +983,84 @@
     10
    ],
    "xp": 120
+  }
+ },
+ "side_ghost": {
+  "title": "Ghost Work",
+  "act": 9,
+  "giver": "dex",
+  "repeatable": true,
+  "district": "ashfall_docks",
+  "summary": "Dex knows a warehouse patrol that never should have seen the ledger. Clear it quiet \u2014 no alarms, no bodies found. Payment scales with silence.",
+  "stages": [
+   {
+    "id": "g1",
+    "type": "goto",
+    "text": "Reach Warehouse 12 \u2014 the patrol works the aisle behind it.",
+    "poi": "poi_berth7"
+   },
+   {
+    "id": "g2",
+    "type": "stealth",
+    "text": "Slip past the patrol unseen. Disguises and crouching help.",
+    "poi": "poi_warehouse12",
+    "xp": 150
+   },
+   {
+    "id": "g3",
+    "type": "combat",
+    "text": "The last two won't sleep. Drop them.",
+    "enemy": "thug_grappler",
+    "count": 2
+   },
+   {
+    "id": "g4",
+    "type": "objective",
+    "text": "Hide at least one body so it's never found.",
+    "check": "stat:bodies_hidden>=1"
+   }
+  ],
+  "rewards": {
+   "money": 900,
+   "faction": [
+    "crew",
+    4
+   ],
+   "xp": 260
+  }
+ },
+ "side_rooftops": {
+  "title": "High Road",
+  "act": 9,
+  "giver": "nia",
+  "repeatable": true,
+  "district": "neon_mile",
+  "summary": "Nia runs messages above the street \u2014 fire escapes, rooftops, no cameras. Prove you can climb.",
+  "stages": [
+   {
+    "id": "r1",
+    "type": "goto",
+    "text": "Meet Nia behind the Noir Lounge.",
+    "poi": "poi_noir_lounge"
+   },
+   {
+    "id": "r2",
+    "type": "drive_timed",
+    "text": "Courier run across the Mile \u2014 beat the clock.",
+    "from": "poi_noir_lounge",
+    "to": "poi_casino",
+    "time": 100
+   },
+   {
+    "id": "r3",
+    "type": "objective",
+    "text": "Reach Level 3 to prove you've been training.",
+    "check": "level>=3"
+   }
+  ],
+  "rewards": {
+   "money": 650,
+   "xp": 200
   }
  }
 }

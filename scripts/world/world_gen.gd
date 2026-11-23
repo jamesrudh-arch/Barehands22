@@ -13,6 +13,7 @@ var lane_district: Array = []
 var lamp_posts: Array = []               # {pos, district, color}
 var traffic_lights: Array = []           # nodes
 var pois: Dictionary = {}                # id -> data + node
+var climb_points: Array = []             # {bottom: Vector3, top: Vector3} fire escapes
 var interiors: Dictionary = {}
 var built := false
 
@@ -452,6 +453,30 @@ func _build_block(acc: Acc, c: Vector2, span: float, hmin: float, hmax: float, f
 				Vector3(1.5, 2.3, 0.12), Vector3(0.4, 0.4, 0.4), Color(0.12, 0.13, 0.15))
 			acc.box(mat_slot("concrete"), p + Vector3(0, 0.08, dp / 2 + 0.5), Vector3(2.4, 0.16, 1.0), Vector3(0.4, 0.4, 0.4))
 			acc.box(_extra_slot("wood", 96), p + Vector3(0, 2.6, dp / 2 + 0.55), Vector3(2.8, 0.09, 1.2), Vector3(0.4, 0.4, 0.4))
+		# fire escape on the street face of some taller buildings:
+		# zig-zag ladders + landings, and a registered climb point so the
+		# player can scale it to the roof (rooftops = escape routes + views)
+		if h > 11.0 and rng.randf() < 0.4:
+			var fx := p.x + rng.randf_range(-w * 0.3, w * 0.3)
+			var fz := p.z + dp / 2 + 0.45
+			var land_y := 3.2
+			var side := 1.0
+			while land_y < h - 1.0:
+				# landing platform + railing
+				acc.box(mat_slot("metal"), Vector3(fx + side * 0.9, land_y, fz), Vector3(1.9, 0.1, 1.0), Vector3(0.4, 0.4, 0.4), Color(0.24, 0.22, 0.2))
+				acc.box(mat_slot("metal"), Vector3(fx + side * 0.9, land_y + 0.5, fz + 0.47), Vector3(1.9, 0.9, 0.05), Vector3(0.4, 0.4, 0.4), Color(0.2, 0.19, 0.18))
+				# ladder down to the next landing below (alternating sides)
+				var next_y := maxf(0.0, land_y - 3.2)
+				for rung in 5:
+					var ry := next_y + (land_y - next_y) * (float(rung) + 0.5) / 5.0
+					acc.box(mat_slot("metal"), Vector3(fx - side * 0.9, ry, fz), Vector3(0.5, 0.04, 0.04), Vector3(0.4, 0.4, 0.4), Color(0.26, 0.24, 0.22))
+				acc.box(mat_slot("metal"), Vector3(fx - side * 0.9, (land_y + next_y) * 0.5, fz), Vector3(0.05, land_y - next_y, 0.05), Vector3(0.4, 0.4, 0.4), Color(0.22, 0.21, 0.2))
+				side = -side
+				land_y += 3.2
+			climb_points.append({
+				"bottom": Vector3(fx, 0.05, fz + 0.9),
+				"top": Vector3(fx, h + 0.15, fz - 0.4),
+				"height": h})
 		# balconies on some mid floors
 		if h > 12.0 and rng.randf() < 0.5:
 			var by := 4.0

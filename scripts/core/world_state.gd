@@ -19,6 +19,7 @@ var wetness: float = 0.8             # 0..1 road/surface wetness
 var money: int = 180
 var wanted: int = 0
 var heat_decay: float = 0.0
+var district_heat: Dictionary = {}    # district id -> 0..100 lingering notoriety
 
 # --- factions: family (Vane), corp (Halcyon), crew (Ashfall Syndicate) ---
 var factions: Dictionary = {"family": 40.0, "corp": -10.0, "crew": 0.0}
@@ -66,7 +67,7 @@ var calls_made: Array = []
 var news_queue: Array = []
 var last_news: String = ""
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4   # v4: progression, district heat, attachments
 
 
 func _ready() -> void:
@@ -133,6 +134,9 @@ func _process(delta: float) -> void:
 	# wetness drifts toward weather target
 	var target := 0.9 if weather == Weather.RAIN else (0.25 if weather == Weather.OVERCAST else 0.0)
 	wetness = move_toward(wetness, target, delta * 0.01)
+	# district heat cools slowly — the neighborhood remembers for a while
+	for did in district_heat.keys():
+		district_heat[did] = maxf(0.0, district_heat[did] - delta * 0.35)
 	# heat decay when out of sight of police
 	if wanted > 0:
 		heat_decay += delta
@@ -182,6 +186,17 @@ func hour_of_day_string() -> String:
 func add_money(amount: int) -> void:
 	money = max(0, money + amount)
 	Bus.money_changed.emit(money)
+
+
+func add_district_heat(did: String, amount: float) -> void:
+	if did == "":
+		return
+	district_heat[did] = clampf(district_heat.get(did, 0.0) + amount, 0.0, 100.0)
+
+
+## 0 calm .. 1 boiling — consumed by guard suspicion, ped nerves, news.
+func district_heat01(did: String) -> float:
+	return clampf(district_heat.get(did, 0.0) / 100.0, 0.0, 1.0)
 
 
 func set_wanted(level: int) -> void:
@@ -253,6 +268,7 @@ func serialize() -> Dictionary:
 		"hour": game_hour, "day": day,
 		"weather": weather, "wetness": wetness,
 		"money": money, "wanted": wanted,
+		"district_heat": district_heat.duplicate(),
 		"factions": factions.duplicate(),
 		"relationships": relationships.duplicate(),
 		"memory": memory.duplicate(),
@@ -290,6 +306,7 @@ func deserialize(d: Dictionary) -> void:
 	wetness = d.get("wetness", 0.8)
 	money = d.get("money", 0)
 	wanted = d.get("wanted", 0)
+	district_heat = d.get("district_heat", {})
 	factions = d.get("factions", factions)
 	relationships = d.get("relationships", {})
 	memory = d.get("memory", {})

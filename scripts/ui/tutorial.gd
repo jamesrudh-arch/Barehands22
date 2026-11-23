@@ -17,10 +17,17 @@ const STEPS := [
 	{"id": "vehicle", "hint": "Near a car: CAR button (or vehicle_enter) to drive. BRK brakes, HORN honks."},
 	{"id": "phone", "hint": "PHONE opens your phone: map, jobs, radio, contacts, bag, saves."},
 	{"id": "wanted", "hint": "Crime raises WANTED stars. Break line of sight and the heat cools — or get busted."},
+	{"id": "counter", "hint": "Time BLK at the last instant to PARRY — then strike back inside the counter window for bonus damage."},
+	{"id": "mastery", "hint": "Fight with a style to grow its MASTERY. Ranks unlock real moves — haymakers, suplexes, axe kicks."},
+	{"id": "focus", "hint": "Aiming a gun? Hold FOCUS (Q) to slow the world. The meter drains fast — spend it wisely."},
+	{"id": "cover", "hint": "Crouch behind walls and cars for soft COVER: incoming damage drops and you can blindfire."},
+	{"id": "stealth", "hint": "Crouch behind an unaware enemy and press DODGE for a silent TAKEDOWN. Hide bodies before civilians find them."},
+	{"id": "climb", "hint": "Jump at a fire escape to CLIMB to the roof. Jump at waist-high ledges to VAULT them."},
 ]
 
 
 func _ready() -> void:
+	add_to_group("tutorial")
 	Bus.mission_started.connect(_on_mission)
 	Bus.dialogue_ended.connect(func(): _try("interact"))
 	Bus.combat_state_changed.connect(_on_combat)
@@ -28,6 +35,10 @@ func _ready() -> void:
 	Bus.phone_opened.connect(func(): _try("phone"))
 	Bus.wanted_changed.connect(_on_wanted)
 	Bus.objective_updated.connect(_on_obj)
+	Progression.style_ranked_up.connect(func(_s, r, _u):
+		if r >= 2:
+			_try("mastery"))
+	Bus.tutorial_hint.connect(_try)
 
 
 func _on_combat(on: bool) -> void:
@@ -68,6 +79,12 @@ func _show(s: Dictionary) -> void:
 	AudioDirector.sfx("ui_notify", 0.15)
 	if _step >= STEPS.size():
 		WorldState.set_flag("tutorial_done", true)
+
+
+## Context hints fired by gameplay systems (parry, focus, cover...). The
+## coach is not an autoload — city.gd instances it and tags the group.
+func try_hint(id: String) -> void:
+	_try(id)
 
 
 func _try(id: String) -> void:
