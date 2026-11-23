@@ -118,7 +118,7 @@ visual check, 60 FPS validation.
 ## Delivery
 - Branch pushed to origin (github.com/jamesrudh-arch/Barehands22,
   arena/9f25f474-barehands22). Docs suite complete (15 docs incl.
-  FINAL_REPORT). Harness 24/24, flow probes green, 0 script errors.
+  FINAL_REPORT). Harness 26/26, flow probes green, 0 script errors.
 5. Write remaining docs: DESIGN, TECH_ARCHITECTURE, ART_DIRECTION,
    WORLD_CHARACTERS, CONTROL_MAP, ASSET_REGISTER (+licenses),
    REQUIREMENTS_TRACEABILITY, DECISION_LOG, CHANGELOG, TEST_REPORTS,
