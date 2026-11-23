@@ -596,6 +596,20 @@ func set_siren(on: bool) -> void:
 var tires_flat := false
 
 
+func repair_full() -> void:
+	## Garage work: hull straightened, glass in, rubber new.
+	hp = 100.0
+	if tires_flat:
+		tires_flat = false
+	var d := Db.vehicle(vehicle_def_id)
+	var wet: float = 1.0 - WorldState.wetness * 0.30
+	for w in get_children():
+		if w is VehicleWheel3D:
+			w.wheel_friction_slip = d.get("grip", 1.0) * 1.6 * wet
+			w.wheel_roll_friction = 0.02
+	AudioDirector.sfx_at("gear_shift", global_position, 0.3)
+
+
 func puncture_tires() -> void:
 	## Spike-strip aftermath: shredded rubber. The car still crawls —
 	## limping to a garage is a choice, not a cutscene.
@@ -607,6 +621,8 @@ func puncture_tires() -> void:
 
 
 var _wrecked := false
+var _burn_t := 0.0
+var _fire_light: OmniLight3D = null
 
 
 func damage(amount: float) -> void:
@@ -664,13 +680,17 @@ func _explode() -> void:
 		if p.combat:
 			p.combat.take_hit(35.0, -global_transform.basis.z, "explosion", self)
 		p.global_position = global_position + Vector3(2.4, 0.4, 0)
-	# lingering fire light
+	# lingering fire light — the hulk burns for 45 s, flickering, and
+	# crackles on the ambient channel for anyone standing too close
 	var fire := OmniLight3D.new()
 	fire.light_color = Color(1.0, 0.55, 0.2)
 	fire.light_energy = 2.4
 	fire.omni_range = 7.0
 	fire.position = Vector3(0, 1.2, 0)
 	add_child(fire)
+	_fire_light = fire
+	_burn_t = 45.0
+	add_to_group("burning")
 
 
 var _prev_vel := Vector3.ZERO
@@ -700,6 +720,15 @@ func _blocker_is_player() -> bool:
 
 func _physics_process(delta: float) -> void:
 	_crash_cd -= delta
+	if _burn_t > 0.0:
+		_burn_t -= delta
+		if _fire_light != null:
+			_fire_light.light_energy = 2.4 + sin(Time.get_ticks_msec() * 0.013) * 0.7 + randf() * 0.4
+		if _burn_t <= 0.0:
+			remove_from_group("burning")
+			if _fire_light != null:
+				_fire_light.queue_free()
+				_fire_light = null
 	if is_inside_tree():
 		var impact := (_prev_vel - linear_velocity).length()
 		_prev_vel = linear_velocity
