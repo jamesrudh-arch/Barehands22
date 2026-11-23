@@ -1,5 +1,13 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 28: gunplay feeds mastery
+
+- Landing shots grows the **WEAPON mastery** track (+1.2 XP per hit,
+  +3.0 on the kill) — previously only melee hits trained styles, so
+  the gun branch's rank-4 payoff (steadier hands, faster reloads) was
+  unreachable by actually using guns.
+- Harness **115 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 27: the papers watch YOUR career
 
 - **Fame milestones**: six one-shot headlines fire as your career stats
