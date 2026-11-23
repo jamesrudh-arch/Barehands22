@@ -383,6 +383,7 @@ func _process(_delta: float) -> bool:
 			_check("_last_kill_check" in ccsrc and "Cinematics.hitstop" in ccsrc, "kill-cam + hit-stop wired into combat")
 			var clsrc2 := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
 			_check("_cruiser_shot" in clsrc2 and "turf_war" in clsrc2 and "_chatter_t" in clsrc2, "drive-bys, turf wars, radio chatter wired")
+			_check("SOUND PROPAGATION" in clsrc2, "loud-crime panic ripple wired")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

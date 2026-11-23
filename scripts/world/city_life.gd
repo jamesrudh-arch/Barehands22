@@ -303,6 +303,26 @@ func _on_crime(crime: String, severity: int, pos: Vector3) -> void:
 		PhoneUI.push_news("%s on edge: shops close early as violence climbs." % dname)
 	if crime == "body_found" and after > 0.5:
 		PhoneUI.push_news("Body discovered in %s. Police tight-lipped; residents aren't." % dname)
+	# SOUND PROPAGATION: loud crimes ripple outward — peds within earshot
+	# panic even if they never saw a thing. Rain muffles the city; a
+	# suppressor keeps the ripple from starting at all (no gunfire crime).
+	var loud := crime in ["gunfire", "explosion", "homicide"]
+	if loud:
+		var radius := 45.0 if crime == "explosion" else 34.0
+		if WorldState.weather == WorldState.Weather.RAIN:
+			radius *= 0.7
+		elif WorldState.weather == WorldState.Weather.FOG:
+			radius *= 0.85
+		var event := "gunshots" if crime != "homicide" else "fight"
+		for n in get_tree().get_nodes_in_group("humanoid"):
+			if not is_instance_valid(n) or (n.global_position - pos).length() > radius:
+				continue
+			if not n.has_method("react") or n.state == n.State.DEAD:
+				continue
+			# combatants don't spook at their own war
+			if bool(n.get("hostile")) or n.state == n.State.COMBAT:
+				continue
+			n.react(event, pos)
 	if severity >= 2:
 		_dispatch(pos, severity)
 

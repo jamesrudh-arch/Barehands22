@@ -1,5 +1,16 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 13: the city hears everything
+
+- **Sound propagation**: gunfire/explosions/homicides ripple outward —
+  every civilian within earshot panics even with zero line of sight
+  (explosions 45 m, shots 34 m). Combatants and hostiles don't spook at
+  their own war.
+- Weather muffles the ripple: rain cuts the radius ×0.7, fog ×0.85 —
+  storm nights are the professional's friend (and the suppressor still
+  prevents the crime signal entirely).
+- Harness **85 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 12: weather plays the game
 
 - **Fog** cuts NPC sightlines to 15 m (rain 21 m) and slows suspicion
