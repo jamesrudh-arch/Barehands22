@@ -50,7 +50,7 @@ var collected: Array = []
 var owned_vehicles: Array = []
 
 # --- phone ---
-var phone_station: int = 0
+var phone_station: String = ""
 var messages_read: Array = []
 var messages_pending: Array = []
 var calls_made: Array = []
@@ -92,7 +92,7 @@ func reset_all() -> void:
 	discovered_pois = []
 	collected = []
 	owned_vehicles = []
-	phone_station = 0
+	phone_station = ""
 	messages_read = []
 	messages_pending = ["msg_intro_ruth"]
 	calls_made = []
@@ -110,7 +110,7 @@ func _process(delta: float) -> void:
 		game_hour -= 24.0
 		day += 1
 	if int(prev) != int(game_hour):
-		Bus.hour_changed(game_hour)
+		Bus.hour_changed.emit(game_hour)
 	# weather drift
 	weather_timer -= delta
 	if weather_timer <= 0.0:
@@ -137,8 +137,16 @@ func _roll_weather() -> void:
 		roll = Weather.FOG
 	if roll != weather:
 		weather = roll
-		Bus.weather_changed(weather_name(), wetness)
+		Bus.weather_changed.emit(weather_name(), wetness)
 	weather_timer = randf_range(420.0, 1200.0)
+
+
+func set_weather(kind: String) -> void:
+	var idx := ["clear", "overcast", "rain", "fog"].find(kind)
+	if idx >= 0 and idx != weather:
+		weather = idx
+		weather_timer = randf_range(420.0, 1200.0)
+		Bus.weather_changed.emit(weather_name(), wetness)
 
 
 func weather_name() -> String:
@@ -158,7 +166,7 @@ func hour_of_day_string() -> String:
 # ------------------------------------------------------------- mutators ---
 func add_money(amount: int) -> void:
 	money = max(0, money + amount)
-	Bus.money_changed(money)
+	Bus.money_changed.emit(money)
 
 
 func set_wanted(level: int) -> void:
@@ -166,19 +174,19 @@ func set_wanted(level: int) -> void:
 	if v != wanted:
 		wanted = v
 		heat_decay = 0.0
-		Bus.wanted_changed(wanted)
+		Bus.wanted_changed.emit(wanted)
 
 
 func add_faction_rep(faction: String, delta: float) -> void:
 	if not factions.has(faction):
 		return
 	factions[faction] = clampf(factions[faction] + delta, -100.0, 100.0)
-	Bus.faction_rep_changed(faction, factions[faction])
+	Bus.faction_rep_changed.emit(faction, factions[faction])
 
 
 func add_relationship(char_id: String, delta: float) -> void:
 	relationships[char_id] = clampf(relationships.get(char_id, 0.0) + delta, -100.0, 100.0)
-	Bus.relationship_changed(char_id, relationships[char_id])
+	Bus.relationship_changed.emit(char_id, relationships[char_id])
 
 
 func remember(char_id: String, deed: String) -> void:
@@ -198,7 +206,7 @@ func get_flag(key: String, default = false):
 
 func add_item(item_id: String, qty: int = 1) -> void:
 	inventory[item_id] = inventory.get(item_id, 0) + qty
-	Bus.inventory_changed()
+	Bus.inventory_changed.emit()
 
 
 func remove_item(item_id: String, qty: int = 1) -> bool:
@@ -207,17 +215,23 @@ func remove_item(item_id: String, qty: int = 1) -> bool:
 	inventory[item_id] -= qty
 	if inventory[item_id] <= 0:
 		inventory.erase(item_id)
-	Bus.inventory_changed()
+	Bus.inventory_changed.emit()
 	return true
 
 
 func give_weapon(weapon_id: String) -> void:
 	if weapon_id not in owned_weapons:
 		owned_weapons.append(weapon_id)
-		Bus.inventory_changed()
+		Bus.inventory_changed.emit()
 
 
 # ------------------------------------------------------------- serialize --
+func equip_armor(armor_id: String) -> void:
+	equipped_armor = armor_id
+	Bus.armor_changed.emit(Db.armor.get(armor_id, {}).get("protection", 0.0) * 100.0, 100.0)
+	Bus.inventory_changed.emit()
+
+
 func serialize() -> Dictionary:
 	return {
 		"version": SAVE_VERSION,

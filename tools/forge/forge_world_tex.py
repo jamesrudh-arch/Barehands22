@@ -608,3 +608,63 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ============================================================ facades ======
+def facade(base_name, wall, seed, window_cols=4, window_rows=5, glassy=False,
+           sill=True):
+    """Albedo with window holes + emissive mask with lit/unlit variety."""
+    S = 512
+    r = rng(seed)
+    src = os.path.join(OUT, wall + ".png")
+    from PIL import Image
+    wallimg = np.array(Image.open(src).convert("RGB").resize((S, S)))
+    alb = wallimg.astype(float)
+    emi = np.zeros((S, S, 3))
+    cw, ch = S // window_cols, S // window_rows
+    lit_kind = [[(255, 196, 120), (250, 210, 150)], [(90, 140, 210), (120, 170, 230)],
+                [(240, 240, 235), (200, 200, 210)], [(0, 0, 0), (0, 0, 0)]]
+    for j in range(window_rows):
+        for i in range(window_cols):
+            x0, y0 = i * cw + int(cw * 0.22), j * ch + int(ch * 0.2)
+            x1, y1 = (i + 1) * cw - int(cw * 0.22), (j + 1) * ch - int(ch * 0.28)
+            # glass
+            g = 18 + int(r.random() * 20)
+            alb[y0:y1, x0:x1] = (g, g + 4, g + 10)
+            # frame
+            fr = (max(0, wallimg[y0, x0][0] - 30),) * 3
+            alb[y0 - 3:y0, x0:x1] = fr
+            alb[y1:y1 + 3, x0:x1] = fr
+            alb[y0:y1, x0 - 3:x0] = fr
+            alb[y0:y1, x1:x1 + 3] = fr
+            # emissive: some windows lit
+            roll = r.random()
+            kind = lit_kind[3] if roll < (0.55 if not glassy else 0.75) else lit_kind[int(r.integers(0, 3))]
+            c = kind[int(r.integers(0, 2))]
+            flick = 0.85 + r.random() * 0.15
+            emi[y0:y1, x0:x1] = (np.array(c) * flick)
+            if sill:
+                alb[y1 + 3:y1 + 7, x0 - 3:x1 + 3] = (np.array(wallimg[y1 + 4, x0]) * 0.7)
+    save(base_name + ".png", np.clip(alb, 0, 255).astype(np.uint8))
+    save(base_name + "_e.png", np.clip(emi, 0, 255).astype(np.uint8))
+
+
+def grass():
+    S = 256
+    n = fbm(S, 5, 24, 0.55, rng(1401))
+    blades = white_noise(S, rng(1402), 0.5)
+    h = np.clip(n * 0.6 + blades * 0.5, 0, 1)
+    stain = 0.8 + 0.4 * fbm(S, 2, 2, 0.5, rng(1403))
+    bake("grass", h, (34, 52, 26), (86, 108, 52), 1.0, 1.4, (0.95, 0.05), stain, S)
+
+
+def facades():
+    facade("facade_brick_red", "brick_red", 2001, 4, 5)
+    facade("facade_brick_dark", "brick_dark", 2002, 4, 5)
+    facade("facade_brick_grey", "brick_grey", 2003, 5, 6)
+    facade("facade_concrete", "concrete", 2004, 5, 6)
+    facade("facade_stucco", "stucco", 2005, 4, 5)
+    facade("facade_glass", "glass_dark", 2006, 6, 8, glassy=True, sill=False)
+    facade("facade_metal", "metal_panel", 2007, 4, 4, sill=False)
+    facade("facade_corrugated", "metal_corrugated", 2008, 3, 3, sill=False)
+    grass()

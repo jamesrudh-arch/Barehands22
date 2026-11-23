@@ -72,6 +72,7 @@ func goto_scene(path: String, on_ready: Callable = Callable()) -> void:
 		return
 	_scene_root = packed.instantiate()
 	get_tree().root.add_child(_scene_root)
+	get_tree().current_scene = _scene_root
 	await get_tree().process_frame
 	set_state(State.PLAYING)
 	Bus.scene_changed.emit(path)

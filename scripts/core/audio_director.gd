@@ -192,8 +192,10 @@ func ambient(name: String, path: String, volume: float) -> void:
 		var s := stream(path)
 		if s == null:
 			return
-		if "loop" in s:
-			s.loop = true
+		if s is AudioStreamWAV:
+			s.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			s.loop_begin = 0
+			s.loop_end = int(s.get_length() * s.mix_rate)
 		p.stream = s
 
 

@@ -30,6 +30,14 @@ Db="*res://scripts/core/db.gd"
 WorldState="*res://scripts/core/world_state.gd"
 SaveSystem="*res://scripts/core/save_system.gd"
 AudioDirector="*res://scripts/core/audio_director.gd"
+Effects="*res://scripts/core/effects.gd"
+WorldGen="*res://scripts/world/world_gen.gd"
+InteriorManager="*res://scripts/world/interior_manager.gd"
+Cutscene="*res://scripts/ui/cutscene.gd"
+DialogueUI="*res://scripts/ui/dialogue_ui.gd"
+MissionManager="*res://scripts/missions/mission_manager.gd"
+ShopUI="*res://scripts/ui/shop_ui.gd"
+PhoneUI="*res://scripts/ui/phone_ui.gd"
 Game="*res://scripts/core/game.gd"
 
 [display]
@@ -226,3 +234,14 @@ lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
 environment/defaults/default_environment="res://assets/env/default_env.tres"
 textures/canvas_textures/default_texture_filter=1
 2d/snap/snap_2d_transforms_to_pixel=true
+
+[debug]
+
+gdscript/warnings/untyped_declaration=0
+gdscript/warnings/inferred_declaration=0
+gdscript/warnings/variant_as_member=0
+gdscript/warnings/unsafe_property_access=0
+gdscript/warnings/unsafe_method_access=0
+gdscript/warnings/unsafe_cast=0
+gdscript/warnings/unsafe_call_argument=0
+gdscript/warnings/untyped_access=0

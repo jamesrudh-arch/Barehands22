@@ -56,7 +56,7 @@ func save_game(slot: int, extra: Dictionary = {}) -> bool:
 		return false
 	f.store_string(JSON.stringify(payload, "\t"))
 	f.close()
-	Bus.save_completed(slot)
+	Bus.save_completed.emit(slot)
 	return true
 
 
@@ -69,7 +69,7 @@ func load_game(slot: int) -> Dictionary:
 	if not (d is Dictionary):
 		return {}
 	WorldState.deserialize(d.get("world", {}))
-	Bus.load_completed(slot)
+	Bus.load_completed.emit(slot)
 	return d
 
 
