@@ -12,6 +12,19 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 44: everybody has a price
+
+- **Paid lay-low**: hitting a safehouse with 3+ stars used to be a
+  dead end — "too hot to sleep easy." Now, if you're carrying 250 cr,
+  the block can be persuaded to forget a face and a car: two stars
+  quietly disappear, cash changes hands, no questions. Broke and hot?
+  The notification now tells you exactly what quiet costs.
+- Another money sink for late-game wealth, and an escape valve that
+  rewards planning (keep a roll on you) over save-scumming.
+- Live behavioral test: hot + rich → wanted 4→2, money 500→250;
+  hot + broke → stars stay. Game hour and wallet restored after.
+- Harness **168 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 43: limp to the garage
 
 - **Limp mode**: below 40 hp a car gives you only 55% of its engine

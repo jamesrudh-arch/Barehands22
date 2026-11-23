@@ -525,6 +525,26 @@ func _process(_delta: float) -> bool:
 				vl.player_drive(0.016, Vector2(0, -1), false, false, false)
 				_check(absf(vl.engine_force) >= f_full * 0.99, "limp mode: garage repair restores full power")
 				vl.queue_free()
+		76:
+			# LIVE PAID LAY-LOW: safehouse + big heat + cash = quieter stars
+			if _player:
+				var ws14 = root.get_node("WorldState")
+				var cityg = _city
+				var h0: float = ws14.game_hour
+				var m0: int = ws14.money
+				ws14.set_wanted(4)
+				ws14.money = 500
+				cityg._enter_safehouse("poi_safehouse_docks", {"name": "test den", "kind": "safehouse"})
+				_check(ws14.wanted == 2, "lay low: 250cr buys two stars of quiet (wanted=%d)" % ws14.wanted)
+				_check(ws14.money == 250, "lay low: the quiet cost 250 cr (money=%d)" % ws14.money)
+				# broke and hot: no sale
+				ws14.set_wanted(4)
+				ws14.money = 100
+				cityg._enter_safehouse("poi_safehouse_docks", {"name": "test den", "kind": "safehouse"})
+				_check(ws14.wanted == 4, "lay low: broke stays hot (wanted=%d)" % ws14.wanted)
+				ws14.money = m0
+				ws14.set_wanted(0)
+				ws14.game_hour = h0
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):
