@@ -12,6 +12,19 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 32: two tonnes of consequences
+
+- **Run-overs are real**: any vehicle above ~14 km/h that touches a
+  pedestrian deals speed-scaled damage (×3.4 per m/s — lethal above
+  ~25 km/h), with blood, impact audio and knockback direction. Driven
+  by the player, it's a crime: assault (sev 3) or homicide (sev 5) —
+  witnesses, heat, ripples and all. Traffic vehicles cause tragedies
+  the block reacts to.
+- **Pedestrians scatter**: speeding metal within 13 m in its path
+  makes civilians dive off the road (`scramble` reaction; a quarter
+  of them scream doing it).
+- Harness **124 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 31: the grudge grows teeth
 
 - **Faction escalation**: past **−70 rep**, collections stop being
