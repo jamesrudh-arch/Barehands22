@@ -1202,5 +1202,80 @@
    "money": 950,
    "xp": 280
   }
+ },
+ "side_torch": {
+  "title": "Torch Job",
+  "act": 9,
+  "giver": "gunnar",
+  "repeatable": true,
+  "district": "slagworks",
+  "summary": "Gunnar's union dispute needs punctuation: two Halcyon trucks 'lost to brake failure.' Total them. Bonus points if the block watches them burn.",
+  "stages": [
+   {
+    "id": "tj1",
+    "type": "goto",
+    "text": "Meet Gunnar at the Haulage office.",
+    "poi": "poi_haulage"
+   },
+   {
+    "id": "tj2",
+    "type": "objective",
+    "text": "Wreck 2 vehicles \u2014 drive them into oblivion or let them burn.",
+    "check": "statd:wrecks>=2"
+   }
+  ],
+  "rewards": {
+   "money": 700,
+   "xp": 220,
+   "faction": [
+    "crew",
+    3
+   ]
+  }
+ },
+ "side_clean_wheels": {
+  "title": "Clean Wheels",
+  "act": 9,
+  "giver": "dex",
+  "repeatable": true,
+  "district": "the_furnace",
+  "summary": "Dex moves a 'previously loved' car for a client who needs it unrecognizable. Lift one, give it fresh paint at the garage, deliver it hot to Yard 4. Nobody asks where it came from.",
+  "stages": [
+   {
+    "id": "cw1",
+    "type": "goto",
+    "text": "Meet Dex at the garage.",
+    "poi": "poi_garage"
+   },
+   {
+    "id": "cw2",
+    "type": "objective",
+    "text": "Lift a car \u2014 lockpick or window, dealer's choice.",
+    "check": "statd:thefts>=1"
+   },
+   {
+    "id": "cw3",
+    "type": "objective",
+    "text": "Give it a fresh coat of paint at Dex's PAINT bay.",
+    "check": "statd:resprays>=1"
+   },
+   {
+    "id": "cw4",
+    "type": "drive_timed",
+    "text": "Deliver it to Yard 4. 120 seconds, and expect company.",
+    "from": "poi_garage",
+    "to": "poi_yard4",
+    "time": 120,
+    "pursuit": 2
+   }
+  ],
+  "rewards": {
+   "money": 1000,
+   "xp": 280,
+   "faction": [
+    "crew",
+    4
+   ]
+  }
  }
 }

@@ -693,6 +693,7 @@ func _explode() -> void:
 	## near, throws the driver out hurt, and the hulk stays burning as
 	## cover/obstacle. Crime: a car bomb in the street is a big deal.
 	_wrecked = true
+	WorldState.stats["wrecks"] = WorldState.stats.get("wrecks", 0) + 1
 	Effects.burst(global_position + Vector3(0, 1.1, 0), "smoke")
 	Effects.burst(global_position + Vector3(0, 1.0, 0), "muzzle")
 	AudioDirector.sfx_at("veh_crash_heavy", global_position, 1.0, 0.02)

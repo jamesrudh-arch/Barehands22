@@ -77,7 +77,7 @@ func _refresh_offers() -> void:
 		var giver: String = Db.mission(mid).get("giver", Db.mission(mid).get("contact", "marcus"))
 		CallManager.schedule_call(giver, "offer", mid, 6.0)
 		break
-	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait", "side_repo", "side_partner", "side_heatmagnet"]:
+	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait", "side_repo", "side_partner", "side_heatmagnet", "side_torch", "side_clean_wheels"]:
 		var m := Db.mission(sid)
 		if not m.get("repeatable", false) and completed.has(sid):
 			continue
@@ -274,7 +274,7 @@ func _tick_stage(delta: float, player: Node) -> void:
 						DialogueUI.start_tree(dlg)
 					rt["done"] = true
 		"objective":
-			if _check(stage.get("check", "")):
+			if _check_objective(stage.get("check", "")):
 				_advance_stage()
 		"event":
 			if rt.get("ev", "") != "":
@@ -784,6 +784,27 @@ func _spawn_char(cid: String, at: Vector3) -> Node:
 func rand_pick_ped() -> String:
 	var keys := Db.peds.keys()
 	return keys[randi() % keys.size()]
+
+
+func _check_objective(expr: String) -> bool:
+	## Like _check, but supports RELATIVE stat goals: "statd:wrecks>=2"
+	## counts wrecks SINCE this stage started, so repeatable jobs can't
+	## be pre-satisfied by last Tuesday's chaos.
+	if expr.begins_with("statd:"):
+		for op in [">=", ">", "=="]:
+			if expr.contains(op):
+				var parts := expr.split(op)
+				var key := parts[0].trim_prefix("statd:").strip_edges()
+				var need := float(parts[1].strip_edges())
+				if not rt.has("base_" + key):
+					rt["base_" + key] = WorldState.stats.get(key, 0)
+				var v: float = float(WorldState.stats.get(key, 0)) - float(rt["base_" + key])
+				match op:
+					">=": return v >= need
+					">": return v > need
+					"==": return v == need
+		return false
+	return _check(expr)
 
 
 func _check(expr: String) -> bool:
