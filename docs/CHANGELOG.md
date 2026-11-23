@@ -1,5 +1,16 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 14: the garage
+
+- **GARAGE phone app**: any ride you're sitting in can be filed as yours
+  ("KEEP THIS RIDE") — the insurance trick every career thief needs.
+- Owned rides (kept, or bought at a garage) can be **summoned to the
+  nearest curb** anywhere in Cinder City for a 40 cr delivery fee —
+  parked on a traffic lane point, ready to go.
+- `owned_vehicles` was already serialized; saves (v4) carry the garage
+  across sessions.
+- Harness **86 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 13: the city hears everything
 
 - **Sound propagation**: gunfire/explosions/homicides ripple outward —
