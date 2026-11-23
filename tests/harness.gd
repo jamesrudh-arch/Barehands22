@@ -174,6 +174,15 @@ func _process(_delta: float) -> bool:
 				and fitc.offset_left >= UiFit.vw(fitc) * 0.06 - 0.001 or fitc.offset_left == 240.0,
 				"UiFit.inset keeps text column width")
 			fitc.queue_free()
+		49:
+			# menu scene roots must fill the window (XOGOT zero-size root regression)
+			for sp in ["res://scenes/menu/notice.tscn", "res://scenes/menu/title.tscn",
+					"res://scenes/menu/menu.tscn", "res://scenes/boot/boot.tscn"]:
+				var nsc = load(sp).instantiate()
+				root.add_child(nsc)
+				_check(nsc is Control and nsc.anchor_right == 1.0 and nsc.anchor_bottom == 1.0,
+					"scene root fills window: " + sp)
+				nsc.queue_free()
 		48:
 			# gunfire hitscan
 			if _player:
