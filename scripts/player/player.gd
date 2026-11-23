@@ -456,8 +456,10 @@ func start_story_intro() -> void:
 	if _story_started:
 		return
 	_story_started = true
-	if Game.mission_manager:
-		Game.mission_manager.begin_prologue()
+	# opening cinematic -> then hand over to the prologue mission
+	Cutscene.play("cs_intro", func():
+		if Game.mission_manager:
+			Game.mission_manager.begin_prologue())
 
 
 func on_combat_end() -> void:

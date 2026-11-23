@@ -260,6 +260,27 @@ func _v3(a: Array) -> Vector3:
 
 func _script(id: String) -> Array:
 	match id:
+		"cs_intro":
+			var p := _player_pos()
+			return [
+				{"v": "fade", "to": 0.0, "dur": 1.2},
+				{"v": "bars", "on": true},
+				{"v": "music", "track": "music_tension"},
+				{"v": "card", "text": "CINDER CITY", "dur": 2.8},
+				{"v": "card", "text": "Six districts. One debt. Everybody keeps a ledger.", "dur": 3.6},
+				# slow push over the rain-slick street toward Eli
+				{"v": "cam", "pos": [p.x + 14, 6.5, p.z + 16], "look": [p.x, 1.4, p.z], "dur": 0.01},
+				{"v": "cam", "pos": [p.x + 4.5, 2.2, p.z + 5.5], "look": [p.x, 1.4, p.z], "dur": 5.0},
+				{"v": "line", "spk": "eli", "text": "Twelve years keeping other people\'s books. Tonight the city collects mine.", "dur": 4.2},
+				{"v": "cam", "pos": [p.x + 1.2, 1.7, p.z + 1.6], "look": [p.x, 1.55, p.z], "dur": 3.0},
+				{"v": "line", "spk": "eli", "text": "Marcus is in deep. Deep enough that deep stops being a number.", "dur": 3.8},
+				{"v": "sfx", "name": "phone_msg"},
+				{"v": "line", "spk": "ruth", "text": "Come home, baby. Whatever it is — we face it at my table.", "dur": 3.6},
+				{"v": "card", "text": "LEVERAGE", "dur": 3.0},
+				{"v": "card", "text": "A D\'Youngs Games story", "dur": 2.4},
+				{"v": "bars", "on": false},
+				{"v": "fade", "to": 0.0, "dur": 1.0},
+			]
 		"cs_kidnap":
 			var p := _player_pos()
 			return [
