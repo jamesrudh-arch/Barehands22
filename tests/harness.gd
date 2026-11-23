@@ -16,6 +16,8 @@ var _lp_n0 := 0
 var _ro_v: Node = null
 var _ro_en: Node = null
 var _ro_hp0 := 0.0
+var _sc_v: Node = null
+var _sc_ped: Node = null
 
 
 func _initialize() -> void:
@@ -417,6 +419,41 @@ func _process(_delta: float) -> bool:
 				_player.exit_vehicle()
 				_ro_v.queue_free()
 				_ro_v = null
+		69:
+			# LIVE WRECK BURN: kill a car, watch it go up
+			if _player:
+				var ws12 = root.get_node("WorldState")
+				ws12.set_wanted(0)
+				var cl12 = _city.get_node_or_null("CityLife")
+				var vb: Node = cl12.give_player_vehicle("sedan", _player.global_position + Vector3(14, 0, 0))
+				vb.damage(9999.0)
+				_check(bool(vb.get("_wrecked")), "wreck: car destroyed")
+				_check(float(vb.get("_burn_t")) > 40.0, "wreck: burn timer lit (%.1f s)" % float(vb.get("_burn_t")))
+				_check(vb.is_in_group("burning"), "wreck: added to burning group")
+				_check(vb.get("_fire_light") != null, "wreck: fire light spawned")
+				vb.queue_free()
+		70:
+			# LIVE SCATTER part 1: launch a car at a standing civilian
+			if _player:
+				var cl13 = _city.get_node_or_null("CityLife")
+				_sc_v = cl13.give_player_vehicle("sedan", _player.global_position + Vector3(16, 0, 0))
+				_sc_ped = CharacterBody3D.new()
+				_sc_ped.set_script(load("res://scripts/npc/npc.gd"))
+				_city.add_child(_sc_ped)
+				_sc_ped.setup_ped("dockworker", "ashfall_docks", _sc_v.global_position - _sc_v.global_transform.basis.z * 8.0)
+				_check(_sc_ped.state == _sc_ped.State.ROUTINE, "scatter setup: civilian minding their business")
+		71:
+			# LIVE SCATTER part 2: a physics frame of 40 km/h metal later, they run
+			if _sc_v != null and is_instance_valid(_sc_ped):
+				_sc_v.linear_velocity = -_sc_v.global_transform.basis.z * 11.0
+				# scatter ticks at 0.6s throttle; drive it directly for determinism
+				_sc_v.set("_scatter_t", 0.0)
+				_sc_v._physics_process(0.016)
+				_check(_sc_ped.state == _sc_ped.State.FLEE, "scatter: civilian flees the speeding car (state=%d)" % _sc_ped.state)
+				_sc_ped.queue_free()
+				_sc_ped = null
+				_sc_v.queue_free()
+				_sc_v = null
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):
