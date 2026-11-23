@@ -93,13 +93,40 @@ func setup_enemy(kind: String, pos: Vector3, faction: String) -> void:
 	display_name = kind
 	_district = WorldGen.district_at(pos)
 	global_position = pos
-	var tall := randf_range(1.7, 1.95)
-	_build_body({
-		"height": tall, "build": randf_range(0.5, 0.9),
-		"skin": randi() % 8, "hair": ["buzz", "fade", "slick", "cap"][randi() % 4],
-		"hair_color": randi() % 8, "face": randi() % 24,
+	# per-archetype silhouette: height/build/wardrobe all differ so reads
+	# at a glance tell you WHO you are fighting
+	var look := {
+		"height": randf_range(1.7, 1.85), "build": randf_range(0.45, 0.65),
+		"skin": randi() % 8, "hair": "buzz", "hair_color": randi() % 8, "face": randi() % 24,
 		"outfit_colors": {"jacket": [40, 20, 26], "shirt": [26, 24, 26], "pants": [30, 30, 34], "shoes": [20, 20, 22]},
-	})
+	}
+	match kind:
+		"thug_light":
+			look["outfit_colors"] = {"jacket": [58, 24, 30], "shirt": [70, 66, 60], "pants": [34, 34, 40], "shoes": [22, 22, 24]}
+			look["hair"] = ["buzz", "fade", "slick"][randi() % 3]
+		"thug_grappler":
+			look["build"] = randf_range(0.75, 0.95)
+			look["height"] = randf_range(1.78, 1.9)
+			look["outfit_colors"] = {"jacket": [30, 34, 30], "shirt": [40, 30, 30], "pants": [26, 26, 30], "shoes": [18, 18, 20]}
+			look["hair"] = "buzz"
+		"thug_heavy":
+			look["build"] = randf_range(0.85, 1.0)
+			look["height"] = randf_range(1.85, 1.98)
+			look["outfit_colors"] = {"jacket": [46, 38, 28], "shirt": [30, 26, 24], "pants": [32, 30, 28], "shoes": [20, 18, 16]}
+			look["hair"] = "cap"
+		"crowe_gunman":
+			look["outfit_colors"] = {"jacket": [24, 26, 34], "shirt": [64, 62, 66], "pants": [22, 24, 30], "shoes": [16, 16, 18]}
+			look["hair"] = "slick"
+			look["build"] = randf_range(0.5, 0.7)
+		"halcyon_guard":
+			look["outfit_colors"] = {"jacket": [26, 30, 34], "shirt": [20, 22, 26], "pants": [24, 26, 30], "shoes": [14, 14, 16]}
+			look["height"] = randf_range(1.8, 1.92)
+			look["build"] = randf_range(0.6, 0.8)
+			look["hair"] = "cap"
+		"cop":
+			look["outfit_colors"] = {"jacket": [22, 30, 52], "shirt": [70, 72, 80], "pants": [20, 26, 44], "shoes": [12, 12, 14]}
+			look["hair"] = "cap"
+	_build_body(look)
 	set_meta("hostile", true)
 	match kind:
 		"thug_light":
@@ -117,6 +144,11 @@ func setup_enemy(kind: String, pos: Vector3, faction: String) -> void:
 			_weapon_id = "gun_smg" if randf() < 0.4 else "melee_bat"
 			_style_id = "weapon"
 			_armor_visual()
+			combat.armor_prot = 30.0
+		"cop":
+			_weapon_id = "gun_pistol"
+			_style_id = "weapon"
+			combat.armor_prot = 20.0
 		_:
 			_style_id = ["brawler", "kickboxing", "drunken"][randi() % 3]
 	combat.set_style(_style_id)
@@ -125,7 +157,25 @@ func setup_enemy(kind: String, pos: Vector3, faction: String) -> void:
 
 
 func _armor_visual() -> void:
-	pass
+	# plate vest over the torso: readable armour silhouette
+	var sk := get_node_or_null("Humanoid/Skeleton3D")
+	if sk == null:
+		return
+	var chest := sk.find_bone("chest")
+	if chest < 0:
+		return
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.44, 0.5, 0.26)
+	mi.mesh = bm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.13, 0.15, 0.17)
+	m.roughness = 0.6
+	m.metallic = 0.15
+	mi.material_override = m
+	sk.add_child(mi)
+	mi.owner = sk.owner
+	sk.bind_child_node_to_bone(chest, mi)
 
 
 func _build_body(params: Dictionary) -> void:
