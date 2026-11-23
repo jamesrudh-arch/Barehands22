@@ -111,3 +111,4 @@ code-generated ArrayMesh/PrimitiveMesh geometry (`world_gen.gd`,
 | Godot AssetLib | addons/tools | XOGOT bans compiled addons; GDScript-only constraint |
 | godotengine/godot releases | 4.7.2-stable binaries | Release CDN unreachable from sandbox → built from codeload source |
 | xibbon/XogotDocs | official XOGOT docs | GDScript-only, touch UI guidance, 4.5-era API surface → adopted |
+| docs/gameplay_concept.png | docs/concept | 1170×2532 PNG | procedural (tools/concept/render_concept.py, numpy+Pillow) | Original, © 2026 project | Art-direction target frame; NOT engine output (K-08) |

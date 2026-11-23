@@ -110,3 +110,19 @@ underneath.
 - Consistent material grammar (window-grid facades, ember accents, wet
   surfaces) across all six districts ties generated content into one
   authored look.
+
+
+## Concept render (visual target)
+
+`docs/gameplay_concept.png` (1170×2532, iPhone portrait) is the hand-built
+visual target for a Kiln Row night frame: rain, wet-asphalt reflections,
+sodium-amber lamp cones vs teal Neon Mile bleed, emissive window grids,
+third-person Eli with amber/teal rim light, and the full touch HUD laid out
+per `docs/CONTROLS.md` §2. It is generated reproducibly by
+`tools/concept/render_concept.py` (pure numpy/Pillow software renderer —
+pinhole camera, z-buffered quads, additive glow, screen-space wet reflection).
+
+HONESTY NOTE: this is an art-direction TARGET, not engine output. The
+delivery sandbox is headless with no GPU/rasterizer (KNOWN_DEFECTS K-08);
+the on-device Godot mobile renderer produces the real frame, which should be
+compared against this target during the VERIFICATION_GUIDE §B pass.
