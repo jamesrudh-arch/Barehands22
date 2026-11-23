@@ -422,6 +422,9 @@ func _process(_delta: float) -> bool:
 					pl5.exit_vehicle()
 					if is_instance_valid(veh5):
 						veh5.queue_free()
+			var plsrc3 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			var vsrc3 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
+			_check("is_player_owned" in vsrc3 and '"theft"' in plsrc3, "car theft is a crime (owned rides exempt)")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

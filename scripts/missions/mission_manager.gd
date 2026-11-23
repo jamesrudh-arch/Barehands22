@@ -641,6 +641,7 @@ func _spawn_mission_vehicle() -> void:
 	_scene().add_child(v)
 	v.setup("van", Color(0.25, 0.28, 0.24))
 	v.global_position = from + Vector3(0, 0.5, 0)
+	v.is_player_owned = true   # the job's car isn't a felony
 	v.set_meta("keep_after_stage", true)  # player may still be driving at stage end
 	actors.append(v)
 	rt["mission_vehicle"] = v

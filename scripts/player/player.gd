@@ -733,6 +733,13 @@ func enter_vehicle(v: Node) -> void:
 		_seat_offset = seat
 		anim.mode = "ride"
 	set_physics_process(true)
+	# hot-wiring somebody else's ride is a crime — owned rides are clean
+	if not bool(v.get("is_player_owned")):
+		var sev := 3 if bool(v.get("is_traffic")) else 2
+		Bus.crime_committed.emit("theft", sev, global_position)
+		WorldState.stats["thefts"] = WorldState.stats.get("thefts", 0) + 1
+		if sev == 3:
+			Bus.notification.emit("CARJACKED!", "warn")
 	v.player_enter(self)
 	Bus.vehicle_entered.emit(v.vehicle_type)
 	AudioDirector.sfx("veh_door_open")

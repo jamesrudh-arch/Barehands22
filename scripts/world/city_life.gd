@@ -264,6 +264,7 @@ func give_player_vehicle(def_id: String, pos: Vector3) -> Node:
 	v.setup(def_id, col)
 	v.global_position = pos
 	v.parked = true
+	v.is_player_owned = true
 	return v
 
 
