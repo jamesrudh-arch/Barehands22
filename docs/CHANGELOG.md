@@ -1,5 +1,35 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 10: fight-feel, living city, hotter pursuits
+
+- **Cinematics autoload** (`scripts/core/cinematics.gd`): micro time-scale
+  arbitration — hit-stop freeze frames, kill-cam slow-mo, FOV punches
+  through the camera rig. Cooperates with FOCUS bullet-time (whoever wants
+  the world slower wins; both restore cleanly; never fires during FOCUS).
+- Heavy connects (haymaker, axe kick, suplex, ground pound, executioner,
+  vertical swing, high kick) freeze-frame ~70 ms; ground finishers 120 ms
+  + FOV punch; environmental slams 100 ms + punch.
+- **Kill-cam**: dropping the last standing enemy within 30 m triggers a
+  0.55 s slow-mo beat (0.3×). Vehicle explosions punch FOV and, within
+  22 m of the player, dip into a 0.35 s slow-mo blast beat.
+- **Living traffic**: rain slows cars to 72%, fog to 85%; patrol sirens
+  within 34 m pull traffic toward the curb; a player car blocking the
+  lane earns a horn (new `police_car` group when sirens run).
+- **Turf wars**: NPCs pick targets — rival-faction enemies fight each
+  other; new `turf_war` night event spawns Syndicate-vs-Halcyon clashes
+  the player can watch, join, or loot.
+- **Loot drops**: dead hostiles drop cash scaled by Difficulty.threat,
+  ammo for their gun (65%), their melee weapon (30%), bandages (22%) —
+  spawned as pickups so looting is a deliberate, risky beat.
+- **Cruiser drive-bys**: at 2+ stars patrol cars fire through the glass —
+  tracers, hit roll vs. vehicle panels (4–9 dmg) or the player on foot;
+  accuracy scales with Difficulty and speed penalizes their aim.
+- **Radio personality**: 15 new DJ chatter lines across the three
+  stations; between-song banter fires every 75–150 s while driving with a
+  static blip, leaking story texture (Berth 7, Halcyon, the docks body).
+- Harness still **76 checks, 0 fails, 0 script errors**.
+
+
 ## 2026-11-23 — DEPTH WAVE 9: consequences, rooftops, wrecks
 
 Second block of the deepening mandate (docs/LEVERAGE_VISION.md):

@@ -269,6 +269,8 @@ func _env_takedown() -> bool:
 		cc.apply_stagger(60.0, to.normalized())
 		AudioDirector.sfx_at("slam", n.global_position + Vector3(0, 1.1, 0))
 		AudioDirector.sfx_at("block_hit", n.global_position + Vector3(0, 1.1, 0), 0.7)
+		Cinematics.hitstop(0.10)
+		Cinematics.fov_punch(4.0)
 		Effects.burst(n.global_position + Vector3(0, 1.2, 0) + to.normalized() * 0.4, "blood", to.normalized())
 		Effects.add_shake(0.45)
 		Bus.notification.emit("ENVIRONMENTAL TAKEDOWN!", "warn")
