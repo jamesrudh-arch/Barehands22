@@ -442,6 +442,19 @@ func _process(_delta: float) -> bool:
 				_city.add_child(_sc_ped)
 				_sc_ped.setup_ped("dockworker", "ashfall_docks", _sc_v.global_position - _sc_v.global_transform.basis.z * 8.0)
 				_check(_sc_ped.state == _sc_ped.State.ROUTINE, "scatter setup: civilian minding their business")
+		72:
+			# LIVE HIJACK SILHOUETTE: a commandeered car shows its panicked driver
+			if _player:
+				var cl14 = _city.get_node_or_null("CityLife")
+				var vt: Node = cl14.give_player_vehicle("sedan", _player.global_position + Vector3(18, 0, 0))
+				vt.set_lane(PackedVector3Array([vt.global_position + Vector3(20, 0, 0), vt.global_position + Vector3(20, 0, 20)]), 8.0)
+				vt.civ_panic()
+				_check(vt.get("_civ_driver") != null, "hijack: panicked car has a visible driver")
+				_check(float(vt.get("_panic_t")) > 0.0, "hijack: panic timer running")
+				vt.set("_panic_t", 0.016)
+				vt.traffic_tick(0.02)
+				_check(vt.get("_civ_driver") == null, "hijack: driver leaves when panic ends")
+				vt.queue_free()
 		71:
 			# LIVE SCATTER part 2: a physics frame of 40 km/h metal later, they run
 			if _sc_v != null and is_instance_valid(_sc_ped):

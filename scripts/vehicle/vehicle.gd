@@ -440,13 +440,29 @@ func set_lane(loop: PackedVector3Array, speed: float) -> void:
 	parked = false
 
 
+var _civ_driver: MeshInstance3D = null
+
+
 func civ_panic() -> void:
 	## A fleeing civilian dove into this traffic car. It peels out —
 	## faster lane speed, a scared horn — for a while, then settles.
+	## You can SEE them driving: a hurried little silhouette behind the
+	## wheel sells the panic better than an empty rolling car.
 	if not is_traffic or _panic_t > 0.0:
 		return
 	_panic_t = randf_range(7.0, 11.0)
 	AudioDirector.sfx_at("veh_horn", global_position, 0.6)
+	if vehicle_type == "car" and _civ_driver == null:
+		_civ_driver = MeshInstance3D.new()
+		var cap := CapsuleMesh.new()
+		cap.radius = 0.22
+		cap.height = 0.95
+		_civ_driver.mesh = cap
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.25, 0.24, 0.28)
+		_civ_driver.material_override = m
+		_civ_driver.position = Vector3(-0.38, 0.95, -0.05)
+		add_child(_civ_driver)
 
 
 func traffic_tick(delta: float) -> void:
@@ -480,6 +496,10 @@ func traffic_tick(delta: float) -> void:
 		if _horn_ai_t <= 0.0:
 			_horn_ai_t = randf_range(1.4, 3.0)
 			AudioDirector.sfx_at("veh_horn", global_position, 0.5)
+		if _panic_t <= 0.0 and _civ_driver != null:
+			# calmed down: they park up and walk out of frame
+			_civ_driver.queue_free()
+			_civ_driver = null
 	# living traffic: rain slows everyone; sirens nearby pull cars to the
 	# curb; a player car blocking the lane earns a horn
 	if WorldState.weather == WorldState.Weather.RAIN:
@@ -723,6 +743,9 @@ func _explode() -> void:
 	_fire_light = fire
 	_burn_t = 45.0
 	add_to_group("burning")
+	if _civ_driver != null:
+		_civ_driver.queue_free()
+		_civ_driver = null
 
 
 var _prev_vel := Vector3.ZERO
