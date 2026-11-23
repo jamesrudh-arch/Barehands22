@@ -257,6 +257,10 @@ func _on_world_event(event_id: String, payload: Dictionary) -> void:
 				_open_stash(pid, data)
 			elif data.has("interior"):
 				InteriorManager.enter(data["interior"], pid)
+				var shop_id: String = data.get("shop", "")
+				if shop_id != "":
+					# let the door transition breathe, then the keeper greets you
+					get_tree().create_timer(0.8).timeout.connect(func(): ShopUI.open_shop(shop_id))
 			else:
 				Bus.notification.emit(data.get("name", "Here"), "info")
 				Bus.poi_discovered.emit(pid)
