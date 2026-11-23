@@ -829,6 +829,8 @@ func _show_taxi() -> void:
 		if dist < 60.0:
 			continue   # walking distance — don't waste the fare
 		var fare := int(12.0 + dist * 0.09)
+		if WorldState.owns_property("cab_share"):
+			fare = maxi(5, int(fare * 0.5))   # medallion owner rides half-rate
 		rides += 1
 		var b := Button.new()
 		b.text = "%s — %d cr  (%d m)" % [d2.get("name", str(pid)), fare, int(dist)]

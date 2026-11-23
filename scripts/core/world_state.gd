@@ -142,7 +142,8 @@ func _process(delta: float) -> void:
 		district_heat[did] = maxf(0.0, district_heat[did] - delta * 0.35)
 	# heat decay when out of sight of police
 	if wanted > 0:
-		heat_decay += delta
+		# the laundromat washes more than clothes: heat cools faster
+		heat_decay += delta * (1.6 if owns_property("laundromat") else 1.0)
 		if heat_decay > 25.0:
 			set_wanted(wanted - 1)
 			heat_decay = 0.0
@@ -210,6 +211,10 @@ func advance_hours(h: float) -> void:
 		day += 1
 		_pay_property_income()
 	Bus.hour_changed.emit(game_hour)
+
+
+func owns_property(pid: String) -> bool:
+	return pid in owned_properties
 
 
 func _pay_property_income() -> void:

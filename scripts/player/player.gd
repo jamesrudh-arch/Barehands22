@@ -988,7 +988,10 @@ func use_item(iid: String) -> void:
 		"consumable":
 			WorldState.remove_item(iid, 1)
 			if it.has("heal"):
-				combat.heal(float(it["heal"]))
+				# Aunt Adaeze feeds you: consumables hit harder when you
+				# own the noodle stall
+				var heal_amt: float = float(it["heal"]) * (1.25 if WorldState.owns_property("noodle_stall") else 1.0)
+				combat.heal(heal_amt)
 			if it.has("stamina"):
 				combat.stamina = clampf(combat.stamina + float(it["stamina"]), 0.0, combat.max_stamina)
 			AudioDirector.sfx("cloth_rustle", 0.2)

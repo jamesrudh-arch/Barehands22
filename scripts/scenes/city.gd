@@ -252,9 +252,10 @@ func _on_gamble(opt: Dictionary) -> void:
 	var b := randi_range(1, 6)
 	AudioDirector.sfx("cash", 0.3)
 	if a + b == 7:
-		WorldState.add_money(bet * 2)
-		Bus.notification.emit("SEVEN! %d cr → %d cr. The table groans." % [bet, bet * 2], "mission")
-	elif a + b >= 9:
+		var mult := 2.4 if WorldState.owns_property("lounge_room") else 2.0
+		WorldState.add_money(int(bet * mult))
+		Bus.notification.emit("SEVEN! %d cr → %d cr. The table groans." % [bet, int(bet * mult)], "mission")
+	elif a + b >= (8 if WorldState.owns_property("lounge_room") else 9):
 		WorldState.add_money(int(bet * 1.5))
 		Bus.notification.emit("Rolled %d+%d. You take %d cr." % [a, b, int(bet * 1.5)], "info")
 	elif a + b <= 4:
