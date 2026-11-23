@@ -12,6 +12,18 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 39: prove the fire and the flinch
+
+- **Live wreck-burn test**: harness totals a sedan with 9999 damage and
+  asserts the wreck flag, the 45 s burn timer, the "burning" group
+  membership, and the spawned fire light. Wave 29's pyrotechnics,
+  verified end to end.
+- **Live scatter test**: spawns a routine civilian 8 m off a car's
+  nose, launches the car at 40 km/h, drives one scatter tick, and
+  asserts the civilian flips ROUTINE → FLEE. Wave 32's street panic,
+  verified end to end.
+- Harness **147 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 38: prove the run-over
 
 - **Live run-over behavioral test**: harness seats the player in a
