@@ -12,6 +12,17 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 35: a good witness describes the suspect
+
+- **Witness call-ins now point at YOU**: when a civilian reports a
+  crime they saw, the tip carries the suspect's position instead of
+  the witness's own — police dispatch spawns near the player, not
+  near the screaming.
+- **Throttled snitching**: each witness can call it in at most once
+  per 20 s (`_snitch_cd`), so one street crime doesn't cascade into
+  a dozen sirens.
+- Harness **129 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 34: the block has wheels
 
 - **Fleeing civilians commandeer traffic**: a panicked pedestrian

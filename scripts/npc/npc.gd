@@ -825,13 +825,21 @@ func react(event: String, from: Vector3) -> void:
 					_bark("fear")
 
 
+var _snitch_cd := 0.0
+
+
 func _react_crime(player: Node) -> void:
 	_bark("fear")
 	state = State.FLEE
 	_flee_from = player.global_position if player else global_position
-	# witnesses call it in
-	if randf() < 0.5:
-		Bus.crime_committed.emit("witnessed", 1, global_position)
+	# witnesses call it in — and a good witness describes WHERE the
+	# suspect is, not where the screaming is. Throttled per-witness so
+	# one crime doesn't become a dozen sirens.
+	_snitch_cd -= get_physics_process_delta_time()
+	if randf() < 0.5 and _snitch_cd <= 0.0:
+		_snitch_cd = 20.0
+		var tip := _flee_from if player != null else global_position
+		Bus.crime_committed.emit("witnessed", 1, tip)
 
 
 func _bark(context: String) -> void:

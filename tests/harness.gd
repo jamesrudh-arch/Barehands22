@@ -496,6 +496,8 @@ func _process(_delta: float) -> bool:
 			var npcsrc4 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_try_hop_in_car" in npcsrc4 and "civ_panic" in vsrc6, "fleeing civilians commandeer traffic cars")
 			_check("_panic_t" in vsrc6 and "1.9" in vsrc6, "panicked cars peel out faster")
+			var npcsrc5 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("_snitch_cd" in npcsrc5 and "tip" in npcsrc5, "witnesses tip off the suspect's position, throttled")
 			var vsrc4 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
 			_check("_burn_t" in vsrc4 and '"burning"' in vsrc4, "wrecks burn for 45s with flickering light")
 			_check("_fire_tick" in clsrc2 and 'ambient("fire"' in clsrc2, "fire ambience crackles near burning things")
