@@ -667,6 +667,12 @@ func _near_hostile() -> bool:
 
 # ------------------------------------------------------------- interaction --
 func _handle_interact(delta: float) -> void:
+	# vehicle entry (F) comes first — you can't hide a body from inside a car
+	if Input.is_action_just_pressed("vehicle_enter") and not in_vehicle:
+		var v0 := _find_vehicle()
+		if v0 != null:
+			enter_vehicle(v0)
+			return
 	# body hiding takes priority — the clock is always ticking on a corpse
 	var body := _find_body()
 	if body != null:
@@ -694,11 +700,6 @@ func _find_body() -> Node:
 			bd = d
 			best = n
 	return best
-	# vehicle enter
-	if Input.is_action_just_pressed("vehicle_enter"):
-		var v := _find_vehicle()
-		if v and not in_vehicle:
-			enter_vehicle(v)
 
 
 func _find_interact() -> Node:
