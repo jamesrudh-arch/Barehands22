@@ -579,6 +579,12 @@ func _music_tick(delta: float, player: Node) -> void:
 		target = "tension"
 	elif player.combat != null and player.combat.combat_timer > 0.0:
 		target = "combat"          # just finished a fight: hold the sting
+	# cinematic left a non-explore track playing while we're calm: restore
+	if target == "explore" and _music_state == "explore":
+		var cm: String = AudioDirector.current_music
+		if not cm.begins_with("music_explore") and player.in_vehicle == null and WorldState.phone_station == "" and _music_hold <= 0.0:
+			var dd := Db.district(Game.current_district)
+			AudioDirector.play_music(dd.get("music", "music_explore_kiln"), 2.0)
 	if target != _music_state:
 		if target == "explore" and _music_hold > 0.0:
 			return
