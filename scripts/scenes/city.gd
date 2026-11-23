@@ -191,9 +191,16 @@ func _day_night() -> void:
 	sky_mat.sky_top_color = top
 	sky_mat.sky_horizon_color = top.lerp(Color(0.45, 0.33, 0.26), 0.35)
 	env.ambient_light_energy = 0.28 + dayness * 0.4
-	env.fog_enabled = WorldState.weather == WorldState.Weather.FOG or WorldState.is_night()
-	env.fog_density = 0.004 if WorldState.weather == WorldState.Weather.FOG else (0.0016 if WorldState.is_night() else 0.0008)
+	env.fog_enabled = WorldState.weather == WorldState.Weather.FOG or WorldState.is_night() or WorldState.weather == WorldState.Weather.RAIN
+	env.fog_density = 0.004 if WorldState.weather == WorldState.Weather.FOG else (0.0022 if WorldState.weather == WorldState.Weather.RAIN else (0.0016 if WorldState.is_night() else 0.0008))
 	env.fog_light_color = Color(0.28, 0.3, 0.36) if WorldState.is_night() else Color(0.55, 0.5, 0.45)
+	# wet roads: asphalt darkens + turns reflective as wetness climbs
+	var wet: float = WorldState.wetness
+	var road: StandardMaterial3D = WorldGen.mat("asphalt")
+	if road:
+		road.roughness = lerpf(1.0, 0.18, wet)
+		road.metallic = lerpf(0.0, 0.12, wet)
+		road.albedo_color = Color(1, 1, 1).lerp(Color(0.55, 0.57, 0.62), wet)
 
 
 func _on_weather(kind: String, _wet: float) -> void:
