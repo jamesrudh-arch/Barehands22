@@ -802,7 +802,10 @@ func _radio_tick(delta: float, player: Node) -> void:
 		if _chatter_t <= 0.0:
 			_chatter_t = randf_range(75.0, 150.0)
 			AudioDirector.sfx("radio_static", 0.12)
-			Bus.notification.emit("[RADIO] %s" % ch[randi() % ch.size()], "info")
+			if WorldState.owns_property("radio_slot") and randf() < 0.3:
+				Bus.notification.emit("[RADIO] ...brought to you by YOUR 3 a.m. ad slot. Billboards pay.", "info")
+			else:
+				Bus.notification.emit("[RADIO] %s" % ch[randi() % ch.size()], "info")
 
 
 func _station() -> Dictionary:

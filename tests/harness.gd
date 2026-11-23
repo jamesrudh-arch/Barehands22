@@ -443,6 +443,13 @@ func _process(_delta: float) -> bool:
 			_check(ws8.money >= m0 + int(db8.properties["noodle_stall"]["income"]), "daily property payout lands")
 			ws8.owned_properties.clear()
 			ws8.money = m0
+			# property perks reach real systems
+			_check("owns_property" in ser8, "owns_property helper present")
+			var plsrc4 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			var shsrc2 := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
+			_check("noodle_stall" in plsrc4, "noodle stall heals harder")
+			_check("dock_lease" in shsrc2, "dock sublease discounts ammo")
+			_check("lounge_room" in ctsrc and "cab_share" in phsrc2 and "laundromat" in ser8, "lounge/cab/laundromat perks wired")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

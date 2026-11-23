@@ -291,6 +291,8 @@ var _grudge := 0.0     # price markup when the keeper's faction hates you
 
 func _make_buy(id: String, price: int) -> void:
 	price = int(price * (1.0 + _grudge))
+	if id.begins_with("ammo_") and WorldState.owns_property("dock_lease"):
+		price = int(price * 0.75)   # the sublease moves crates "off the books"
 	if WorldState.money < price:
 		Bus.notification.emit("Not enough credits.", "error")
 		AudioDirector.sfx("ui_error", 0.2)

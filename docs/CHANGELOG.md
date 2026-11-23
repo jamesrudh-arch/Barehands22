@@ -1,5 +1,21 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 23: ownership has teeth
+
+Every business now bends a system, not just the payday:
+- **Noodle Stall**: consumables heal +25% — Aunt Adaeze feeds you.
+- **Cab Medallion**: taxi fares half-rate (min 5 cr).
+- **Laundromat**: wanted heat decays ×1.6 faster — it washes more than
+  clothes.
+- **Radio Ad Slot**: 30% of Static 88 chatter is now YOUR ad (flavor +
+  billboard pride).
+- **Berth 7 Sublease**: ammo costs −25% at every shop — crates move off
+  the books.
+- **Noir Lounge Back Room**: sevens pay ×2.4 and the high-roll
+  threshold drops 9→8 — the house is your house.
+- New `WorldState.owns_property(id)` helper; harness **105 checks,
+  0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 22: the portfolio
 
 - **Six buyable businesses** (`data/properties.json`): Aunt Adaeze's
