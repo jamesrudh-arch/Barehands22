@@ -121,6 +121,7 @@ func _show_home() -> void:
 		["CALLS", "i_call", _show_contacts], ["BAG", "i_gun", _show_inventory], ["MSGS", "i_msg", _show_msgs],
 		["SAVE", "i_phone", _show_save], ["SETUP", "i_armor", _show_settings], ["NEWS", "i_star", _show_news],
 		["STATS", "i_star", _show_stats], ["GARAGE", "i_map", _show_garage],
+		["TAXI", "i_money", _show_taxi],
 	]
 	for a in apps:
 		var b := Button.new()
@@ -740,6 +741,73 @@ func _stat_line(title: String, sub: String) -> VBoxContainer:
 func _player() -> Node:
 	var g := get_tree().get_nodes_in_group("player")
 	return g[0] if g.size() else null
+
+
+func _show_taxi() -> void:
+	_clear()
+	_app = "taxi"
+	_header("TAXI")
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.offset_top = 54
+	vb.add_theme_constant_override("separation", 8)
+	_screen.add_child(vb)
+	var p := _player()
+	if p == null:
+		return
+	if WorldState.wanted > 0:
+		var l := Label.new()
+		l.text = "No cab's stopping for you with stars on the board. Lose the heat first."
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_color_override("font_color", Color(0.9, 0.45, 0.35))
+		vb.add_child(l)
+		return
+	var rides := 0
+	for pid in WorldState.discovered_pois:
+		var pd: Dictionary = WorldGen.pois.get(str(pid), {})
+		var d2: Dictionary = pd.get("data", {})
+		if not d2.has("at"):
+			continue
+		var at: Array = d2["at"]
+		var pos := Vector3(at[0], 0, at[1])
+		var dist: float = (pos - p.global_position).length()
+		if dist < 60.0:
+			continue   # walking distance — don't waste the fare
+		var fare := int(12.0 + dist * 0.09)
+		rides += 1
+		var b := Button.new()
+		b.text = "%s — %d cr  (%d m)" % [d2.get("name", str(pid)), fare, int(dist)]
+		b.custom_minimum_size = Vector2(0, 50)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 14)
+		b.pressed.connect(_ride_taxi.bind(pos, fare, d2.get("name", str(pid))))
+		vb.add_child(b)
+	if rides == 0:
+		var l2 := Label.new()
+		l2.text = "Nowhere to go that your feet can't manage. Discover more of the city first."
+		l2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l2.add_theme_color_override("font_color", Color(0.7, 0.68, 0.62))
+		vb.add_child(l2)
+
+
+func _ride_taxi(pos: Vector3, fare: int, dest: String) -> void:
+	if WorldState.money < fare:
+		Bus.notification.emit("Fare is %d cr. You're short." % fare, "error")
+		AudioDirector.sfx("ui_error", 0.2)
+		return
+	var p := _player()
+	if p == null or WorldState.wanted > 0:
+		return
+	WorldState.add_money(-fare)
+	# the ride takes time — cabs in Cinder don't fly
+	var hours := clampf(pos.distance_to(p.global_position) / 2600.0, 0.08, 0.5)
+	WorldState.advance_hours(hours)
+	p.global_position = pos + Vector3(3.0, 0.2, 3.0)
+	if p.in_vehicle != null and p.has_method("exit_vehicle"):
+		p.exit_vehicle()
+	AudioDirector.sfx("veh_door_close", 0.5)
+	Bus.notification.emit("Cab drops you at %s. -%d cr." % [dest, fare], "info")
+	close_phone()
 
 
 func _show_garage() -> void:
