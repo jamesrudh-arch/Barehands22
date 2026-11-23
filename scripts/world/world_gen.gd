@@ -141,7 +141,7 @@ class Acc:
 			Vector2(0, 0), Vector2(size.z * uvs.y, 0), Vector2(size.z * uvs.y, size.y * uvs.z), Vector2(0, size.y * uvs.z), tint)
 		quad(i, c + Vector3(-h.x, 0, -h.z), c + Vector3(-h.x, 0, h.z), c + Vector3(-h.x, size.y, h.z), c + Vector3(-h.x, size.y, -h.z), Vector3(-1, 0, 0),
 			Vector2(0, 0), Vector2(size.z * uvs.y, 0), Vector2(size.z * uvs.y, size.y * uvs.z), Vector2(0, size.y * uvs.z), tint)
-		quad(i, c + Vector3(-h.x, size.y, h.z), c + Vector3(h.x, size.y, h.z), c + Vector3(h.x, size.y, -h.z), c + Vector3(-h.x, size.y, -h.z), Vector3(0, 1, 0),
+		quad(i, c + Vector3(-h.x, size.y, -h.z), c + Vector3(h.x, size.y, -h.z), c + Vector3(h.x, size.y, h.z), c + Vector3(-h.x, size.y, h.z), Vector3(0, 1, 0),
 			Vector2(0, 0), Vector2(size.x * uvs.x, 0), Vector2(size.x * uvs.x, size.z * uvs.y), Vector2(0, size.z * uvs.y), tint)
 
 	func cyl(i: int, from: Vector3, to: Vector3, r1: float, r2: float, seg := 8, tint := Color(1, 1, 1)) -> void:

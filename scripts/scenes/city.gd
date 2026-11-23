@@ -34,6 +34,10 @@ func _ready() -> void:
 	player.global_position = Vector3(float(spawn[0]), 0.05, float(spawn[1]) + 3.0)
 	Game.player = player
 	Game.mission_manager = MissionManager
+	# tutorial coach
+	var tut := preload("res://scripts/ui/tutorial.gd").new()
+	tut.name = "Tutorial"
+	add_child(tut)
 	# HUD
 	hud = CanvasLayer.new()
 	hud.set_script(load("res://scripts/ui/hud.gd"))
@@ -46,6 +50,39 @@ func _ready() -> void:
 	_built = true
 	# welcome news
 	Bus.radio_news.emit("Cinder City harbour authority delays Berth 7 repairs again. Dockworkers not surprised.")
+
+
+func _spawn_check(p: Vector3) -> void:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if player == null:
+		return
+	if player.global_position.y < -2.0 or not _ground_below(player.global_position):
+		player.global_position = _find_ground(p)
+
+
+func _ground_below(pos: Vector3) -> bool:
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.new()
+	q.from = pos + Vector3(0, 2, 0)
+	q.to = pos + Vector3(0, -2, 0)
+	q.collision_mask = 1
+	return not space.intersect_ray(q).is_empty()
+
+
+func _find_ground(p: Vector3) -> Vector3:
+	# spawn on the street in front of the door; verify support with a raycast
+	var space := get_world_3d().direct_space_state
+	var offsets := [Vector3(0, 0, 10), Vector3(0, 0, 14), Vector3(10, 0, 0), Vector3(-10, 0, 0), Vector3(0, 0, -14), Vector3.ZERO]
+	for off in offsets:
+		var q := PhysicsRayQueryParameters3D.new()
+		q.from = p + off + Vector3(0, 3, 0)
+		q.to = p + off + Vector3(0, -3, 0)
+		q.collision_mask = 1
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			return p + off + Vector3(0, 0.1, 0)
+	return p + Vector3(0, 0.1, 10)
 
 
 func _setup_environment() -> void:

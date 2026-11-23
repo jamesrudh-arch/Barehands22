@@ -37,6 +37,8 @@ func _ready() -> void:
 		_light_pool.append(l)
 	Bus.crime_committed.connect(_on_crime)
 	Bus.district_changed.connect(_on_district)
+	Bus.mission_completed.connect(_on_mission_done)
+	Bus.wanted_changed.connect(_on_wanted)
 
 
 func _process(delta: float) -> void:
@@ -56,6 +58,8 @@ func _process(delta: float) -> void:
 			v.traffic_tick(delta)
 	# police
 	_police_tick(delta, player)
+	# radio
+	_radio_tick(player)
 	# events
 	_event_cd -= delta
 	if _event_cd <= 0.0:
@@ -420,6 +424,22 @@ func _spawn_event(pp: Vector3) -> void:
 			pass
 
 
+func _on_mission_done(mid: String, success: bool) -> void:
+	var m := Db.mission(mid)
+	var title: String = m.get("title", mid)
+	if success:
+		push_news("Underworld whispers: someone walked away clean from \"%s\". Names stay quiet." % title)
+	else:
+		push_news("Police confirm a botched incident in %s. Sources describe \"%s\" gone wrong." % [Db.district(Game.current_district).get("name", "the city"), title])
+
+
+func _on_wanted(level: int) -> void:
+	if level >= 3:
+		push_news("CCPD raise the alert level. Eyewitnesses describe a suspect loose in %s." % Db.district(Game.current_district).get("name", "the city"))
+	if level == 0:
+		push_news("CCPD stand down citywide alert. \"Nothing to see,\" says a spokesperson.")
+
+
 func rand_pick(arr: Array):
 	return arr[randi() % arr.size()]
 
@@ -461,6 +481,55 @@ func _traffic_light_cycle() -> void:
 
 
 # --------------------------------------------------------------- ambience ---
+var _radio_track_i := 0
+
+
+func _radio_tick(player: Node) -> void:
+	var st := _station()
+	if st.is_empty():
+		return
+	if player.in_vehicle == null:
+		return  # radio only audibly plays in-vehicle
+	var tracks: Array = st.get("tracks", [])
+	if tracks.is_empty():
+		return
+	if AudioDirector.current_music != tracks[_radio_track_i % tracks.size()]:
+		AudioDirector.play_music(tracks[_radio_track_i % tracks.size()], 1.2)
+
+
+func _station() -> Dictionary:
+	var sid: String = WorldState.phone_station
+	for st in Db.radio.get("stations", []):
+		if st.get("id", "") == sid:
+			return st
+	return {}
+
+
+func radio_cycle() -> void:
+	var ids: Array = ["off"]
+	for st in Db.radio.get("stations", []):
+		ids.append(st.get("id", ""))
+	var cur := ids.find(WorldState.phone_station)
+	var nxt: String = ids[(cur + 1) % ids.size()]
+	WorldState.phone_station = nxt
+	if nxt == "off":
+		AudioDirector.stop_music(1.0)
+		Bus.notification.emit("Radio off.", "info")
+	else:
+		_radio_track_i = randi() % 4
+		var st := _station()
+		Bus.notification.emit("Radio: %s" % st.get("name", nxt), "info")
+		AudioDirector.sfx("radio_static", 0.2)
+
+
+func push_news(text: String) -> void:
+	if not WorldState.news_queue.has(text):
+		WorldState.news_queue.append(text)
+		if WorldState.news_queue.size() > 24:
+			WorldState.news_queue.pop_front()
+	Bus.radio_news.emit(text)
+
+
 func _on_district(did: String) -> void:
 	if did == _amb_district:
 		return
@@ -471,7 +540,7 @@ func _on_district(did: String) -> void:
 		AudioDirector.ambient_off("traffic")
 		AudioDirector.ambient_off("crowd")
 		return
-	if WorldState.wanted == 0:
+	if WorldState.wanted == 0 and WorldState.phone_station == "":
 		AudioDirector.play_music(d.get("music", "music_explore_kiln"), 2.5)
 	AudioDirector.ambient("traffic", "res://assets/audio/sfx/traffic_loop.wav", 0.25 * d.get("traffic_density", 0.6))
 	AudioDirector.ambient("crowd", "res://assets/audio/sfx/crowd_loop.wav", 0.2 * d.get("ped_density", 0.6))

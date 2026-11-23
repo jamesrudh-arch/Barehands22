@@ -314,6 +314,10 @@ func _build_touch() -> void:
 	_buttons["vehicle_enter"] = _touch_btn("vehicle_enter", "CAR", Vector2(vp.x - 118, vp.y - 240), Color(0.1, 0.14, 0.12, 0.75), 62.0)
 	_buttons["vehicle_brake"] = _touch_btn("vehicle_brake", "BRK", Vector2(vp.x - 250, vp.y - 118), Color(0.16, 0.1, 0.1, 0.75), 62.0)
 	_buttons["horn"] = _touch_btn("horn", "HORN", Vector2(vp.x - 320, vp.y - 90), Color(0.12, 0.12, 0.1, 0.7), 52.0)
+	_buttons["radio"] = _sys_btn("radio", "RADIO", Vector2(vp.x - 250, 70), func():
+		var cl := _city_life()
+		if cl:
+			cl.radio_cycle())
 	# gun buttons (visible when gun equipped)
 	_buttons["aim"] = _touch_btn("aim", "AIM", Vector2(vp.x - 390, vp.y - 150), Color(0.1, 0.12, 0.16, 0.75), 62.0)
 	_buttons["fire"] = _touch_btn("fire", "FIRE", Vector2(vp.x - 390, vp.y - 230), Color(0.18, 0.1, 0.08, 0.8), 70.0)
@@ -546,6 +550,7 @@ func _update_visibility() -> void:
 	_buttons["vehicle_enter"].visible = not driving
 	_buttons["vehicle_brake"].visible = driving
 	_buttons["horn"].visible = driving
+	_buttons["radio"].visible = driving
 	_speed_lbl.visible = driving
 	for bn in ["btn_x", "btn_y", "btn_a", "block", "lock_on", "sprint", "crouch"]:
 		_buttons[bn].visible = not driving
@@ -708,3 +713,7 @@ func _build_pause() -> void:
 func _player() -> Node:
 	var g := get_tree().get_nodes_in_group("player")
 	return g[0] if g.size() else null
+
+
+func _city_life() -> Node:
+	return get_node_or_null("/root/City/CityLife")
