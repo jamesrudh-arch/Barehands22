@@ -308,6 +308,7 @@ func _build_touch() -> void:
 	# utility buttons left column / top
 	_buttons["sprint"] = _touch_btn("sprint", "RUN", Vector2(vp.x - 250, vp.y - 86), Color(0.1, 0.14, 0.1, 0.7), 58.0)
 	_buttons["crouch"] = _touch_btn("crouch", "CRCH", Vector2(vp.x - 250, vp.y - 156), Color(0.1, 0.12, 0.16, 0.7), 58.0)
+	_buttons["jump"] = _touch_btn("jump", "JMP", Vector2(250, vp.y - 170), Color(0.1, 0.13, 0.12, 0.65), 56.0)
 	_buttons["block"] = _touch_btn("block", "BLK", Vector2(vp.x - 320, vp.y - 120), Color(0.14, 0.12, 0.1, 0.7), 58.0)
 	_buttons["lock_on"] = _touch_btn("lock_on", "LOCK", Vector2(vp.x - 320, vp.y - 190), Color(0.12, 0.1, 0.14, 0.7), 58.0)
 	_buttons["style_next"] = _touch_btn("style_next", "STY", Vector2(vp.x - 320, vp.y - 260), Color(0.1, 0.12, 0.14, 0.7), 52.0)
@@ -552,7 +553,7 @@ func _update_visibility() -> void:
 	_buttons["horn"].visible = driving
 	_buttons["radio"].visible = driving
 	_speed_lbl.visible = driving
-	for bn in ["btn_x", "btn_y", "btn_a", "block", "lock_on", "sprint", "crouch"]:
+	for bn in ["btn_x", "btn_y", "btn_a", "block", "lock_on", "sprint", "crouch", "jump"]:
 		_buttons[bn].visible = not driving
 	_buttons["btn_b"].visible = true  # B stays: interact when out of combat
 	_buttons["style_next"].visible = not driving

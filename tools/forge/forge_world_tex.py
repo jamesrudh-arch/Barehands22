@@ -632,7 +632,7 @@ def facade(base_name, wall, seed, window_cols=4, window_rows=5, glassy=False,
             g = 18 + int(r.random() * 20)
             alb[y0:y1, x0:x1] = (g, g + 4, g + 10)
             # frame
-            fr = (max(0, wallimg[y0, x0][0] - 30),) * 3
+            fr = (int(max(0, int(wallimg[y0, x0][0]) - 30)),) * 3
             alb[y0 - 3:y0, x0:x1] = fr
             alb[y1:y1 + 3, x0:x1] = fr
             alb[y0:y1, x0 - 3:x0] = fr
@@ -644,7 +644,7 @@ def facade(base_name, wall, seed, window_cols=4, window_rows=5, glassy=False,
             flick = 0.85 + r.random() * 0.15
             emi[y0:y1, x0:x1] = (np.array(c) * flick)
             if sill:
-                alb[y1 + 3:y1 + 7, x0 - 3:x1 + 3] = (np.array(wallimg[y1 + 4, x0]) * 0.7)
+                alb[y1 + 3:y1 + 7, x0 - 3:x1 + 3] = np.clip(wallimg[y1 + 4, x0].astype(np.float32) * 0.7, 0, 255).astype(np.uint8)
     save(base_name + ".png", np.clip(alb, 0, 255).astype(np.uint8))
     save(base_name + "_e.png", np.clip(emi, 0, 255).astype(np.uint8))
 

@@ -238,7 +238,10 @@ func _make_buy(id: String, price: int) -> void:
 	elif Db.outfits.has(id):
 		WorldState.owned_outfits[id] = true
 		WorldState.equipped_outfit = id
-		Bus.notification.emit("Outfit equipped. (Respawn to see it.)", "info")
+		var pl := _player()
+		if pl and pl.has_method("rebuild_appearance"):
+			pl.rebuild_appearance()
+		Bus.notification.emit("Outfit equipped — look at you.", "info")
 	AudioDirector.sfx("cash", 0.3)
 	Bus.notification.emit("Bought %s." % _stock_entry(id).get("name", id), "info")
 	_refresh_money()

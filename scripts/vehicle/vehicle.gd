@@ -253,6 +253,14 @@ func traffic_tick(delta: float) -> void:
 	steering = move_toward(steering, clampf(angle * 2.2, -0.5, 0.5), delta * 1.6)
 	# obstacle / light check ahead
 	var blocked := _check_ahead()
+	if not blocked:
+		var cl := get_node_or_null("/root/City/CityLife")
+		if cl == null:
+			cl = get_node_or_null("/root/CityLife")
+		if cl and cl.has_method("traffic_green_at"):
+			var fwd2: Vector3 = -global_transform.basis.z
+			if not cl.traffic_green_at(global_position + fwd2 * 10.0):
+				blocked = true
 	var desired := 0.0 if blocked else _traffic_speed
 	var sp := speed_kmh() / 3.6
 	if sp < desired:

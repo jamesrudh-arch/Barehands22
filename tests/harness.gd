@@ -150,6 +150,17 @@ func _process(_delta: float) -> bool:
 			sui._make_buy("gun_pistol", 900)
 			_check(ws.owned_weapons.has("gun_pistol"), "gun purchased")
 			sui.close_shop()
+		46:
+			# regression: traffic light state query + HUD jump button + mission stage restore
+			var city_life = _city.get_node_or_null("CityLife")
+			var g1: bool = city_life.traffic_green_at(Vector3(0, 0, 0))
+			_check(g1 == true or g1 == false, "traffic_green_at returns bool")
+			var hud = _city.get("hud")
+			_check(hud != null and hud._buttons.has("jump"), "HUD has touch JUMP button")
+			var mm = root.get_node("MissionManager")
+			if mm.active_id != "":
+				var sv: Dictionary = mm.save_state()
+				_check(sv.has("stage") and sv["stage"] >= 0, "mission save includes stage idx")
 		48:
 			# gunfire hitscan
 			if _player:

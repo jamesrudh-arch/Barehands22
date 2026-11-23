@@ -7,18 +7,18 @@ D-items are device verification, K-items are known code/content defects.
 
 | ID | Severity | Description | Impact | Plan |
 |---|---|---|---|---|
-| K-01 | Low | Traffic vehicles brake for obstacles but do **not read traffic-light state** (light cycle is visual only; `CityLife.traffic_green_at` exists but is unused) | Intersections feel lawless | Wire `_check_ahead` to also test `traffic_green_at` |
-| K-02 | Low | Escort side job spawns VIPs with the first ped archetype (no dedicated `ped_nurse` in data) | Cosmetic mismatch | Add 1–2 VIP archetypes to peds.json |
-| K-03 | Low | `MissionManager.apply_save` restarts an in-flight mission from stage 0 (stage-internal runtime state not persisted) | Mid-mission load loses stage progress, not the mission | Document or serialize `stage_i` + light rt fields |
-| K-04 | Low | Outfit purchases apply on **respawn/reload** (humanoid rebuilt then), notified in-shop | Delayed cosmetic gratification | Rebuild humanoid on equip |
+| ~~K-01~~ | **CLOSED** | Traffic now queries `CityLife.traffic_green_at(pos + fwd·10m)` and treats red as a blocker (`vehicle.gd _check_ahead`) | — | Fixed; harness check 46 |
+| ~~K-02~~ | **CLOSED** | Original claim was wrong — `nurse` archetype exists in peds.json; escort spawn key was `ped_nurse` (typo) so it fell back to archetype[0]. Now spawns `nurse` | — | Fixed |
+| ~~K-03~~ | **CLOSED** | `save_state` now serializes `stage`, `rt_pos`, `rt_time`; `apply_save` fast-forwards to the saved stage (skipping cutscenes) | — | Fixed; harness check 46 |
+| ~~K-04~~ | **CLOSED** | `player.rebuild_appearance()` rebuilds the humanoid in place on equip (vitals/style preserved); shop calls it immediately | — | Fixed |
 | K-05 | Cosmetic | Exit-time leak warnings under harness quit (7 resources / 2 RIDs) — queue_free-at-quit artifacts | None at runtime | Ignore; re-check on device builds |
-| K-06 | Cosmetic | numpy uint8 overflow RuntimeWarning in forge facade() frame color (clamps) | Slight hue variance in one facade — reads as weathering | Accepted |
+| ~~K-06~~ | **CLOSED** | forge facade() frame color + sill now cast/clip before arithmetic; facades re-baked, re-imported clean | — | Fixed |
 | K-07 | Cosmetic | forge_audio_lib pink-noise `_filter` is a no-op stub (white noise used where pink intended) | Two ambience loops brighter than spec | Accepted |
 | K-08 | Medium | **Visuals never rendered** in sandbox (headless): material assignments, emission night look, sky gradient, rain particles, HUD layout are logic-verified only | Unknown visual defects possible | Device pass per VERIFICATION_GUIDE §B |
 | K-09 | Medium | Touch controls unproven on glass: multitouch tracking is index-based and desktop-mouse-mapped (index 999); feel/deadzones untested | Possible ergonomic fixes needed | Device pass §C |
-| K-10 | Low | Radio plays station tracks only while in a vehicle (`_radio_tick` gate); on-foot radio = district score | Design choice, but PHONE→RADIO on foot silently keeps district music | Show toast "tune in from a car" |
-| K-11 | Low | `jump` action has no touch button (keyboard/gamepad only) | Jump unavailable on pure touch | Add JMP button or stick-flick |
-| K-12 | Low | News templates with `{district}`/`{hour}` placeholders: only city.gd ticker substitutes; some pushes may show raw braces if a template sneaks through another path | Rare cosmetic | Centralize substitution in push_news |
+| ~~K-10~~ | **CLOSED** | Tuning radio on foot now toasts "Signal's weak on foot — the radio plays while you drive." | — | Fixed |
+| ~~K-11~~ | **CLOSED** | Touch **JMP** button (56px, left of pad cluster) fires `Input.action_press("jump")`; hidden while driving | — | Fixed; harness check 46 |
+| ~~K-12~~ | **CLOSED** | Substitution centralized in `CityLife.format_news()`; both `push_news` and the city ticker route through it | — | Fixed |
 
 ## Device-only verification items (not defects — unproven)
 

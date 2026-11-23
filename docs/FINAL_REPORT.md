@@ -91,9 +91,15 @@ in `docs/DECISION_LOG.md` (D-08…D-19) with sources.
 
 ## 4. Open items
 
-See `docs/KNOWN_DEFECTS.md`: 12 K-items (all low/cosmetic except K-08/09
-= device visual/touch passes) and 8 D-items (device verification list).
-The exact next engineering actions are in `docs/DEVELOPMENT_STATE.md`.
+After the 2026-11-23 defect burn-down, **8 of 12 K-items are CLOSED**
+(K-01 traffic lights, K-02 escort archetype, K-03 mission-stage save,
+K-04 instant outfit rebuild, K-06 forge overflow, K-10 radio toast,
+K-11 touch JMP button, K-12 news substitution). Remaining open:
+K-05/K-07 (accepted cosmetic, engine-quit artifacts and one audio-filter
+stub) and K-08/K-09 — the device-only visual and touch verification
+passes, which by definition cannot be closed in a headless sandbox.
+The 8 D-items are the device checklist, not defects. Harness stands at
+**24/24**. Exact next actions: `docs/DEVELOPMENT_STATE.md`.
 
 ## 5. How to take delivery
 

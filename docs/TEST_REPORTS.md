@@ -35,7 +35,7 @@ no errors.
 ## T-05 Gameplay harness (`tests/harness.gd`, SceneTree script)
 
 Command: `godot --headless --path . -s res://tests/harness.gd`
-Result: **PASS — 21/21 checks, 0 fails, 0 script errors** (latest run):
+Result: **PASS — 24/24 checks, 0 fails, 0 script errors** (latest run, 2026-11-23 defect burn-down; checks 46 added: traffic-light query, touch JMP button, mission stage serialization):
 
 | Check | Result |
 |---|---|

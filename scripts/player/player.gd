@@ -467,6 +467,33 @@ func apply_save(d: Dictionary) -> void:
 		weapons.equip(d["weapon"])
 
 
+func rebuild_appearance() -> void:
+	# rebuild the humanoid with the currently equipped outfit, preserving vitals
+	var hp := combat.hp
+	var stam := combat.stamina
+	var style := combat.style_id
+	var old := get_node_or_null("Humanoid")
+	if old:
+		old.queue_free()
+	var ch := Db.character("eli")
+	var app: Dictionary = ch.get("appearance", {})
+	var outfit: Dictionary = Db.outfits.get(WorldState.equipped_outfit, {}).get("colors", {})
+	var hum := Humanoid.build({
+		"height": app.get("height", 1.83), "build": app.get("build", 0.55),
+		"skin": app.get("skin", 2), "hair": app.get("hair", "crop"),
+		"hair_color": app.get("hair_color", 0), "face": app.get("face", 4),
+		"outfit_colors": outfit,
+	})
+	add_child(hum)
+	skeleton = hum.get_node("Skeleton3D") as Skeleton3D
+	mesh_inst = skeleton.get_child(0) as MeshInstance3D
+	anim.attach(skeleton)
+	combat.skeleton = skeleton
+	combat.hp = hp
+	combat.stamina = stam
+	combat.set_style(style)
+
+
 func give_weapon(wid: String) -> void:
 	weapons.give(wid, true)
 	weapons.equip(wid)

@@ -489,7 +489,7 @@ func _radio_tick(player: Node) -> void:
 	if st.is_empty():
 		return
 	if player.in_vehicle == null:
-		return  # radio only audibly plays in-vehicle
+		return  # radio only audibly plays in-vehicle (see PhoneUI foot-note toast)
 	var tracks: Array = st.get("tracks", [])
 	if tracks.is_empty():
 		return
@@ -520,9 +520,19 @@ func radio_cycle() -> void:
 		var st := _station()
 		Bus.notification.emit("Radio: %s" % st.get("name", nxt), "info")
 		AudioDirector.sfx("radio_static", 0.2)
+		var pl := _player()
+		if pl and pl.in_vehicle == null:
+			Bus.notification.emit("Signal's weak on foot — the radio plays while you drive.", "info")
+
+
+func format_news(text: String) -> String:
+	var t: String = text.replace("{district}", Db.district(Game.current_district).get("name", "Cinder City"))
+	t = t.replace("{hour}", WorldState.hour_of_day_string())
+	return t
 
 
 func push_news(text: String) -> void:
+	text = format_news(text)
 	if not WorldState.news_queue.has(text):
 		WorldState.news_queue.append(text)
 		if WorldState.news_queue.size() > 24:

@@ -1,5 +1,19 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — Defect burn-down (K-01/02/03/04/06/10/11/12 closed)
+
+- **K-01** traffic AI reads light state: `vehicle.gd _check_ahead` queries `CityLife.traffic_green_at` 10 m ahead; red = blocker.
+- **K-02** escort VIP now spawns the existing `nurse` archetype (was a `ped_nurse` key typo → fallback to archetype[0]).
+- **K-03** mid-mission save/load: `stage_i`, runtime target pos/time serialized; `apply_save` fast-forwards past completed stages and skips cutscene replay.
+- **K-04** outfit equip rebuilds the player humanoid instantly (`player.rebuild_appearance()`, vitals/style preserved); shop no longer says "respawn to see it".
+- **K-06** forge facade numpy uint8 overflow fixed (explicit int casts + clip); all 8 facades + grass re-baked, re-imported with 0 errors.
+- **K-10** on-foot radio tuning now toasts an explanation instead of silently keeping district score.
+- **K-11** touch **JMP** button added (56 px, left cluster, hidden while driving).
+- **K-12** news placeholder substitution centralized in `CityLife.format_news()`; ticker + push_news both use it.
+- Harness extended 21 → **24 checks** (traffic-light query, JMP button, mission stage serialization); all pass, engine import 0 errors.
+- Open after this pass: K-05/K-07 (accepted cosmetic), K-08/K-09 (device-only verification passes).
+
+
 Session-by-session record (branch `arena/9f25f474-barehands22`, base
 `db5ead1` of `main`). Status vocabulary in `docs/TRACEABILITY.md`.
 

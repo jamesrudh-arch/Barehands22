@@ -244,10 +244,11 @@ func _push_news() -> void:
 		return
 	var t = templates[randi() % templates.size()]
 	var text: String = t.get("text", "") if t is Dictionary else str(t)
-	var did := Game.current_district
-	text = text.replace("{district}", Db.district(did).get("name", "Cinder City"))
-	text = text.replace("{hour}", WorldState.hour_of_day_string())
+	var cl := get_node_or_null("CityLife")
+	if cl and cl.has_method("format_news"):
+		text = cl.format_news(text)
 	if WorldState.wanted > 0:
+		var did: String = str(WorldState.current_district) if str(WorldState.current_district) != "" else "kiln_row"
 		text = "CCPD escalate search for suspect last seen in %s. Tips to Static-88." % Db.district(did).get("name", "the city")
 	Bus.radio_news.emit(text)
 	Bus.notification.emit("NEWS: " + text, "info")

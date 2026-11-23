@@ -539,7 +539,7 @@ func _setup_escort() -> void:
 	rt["vips"] = []
 	for i in count:
 		var n := _spawn_npc()
-		n.setup_ped("ped_nurse" if Db.peds.has("ped_nurse") else Db.peds.keys()[0], "neon_mile",
+		n.setup_ped("nurse" if Db.peds.has("nurse") else Db.peds.keys()[0], "neon_mile",
 			player.global_position + Vector3(randf_range(-2, 2), 0.02, randf_range(1, 3)))
 		n.set_meta("escort", true)
 		n._home = n.global_position
@@ -789,7 +789,9 @@ func mission_title() -> String:
 # -------------------------------------------------------------------- save --
 func save_state() -> Dictionary:
 	return {"active": active_id, "stage": active_stage_i, "completed": completed.keys(),
-		"failed": failed.keys(), "offer": story_offer}
+		"failed": failed.keys(), "offer": story_offer,
+		"rt_pos": [rt["pos"].x, rt["pos"].y, rt["pos"].z] if rt.get("pos") is Vector3 else [],
+		"rt_time": rt.get("time", 0.0)}
 
 
 func apply_save(d: Dictionary) -> void:
@@ -805,8 +807,20 @@ func apply_save(d: Dictionary) -> void:
 	_refresh_offers()
 	var act: String = d.get("active", "")
 	if act != "" and Db.missions.has(act):
-		# restart the mission from its beginning (stage state is not persisted)
 		start_mission(act)
+		var si: int = int(d.get("stage", -1))
+		var stages: Array = Db.mission(act).get("stages", [])
+		if si > 0 and si < stages.size():
+			_cleanup_stage()
+			active_stage_i = si - 1
+			_advance_stage()
+			if stage.get("type", "") == "cutscene":
+				_advance_stage()  # don't replay a cinematic on load
+			var rp: Array = d.get("rt_pos", [])
+			if rp.size() == 3:
+				rt["pos"] = Vector3(rp[0], rp[1], rp[2])
+			if d.get("rt_time", 0.0) is float and float(d["rt_time"]) > 0.0:
+				rt["time"] = float(d["rt_time"])
 
 
 func _scene() -> Node:
