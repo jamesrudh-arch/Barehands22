@@ -1,5 +1,19 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 24: jobs for the new verbs
+
+Three new side jobs that only exist because of waves 17–23:
+- **"Repo Man"** (Dex, The Furnace): steal any car (`stat:thefts>=1`),
+  then run it to Yard 4 in 110 s under scripted 2-star heat.
+  800 cr / crew +3 / 240 XP.
+- **"Silent Partner"** (Ruth, Kiln Row): buy into the Noodle Stall
+  (phone → BIZ, new `prop:` objective expression) and Ruth backs you.
+  1200 cr / family +5 / 260 XP.
+- **"Heat Magnet"** (Nia, Neon Mile, repeatable): a 3-star, 100-second
+  broadcast run from the Lounge to the Plaza for Nia's betting feed.
+  950 cr / 280 XP.
+- Harness **109 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 23: ownership has teeth
 
 Every business now bends a system, not just the payday:

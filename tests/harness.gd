@@ -450,6 +450,11 @@ func _process(_delta: float) -> bool:
 			_check("noodle_stall" in plsrc4, "noodle stall heals harder")
 			_check("dock_lease" in shsrc2, "dock sublease discounts ammo")
 			_check("lounge_room" in ctsrc and "cab_share" in phsrc2 and "laundromat" in ser8, "lounge/cab/laundromat perks wired")
+			# wave 24: side jobs using the new verbs
+			_check(db8.mission("side_repo").get("stages", []).size() == 3, "side_repo (theft + pursuit run) registered")
+			_check(db8.mission("side_partner").get("stages", []).size() == 2, "side_partner (business buy-in) registered")
+			_check(db8.mission("side_heatmagnet").get("stages", []).size() == 2, "side_heatmagnet (3-star broadcast run) registered")
+			_check('"prop:"' in msrc, "mission objectives understand prop: expressions")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

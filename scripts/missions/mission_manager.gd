@@ -77,7 +77,7 @@ func _refresh_offers() -> void:
 		var giver: String = Db.mission(mid).get("giver", Db.mission(mid).get("contact", "marcus"))
 		CallManager.schedule_call(giver, "offer", mid, 6.0)
 		break
-	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait"]:
+	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait", "side_repo", "side_partner", "side_heatmagnet"]:
 		var m := Db.mission(sid)
 		if not m.get("repeatable", false) and completed.has(sid):
 			continue
@@ -790,6 +790,8 @@ func _check(expr: String) -> bool:
 	# tiny evaluator: "money>=1500", "flag:route_crew", "item:x>=2", "wanted>=1", "hour>=22"
 	if expr.begins_with("flag:"):
 		return WorldState.get_flag(expr.trim_prefix("flag:"), false)
+	if expr.begins_with("prop:"):
+		return WorldState.owns_property(expr.trim_prefix("prop:"))
 	for op in [">=", "<=", ">", "<", "=="]:
 		if expr.contains(op):
 			var parts := expr.split(op)
