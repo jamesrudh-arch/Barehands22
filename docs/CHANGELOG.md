@@ -12,6 +12,20 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 40: you can see them panic
+
+- **Commandeered cars show their driver**: when a fleeing civilian
+  dives into a traffic car (wave 34), a seated silhouette appears
+  behind the wheel — a capsule in hurried dark colors, riding the
+  panic. When the driver calms down (panic timer ends) or the car
+  goes up (explode cleanup), the silhouette leaves the frame. Bikes
+  stay bike-shaped: no cabin, no passenger.
+- **Live hijack-silhouette test**: harness converts a sedan to
+  traffic, calls `civ_panic()`, asserts the driver mesh exists and the
+  panic timer runs, expires the timer through `traffic_tick`, and
+  asserts the driver is gone.
+- Harness **150 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 39: prove the fire and the flinch
 
 - **Live wreck-burn test**: harness totals a sedan with 9999 damage and
