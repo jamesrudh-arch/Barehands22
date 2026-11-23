@@ -429,6 +429,7 @@ func _process(_delta: float) -> bool:
 			_check("_try_driveby" in plsrc3 and "DRIVE-BY" in plsrc3, "drive-by shooting wired (cars only, speed wobble)")
 			var npcsrc2 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("A DRAWN GUN" in npcsrc2, "civilians panic at drawn guns")
+			_check("_show_taxi" in phsrc2 and "_ride_taxi" in phsrc2, "taxi fast-travel app wired")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

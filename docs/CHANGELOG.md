@@ -1,5 +1,13 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 21: taxis
+
+- **TAXI phone app**: hail a cab to any discovered POI more than 60 m
+  away. Fares run 12 cr + 9 cr per 100 m; the ride costs in-game time
+  (~0.08–0.5 h by distance) so the city clock stays honest.
+- No cab stops for a wanted rider — lose the stars first. Dropped at
+  the curb beside the destination.
+
 ## 2026-11-23 — DEPTH WAVE 20: a drawn gun clears the street
 
 - **Civilians panic at brandished weapons**: walk around on foot with a
