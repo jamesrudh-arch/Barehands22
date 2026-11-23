@@ -12,6 +12,19 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 36: prove the drive-by
+
+- **Live-fire behavioral test**: the harness now physically performs a
+  drive-by — spawns a sedan, seats the player with an SMG, parks a
+  thug 3 m off the fender, fires from the car's muzzle one physics
+  frame later, and asserts the bullet lands (hp drops), ammo burns,
+  and gunfire from the vehicle raises wanted level ≥ 2.
+- Caught a real subtlety along the way: a CharacterBody3D added this
+  frame is NOT solid to hitscan rays yet — the test now waits one
+  physics step between spawn and shot, which mirrors how the game
+  actually plays.
+- Harness **134 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 35: a good witness describes the suspect
 
 - **Witness call-ins now point at YOU**: when a civilian reports a
