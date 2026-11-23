@@ -1104,5 +1104,103 @@
     5
    ]
   }
+ },
+ "side_repo": {
+  "title": "Repo Man",
+  "act": 9,
+  "giver": "dex",
+  "repeatable": false,
+  "district": "the_furnace",
+  "summary": "Dex has a list of cars that 'forgot' their owners. Steal one, run it to Yard 4, and try not to arrive as a hood ornament.",
+  "stages": [
+   {
+    "id": "rp1",
+    "type": "goto",
+    "text": "Meet Dex at the garage.",
+    "poi": "poi_garage"
+   },
+   {
+    "id": "rp2",
+    "type": "objective",
+    "text": "Steal a car \u2014 any car. Lockpick or window, Dex doesn't judge.",
+    "check": "stat:thefts>=1"
+   },
+   {
+    "id": "rp3",
+    "type": "drive_timed",
+    "text": "Run it to Yard 4 under heat. 110 seconds.",
+    "from": "poi_garage",
+    "to": "poi_yard4",
+    "time": 110,
+    "pursuit": 2
+   }
+  ],
+  "rewards": {
+   "money": 800,
+   "xp": 240,
+   "faction": [
+    "crew",
+    3
+   ]
+  }
+ },
+ "side_partner": {
+  "title": "Silent Partner",
+  "act": 9,
+  "giver": "ruth",
+  "repeatable": false,
+  "district": "kiln_row",
+  "summary": "Mama Ruth wants your money working, not sitting. Buy into a local business \u2014 she's watching where you invest before she trusts you with more.",
+  "stages": [
+   {
+    "id": "sp1",
+    "type": "goto",
+    "text": "See Ruth at her restaurant.",
+    "poi": "poi_ruths"
+   },
+   {
+    "id": "sp2",
+    "type": "objective",
+    "text": "Buy into Aunt Adaeze's Noodle Stall (phone \u2192 BIZ).",
+    "check": "prop:noodle_stall"
+   }
+  ],
+  "rewards": {
+   "money": 1200,
+   "xp": 260,
+   "faction": [
+    "family",
+    5
+   ]
+  }
+ },
+ "side_heatmagnet": {
+  "title": "Heat Magnet",
+  "act": 9,
+  "giver": "nia",
+  "repeatable": true,
+  "district": "neon_mile",
+  "summary": "Nia's betting feed needs footage nobody else can get: a three-star run across the Mile, live. Get chased. Get paid.",
+  "stages": [
+   {
+    "id": "hm1",
+    "type": "goto",
+    "text": "Meet Nia behind the Noir Lounge.",
+    "poi": "poi_noir_lounge"
+   },
+   {
+    "id": "hm2",
+    "type": "drive_timed",
+    "text": "Three stars, Lounge to Plaza, 100 seconds. Cameras rolling.",
+    "from": "poi_noir_lounge",
+    "to": "poi_plaza",
+    "time": 100,
+    "pursuit": 3
+   }
+  ],
+  "rewards": {
+   "money": 950,
+   "xp": 280
+  }
  }
 }
