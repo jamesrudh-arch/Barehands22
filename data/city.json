@@ -1,125 +1,631 @@
 {
-  "world": {
-    "name": "Cinder City",
-    "water_z": -380,
-    "arterials": [
-      {"axis": "x", "at": -70, "width": 16},
-      {"axis": "x", "at": 190, "width": 16},
-      {"axis": "z", "at": -30, "width": 16},
-      {"axis": "z", "at": -350, "width": 12}
-    ]
+ "world": {
+  "name": "Cinder City",
+  "water_z": -380,
+  "arterials": [
+   {
+    "axis": "x",
+    "at": -70,
+    "width": 16
+   },
+   {
+    "axis": "x",
+    "at": 190,
+    "width": 16
+   },
+   {
+    "axis": "z",
+    "at": -30,
+    "width": 16
+   },
+   {
+    "axis": "z",
+    "at": -350,
+    "width": 12
+   }
+  ]
+ },
+ "kiln_row": {
+  "name": "Kiln Row",
+  "center": [
+   -220,
+   60
+  ],
+  "size": [
+   280,
+   240
+  ],
+  "block": 46,
+  "road_w": 10,
+  "blurb": "Old brick town. Laundry lines, church bells, everyone knows your father.",
+  "heights": [
+   9,
+   18
+  ],
+  "palette": {
+   "brick_red": 0.5,
+   "brick_dark": 0.3,
+   "stucco": 0.2
   },
-  "kiln_row": {
-    "name": "Kiln Row", "center": [-220, 60], "size": [280, 240],
-    "block": 46, "road_w": 10,
-    "blurb": "Old brick town. Laundry lines, church bells, everyone knows your father.",
-    "heights": [9, 18], "palette": {"brick_red": 0.5, "brick_dark": 0.3, "stucco": 0.2},
-    "signs": 0.4, "neon": false, "trees": 0.5, "lamp": [255, 179, 71],
-    "ped_density": 0.8, "traffic_density": 0.5,
-    "music": "music_explore_kiln",
-    "landmarks": [
-      {"type": "church", "at": [-260, 20], "name": "St. Ember's"},
-      {"type": "park", "at": [-180, 110], "name": "Kiln Green"}
+  "signs": 0.4,
+  "neon": false,
+  "trees": 0.5,
+  "lamp": [
+   255,
+   179,
+   71
+  ],
+  "ped_density": 0.8,
+  "traffic_density": 0.5,
+  "music": "music_explore_kiln",
+  "landmarks": [
+   {
+    "type": "church",
+    "at": [
+     -260,
+     20
     ],
-    "pois": [
-      {"id": "poi_home", "name": "Vane Apartment", "at": [-240, 40], "interior": "int_apartment", "kind": "home"},
-      {"id": "poi_ruths", "name": "Mama Ruth's Soul Food", "at": [-200, 60], "interior": "int_ruths", "kind": "shop", "shop": "ruths"},
-      {"id": "poi_church", "name": "St. Ember's Parish", "at": [-260, 20], "interior": "int_church", "kind": "place"},
-      {"id": "poi_clinic", "name": "Okonkwo Walk-In Clinic", "at": [-170, 30], "interior": "int_clinic", "kind": "shop", "shop": "clinic"},
-      {"id": "poi_market", "name": "Kiln Row Market", "at": [-220, 100], "interior": "int_market", "kind": "shop", "shop": "market"}
-    ]
+    "name": "St. Ember's"
+   },
+   {
+    "type": "park",
+    "at": [
+     -180,
+     110
+    ],
+    "name": "Kiln Green"
+   }
+  ],
+  "pois": [
+   {
+    "id": "poi_home",
+    "name": "Vane Apartment",
+    "at": [
+     -240,
+     40
+    ],
+    "interior": "int_apartment",
+    "kind": "home"
+   },
+   {
+    "id": "poi_ruths",
+    "name": "Mama Ruth's Soul Food",
+    "at": [
+     -200,
+     60
+    ],
+    "interior": "int_ruths",
+    "kind": "shop",
+    "shop": "ruths"
+   },
+   {
+    "id": "poi_church",
+    "name": "St. Ember's Parish",
+    "at": [
+     -260,
+     20
+    ],
+    "interior": "int_church",
+    "kind": "place"
+   },
+   {
+    "id": "poi_clinic",
+    "name": "Okonkwo Walk-In Clinic",
+    "at": [
+     -170,
+     30
+    ],
+    "interior": "int_clinic",
+    "kind": "shop",
+    "shop": "clinic"
+   },
+   {
+    "id": "poi_market",
+    "name": "Kiln Row Market",
+    "at": [
+     -220,
+     100
+    ],
+    "interior": "int_market",
+    "kind": "shop",
+    "shop": "market"
+   },
+   {
+    "id": "poi_ruths_alley",
+    "name": "Alley behind Ruth's",
+    "at": [
+     -192,
+     72
+    ],
+    "kind": "place",
+    "exterior": true
+   }
+  ]
+ },
+ "ashfall_docks": {
+  "name": "Ashfall Docks",
+  "center": [
+   -220,
+   -230
+  ],
+  "size": [
+   300,
+   220
+  ],
+  "block": 60,
+  "road_w": 12,
+  "blurb": "Cranes, containers, gulls. The Syndicate counts every crate twice.",
+  "heights": [
+   6,
+   14
+  ],
+  "palette": {
+   "metal_corrugated": 0.5,
+   "concrete": 0.35,
+   "brick_grey": 0.15
   },
-  "ashfall_docks": {
-    "name": "Ashfall Docks", "center": [-220, -230], "size": [300, 220],
-    "block": 60, "road_w": 12,
-    "blurb": "Cranes, containers, gulls. The Syndicate counts every crate twice.",
-    "heights": [6, 14], "palette": {"metal_corrugated": 0.5, "concrete": 0.35, "brick_grey": 0.15},
-    "signs": 0.25, "neon": false, "trees": 0.05, "lamp": [255, 179, 71],
-    "ped_density": 0.35, "traffic_density": 0.6,
-    "music": "music_explore_docks",
-    "landmarks": [
-      {"type": "crane", "at": [-300, -330]}, {"type": "crane", "at": [-180, -330]},
-      {"type": "containers", "at": [-260, -260]}, {"type": "lighthouse", "at": [-90, -350]}
-    ],
-    "pois": [
-      {"id": "poi_berth7", "name": "Berth 7 Office", "at": [-280, -200], "interior": "int_berth7", "kind": "faction", "faction": "crew"},
-      {"id": "poi_haulage", "name": "Voss Haulage Yard", "at": [-160, -180], "interior": "int_haulage", "kind": "place"},
-      {"id": "poi_warehouse12", "name": "Warehouse 12", "at": [-240, -290], "interior": "int_warehouse", "kind": "place"},
-      {"id": "poi_quay", "name": "Old Quay", "at": [-200, -345], "kind": "view"}
+  "signs": 0.25,
+  "neon": false,
+  "trees": 0.05,
+  "lamp": [
+   255,
+   179,
+   71
+  ],
+  "ped_density": 0.35,
+  "traffic_density": 0.6,
+  "music": "music_explore_docks",
+  "landmarks": [
+   {
+    "type": "crane",
+    "at": [
+     -300,
+     -330
     ]
+   },
+   {
+    "type": "crane",
+    "at": [
+     -180,
+     -330
+    ]
+   },
+   {
+    "type": "containers",
+    "at": [
+     -260,
+     -260
+    ]
+   },
+   {
+    "type": "lighthouse",
+    "at": [
+     -90,
+     -350
+    ]
+   }
+  ],
+  "pois": [
+   {
+    "id": "poi_berth7",
+    "name": "Berth 7 Office",
+    "at": [
+     -280,
+     -200
+    ],
+    "interior": "int_berth7",
+    "kind": "faction",
+    "faction": "crew"
+   },
+   {
+    "id": "poi_haulage",
+    "name": "Voss Haulage Yard",
+    "at": [
+     -160,
+     -180
+    ],
+    "interior": "int_haulage",
+    "kind": "place"
+   },
+   {
+    "id": "poi_warehouse12",
+    "name": "Warehouse 12",
+    "at": [
+     -240,
+     -290
+    ],
+    "interior": "int_warehouse",
+    "kind": "place"
+   },
+   {
+    "id": "poi_quay",
+    "name": "Old Quay",
+    "at": [
+     -200,
+     -345
+    ],
+    "kind": "view"
+   }
+  ]
+ },
+ "the_furnace": {
+  "name": "The Furnace",
+  "center": [
+   60,
+   -150
+  ],
+  "size": [
+   260,
+   220
+  ],
+  "block": 52,
+  "road_w": 12,
+  "blurb": "Glass towers over old smoke. Halcyon owns the sky; Crowe owns the rest.",
+  "heights": [
+   24,
+   78
+  ],
+  "palette": {
+   "glass": 0.4,
+   "concrete": 0.4,
+   "metal_panel": 0.2
   },
-  "the_furnace": {
-    "name": "The Furnace", "center": [60, -150], "size": [260, 220],
-    "block": 52, "road_w": 12,
-    "blurb": "Glass towers over old smoke. Halcyon owns the sky; Crowe owns the rest.",
-    "heights": [24, 78], "palette": {"glass": 0.4, "concrete": 0.4, "metal_panel": 0.2},
-    "signs": 0.6, "neon": true, "trees": 0.2, "lamp": [220, 220, 235],
-    "ped_density": 1.0, "traffic_density": 1.0,
-    "music": "music_explore_furnace",
-    "landmarks": [
-      {"type": "tower", "at": [60, -190], "name": "Halcyon Tower", "h": 96},
-      {"type": "plaza", "at": [60, -110], "name": "Founders Plaza"}
+  "signs": 0.6,
+  "neon": true,
+  "trees": 0.2,
+  "lamp": [
+   220,
+   220,
+   235
+  ],
+  "ped_density": 1.0,
+  "traffic_density": 1.0,
+  "music": "music_explore_furnace",
+  "landmarks": [
+   {
+    "type": "tower",
+    "at": [
+     60,
+     -190
     ],
-    "pois": [
-      {"id": "poi_halcyon_tower", "name": "Halcyon Tower Lobby", "at": [60, -175], "interior": "int_lobby", "kind": "faction", "faction": "corp"},
-      {"id": "poi_precinct", "name": "CCPD 4th Precinct", "at": [110, -120], "interior": "int_precinct", "kind": "law"},
-      {"id": "poi_crowe_office", "name": "Crowe Credit Co.", "at": [20, -120], "interior": "int_crowe", "kind": "place"},
-      {"id": "poi_pawn", "name": "Pawn 24H", "at": [100, -180], "interior": "int_pawn", "kind": "shop", "shop": "pawn"}
-    ]
+    "name": "Halcyon Tower",
+    "h": 96
+   },
+   {
+    "type": "plaza",
+    "at": [
+     60,
+     -110
+    ],
+    "name": "Founders Plaza"
+   }
+  ],
+  "pois": [
+   {
+    "id": "poi_halcyon_tower",
+    "name": "Halcyon Tower Lobby",
+    "at": [
+     60,
+     -175
+    ],
+    "interior": "int_lobby",
+    "kind": "faction",
+    "faction": "corp"
+   },
+   {
+    "id": "poi_precinct",
+    "name": "CCPD 4th Precinct",
+    "at": [
+     110,
+     -120
+    ],
+    "interior": "int_precinct",
+    "kind": "law"
+   },
+   {
+    "id": "poi_crowe_office",
+    "name": "Crowe Credit Co.",
+    "at": [
+     20,
+     -120
+    ],
+    "interior": "int_crowe",
+    "kind": "place"
+   },
+   {
+    "id": "poi_pawn",
+    "name": "Pawn 24H",
+    "at": [
+     100,
+     -180
+    ],
+    "interior": "int_pawn",
+    "kind": "shop",
+    "shop": "pawn"
+   },
+   {
+    "id": "poi_plaza",
+    "name": "Furnace Plaza",
+    "at": [
+     60,
+     -140
+    ],
+    "kind": "place",
+    "exterior": true
+   }
+  ]
+ },
+ "neon_mile": {
+  "name": "Neon Mile",
+  "center": [
+   40,
+   110
+  ],
+  "size": [
+   240,
+   200
+  ],
+  "block": 44,
+  "road_w": 11,
+  "blurb": "Signs argue in six colors. Nothing here closes, including eyes.",
+  "heights": [
+   12,
+   30
+  ],
+  "palette": {
+   "stucco": 0.4,
+   "brick_grey": 0.3,
+   "glass": 0.3
   },
-  "neon_mile": {
-    "name": "Neon Mile", "center": [40, 110], "size": [240, 200],
-    "block": 44, "road_w": 11,
-    "blurb": "Signs argue in six colors. Nothing here closes, including eyes.",
-    "heights": [12, 30], "palette": {"stucco": 0.4, "brick_grey": 0.3, "glass": 0.3},
-    "signs": 1.0, "neon": true, "trees": 0.25, "lamp": [255, 120, 180],
-    "ped_density": 1.2, "traffic_density": 0.8,
-    "music": "music_explore_neon",
-    "landmarks": [
-      {"type": "arch", "at": [40, 30], "name": "Bravado Arch"}
+  "signs": 1.0,
+  "neon": true,
+  "trees": 0.25,
+  "lamp": [
+   255,
+   120,
+   180
+  ],
+  "ped_density": 1.2,
+  "traffic_density": 0.8,
+  "music": "music_explore_neon",
+  "landmarks": [
+   {
+    "type": "arch",
+    "at": [
+     40,
+     30
     ],
-    "pois": [
-      {"id": "poi_noir_lounge", "name": "Noir Lounge", "at": [10, 90], "interior": "int_lounge", "kind": "place"},
-      {"id": "poi_bravado", "name": "Club Bravado", "at": [70, 130], "interior": "int_club", "kind": "place"},
-      {"id": "poi_casino", "name": "Lucky Seven", "at": [40, 170], "interior": "int_casino", "kind": "activity", "activity": "gamble"},
-      {"id": "poi_noodle_row", "name": "Noodle Row", "at": [80, 80], "kind": "place"}
-    ]
+    "name": "Bravado Arch"
+   }
+  ],
+  "pois": [
+   {
+    "id": "poi_noir_lounge",
+    "name": "Noir Lounge",
+    "at": [
+     10,
+     90
+    ],
+    "interior": "int_lounge",
+    "kind": "place"
+   },
+   {
+    "id": "poi_bravado",
+    "name": "Club Bravado",
+    "at": [
+     70,
+     130
+    ],
+    "interior": "int_club",
+    "kind": "place"
+   },
+   {
+    "id": "poi_casino",
+    "name": "Lucky Seven",
+    "at": [
+     40,
+     170
+    ],
+    "interior": "int_casino",
+    "kind": "activity",
+    "activity": "gamble"
+   },
+   {
+    "id": "poi_noodle_row",
+    "name": "Noodle Row",
+    "at": [
+     80,
+     80
+    ],
+    "kind": "place"
+   }
+  ]
+ },
+ "slagworks": {
+  "name": "Slagworks",
+  "center": [
+   340,
+   -220
+  ],
+  "size": [
+   260,
+   220
+  ],
+  "block": 56,
+  "road_w": 12,
+  "blurb": "Refinery glare and rust. The city's furnace room; the city's bad memory.",
+  "heights": [
+   7,
+   16
+  ],
+  "palette": {
+   "metal_rusted": 0.45,
+   "metal_corrugated": 0.35,
+   "concrete": 0.2
   },
-  "slagworks": {
-    "name": "Slagworks", "center": [340, -220], "size": [260, 220],
-    "block": 56, "road_w": 12,
-    "blurb": "Refinery glare and rust. The city's furnace room; the city's bad memory.",
-    "heights": [7, 16], "palette": {"metal_rusted": 0.45, "metal_corrugated": 0.35, "concrete": 0.2},
-    "signs": 0.3, "neon": false, "trees": 0.05, "lamp": [255, 150, 60],
-    "ped_density": 0.4, "traffic_density": 0.7,
-    "music": "music_explore_slag",
-    "landmarks": [
-      {"type": "refinery", "at": [400, -290], "name": "Cinder Refinery"},
-      {"type": "slagheap", "at": [300, -300]}
+  "signs": 0.3,
+  "neon": false,
+  "trees": 0.05,
+  "lamp": [
+   255,
+   150,
+   60
+  ],
+  "ped_density": 0.4,
+  "traffic_density": 0.7,
+  "music": "music_explore_slag",
+  "landmarks": [
+   {
+    "type": "refinery",
+    "at": [
+     400,
+     -290
     ],
-    "pois": [
-      {"id": "poi_shelter", "name": "Bishop's Shelter", "at": [300, -180], "interior": "int_shelter", "kind": "place"},
-      {"id": "poi_gunsmith", "name": "Mags Gunsmith", "at": [360, -180], "interior": "int_gunsmith", "kind": "shop", "shop": "gunsmith"},
-      {"id": "poi_garage", "name": "Dex's Garage", "at": [380, -240], "interior": "int_garage", "kind": "shop", "shop": "motors"},
-      {"id": "poi_yard4", "name": "Yard 4 Fight Ring", "at": [330, -260], "interior": "int_fightclub", "kind": "activity", "activity": "fightclub"}
+    "name": "Cinder Refinery"
+   },
+   {
+    "type": "slagheap",
+    "at": [
+     300,
+     -300
     ]
+   }
+  ],
+  "pois": [
+   {
+    "id": "poi_shelter",
+    "name": "Bishop's Shelter",
+    "at": [
+     300,
+     -180
+    ],
+    "interior": "int_shelter",
+    "kind": "place"
+   },
+   {
+    "id": "poi_gunsmith",
+    "name": "Mags Gunsmith",
+    "at": [
+     360,
+     -180
+    ],
+    "interior": "int_gunsmith",
+    "kind": "shop",
+    "shop": "gunsmith"
+   },
+   {
+    "id": "poi_garage",
+    "name": "Dex's Garage",
+    "at": [
+     380,
+     -240
+    ],
+    "interior": "int_garage",
+    "kind": "shop",
+    "shop": "motors"
+   },
+   {
+    "id": "poi_yard4",
+    "name": "Yard 4 Fight Ring",
+    "at": [
+     330,
+     -260
+    ],
+    "interior": "int_fightclub",
+    "kind": "activity",
+    "activity": "fightclub"
+   },
+   {
+    "id": "poi_refinery_gate",
+    "name": "Vale Refinery Gate",
+    "at": [
+     330,
+     -210
+    ],
+    "kind": "place",
+    "exterior": true
+   }
+  ]
+ },
+ "crown_heights": {
+  "name": "Crown Heights",
+  "center": [
+   360,
+   110
+  ],
+  "size": [
+   240,
+   200
+  ],
+  "block": 58,
+  "road_w": 10,
+  "blurb": "Above the smoke line. Hedges, gates, and people who never look down.",
+  "heights": [
+   8,
+   16
+  ],
+  "palette": {
+   "stucco": 0.6,
+   "brick_grey": 0.25,
+   "concrete": 0.15
   },
-  "crown_heights": {
-    "name": "Crown Heights", "center": [360, 110], "size": [240, 200],
-    "block": 58, "road_w": 10,
-    "blurb": "Above the smoke line. Hedges, gates, and people who never look down.",
-    "heights": [8, 16], "palette": {"stucco": 0.6, "brick_grey": 0.25, "concrete": 0.15},
-    "signs": 0.15, "neon": false, "trees": 1.0, "lamp": [240, 230, 210],
-    "ped_density": 0.45, "traffic_density": 0.5,
-    "music": "music_explore_heights",
-    "landmarks": [
-      {"type": "dome", "at": [420, 60], "name": "Heights Observatory"},
-      {"type": "manor", "at": [400, 150], "name": "Halcyon Estate"}
+  "signs": 0.15,
+  "neon": false,
+  "trees": 1.0,
+  "lamp": [
+   240,
+   230,
+   210
+  ],
+  "ped_density": 0.45,
+  "traffic_density": 0.5,
+  "music": "music_explore_heights",
+  "landmarks": [
+   {
+    "type": "dome",
+    "at": [
+     420,
+     60
     ],
-    "pois": [
-      {"id": "poi_overlook", "name": "Smoke Line Overlook", "at": [300, 60], "kind": "view"},
-      {"id": "poi_country_club", "name": "Crown Club", "at": [380, 90], "kind": "place"},
-      {"id": "poi_observatory", "name": "Observatory", "at": [420, 60], "kind": "view"}
-    ]
-  }
+    "name": "Heights Observatory"
+   },
+   {
+    "type": "manor",
+    "at": [
+     400,
+     150
+    ],
+    "name": "Halcyon Estate"
+   }
+  ],
+  "pois": [
+   {
+    "id": "poi_overlook",
+    "name": "Smoke Line Overlook",
+    "at": [
+     300,
+     60
+    ],
+    "kind": "view"
+   },
+   {
+    "id": "poi_country_club",
+    "name": "Crown Club",
+    "at": [
+     380,
+     90
+    ],
+    "kind": "place"
+   },
+   {
+    "id": "poi_observatory",
+    "name": "Observatory",
+    "at": [
+     420,
+     60
+    ],
+    "kind": "view"
+   }
+  ]
+ }
 }
