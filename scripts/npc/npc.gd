@@ -454,6 +454,7 @@ func react(event: String, from: Vector3) -> void:
 				if event == "ally_down":
 					_stagger_t = 0.4          # flinch: a friend just dropped
 					combat.combat_timer = 6.0
+					AudioDirector.sfx_at("shout_warn", global_position + Vector3(0, 1.5, 0), 0.4)
 				if state != State.COMBAT and hostile:
 					state = State.COMBAT
 	match event:

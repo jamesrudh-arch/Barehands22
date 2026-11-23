@@ -70,6 +70,8 @@ func _process(delta: float) -> void:
 	_police_tick(delta, player)
 	# radio
 	_radio_tick(player)
+	# adaptive music (explore -> tension -> combat -> chase)
+	_music_tick(delta, player)
 	# events
 	_event_cd -= delta
 	if _event_cd <= 0.0:
@@ -548,6 +550,49 @@ func push_news(text: String) -> void:
 		if WorldState.news_queue.size() > 24:
 			WorldState.news_queue.pop_front()
 	Bus.radio_news.emit(text)
+
+
+var _music_state := "explore"
+var _music_hold := 0.0
+
+
+func _music_tick(delta: float, player: Node) -> void:
+	if Game.state != Game.State.PLAYING:
+		return
+	# player-chosen radio wins while riding
+	if player.in_vehicle != null and WorldState.phone_station != "":
+		_music_hold = 3.0
+		return
+	_music_hold = maxf(0.0, _music_hold - delta)
+	var combat_now: bool = player.combat != null and player.combat.in_combat
+	var police_near := false
+	for u in police_units:
+		if is_instance_valid(u["node"]) and (u["node"].global_position - player.global_position).length() < 60.0:
+			police_near = true
+			break
+	var target := "explore"
+	if WorldState.wanted >= 3 or (WorldState.wanted > 0 and police_near):
+		target = "chase"
+	elif combat_now:
+		target = "combat"
+	elif WorldState.wanted > 0:
+		target = "tension"
+	elif player.combat != null and player.combat.combat_timer > 0.0:
+		target = "combat"          # just finished a fight: hold the sting
+	if target != _music_state:
+		if target == "explore" and _music_hold > 0.0:
+			return
+		_music_state = target
+		match target:
+			"chase":
+				AudioDirector.play_music("music_chase", 0.8)
+			"combat":
+				AudioDirector.play_music("music_combat", 0.7)
+			"tension":
+				AudioDirector.play_music("music_tension", 1.2)
+			"explore":
+				var d := Db.district(Game.current_district)
+				AudioDirector.play_music(d.get("music", "music_explore_kiln"), 2.5)
 
 
 func _on_district(did: String) -> void:
