@@ -1,6 +1,16 @@
 # DEVELOPMENT STATE — LEVERAGE
 _Last updated: session 3 (systems integration + first engine-verified gameplay)_
 
+## OVERHAUL STATE (2026-11-23)
+
+Wave 1 (visual rebuild) DONE: humanoid v2, vehicle v2, city v2, cinematic
+grade — details and next waves in docs/VISUAL_QUALITY_REPORT.md §3.
+Device fixes same day: menu scene roots were 0x0 Controls (blank/broken UI on
+XOGOT), stretch aspect now keep_height for portrait hosts. Harness gates the
+new geometry budgets (check 50). NEXT ACTION: wave 2 = phone life (incoming
+calls, threads), then W3 map/GPS routes, W4 enemy tactics, W5 mission
+playability pass, W6 animation depth, W7 audio identity, W8 device passes.
+
 ## Stage
 VERTICAL GAMEPLAY COMPLETE IN SANDBOX — the full city boots headless in the
 real Godot 4.7.2 binary; player, combat, vehicles, traffic, crowds, police,

@@ -87,6 +87,17 @@ func _find_ground(p: Vector3) -> Vector3:
 
 func _setup_environment() -> void:
 	env = load("res://assets/env/default_env.tres").duplicate()
+	# cinematic grade: filmic response, grounded contrast, controlled neon glow
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.adjustment_enabled = true
+	env.adjustment_brightness = 1.0
+	env.adjustment_contrast = 1.07
+	env.adjustment_saturation = 0.93
+	env.glow_enabled = true
+	env.glow_intensity = 0.32
+	env.glow_strength = 0.9
+	env.glow_bloom = 0.02
+	env.glow_hdr_threshold = 1.05
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)

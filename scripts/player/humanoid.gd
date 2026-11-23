@@ -153,6 +153,46 @@ class Parts:
 			var j := (i + 1) % seg
 			dd["idx"].append_array([c2, ring2[i], ring2[j]])
 
+	func loft(slot: int, rings: Array, bone: int, bone2 := -1, w2 := 0.0, seg := 12, caps := true) -> void:
+		# rings: Array of [center:Vector3, rx:float, rz:float] — elliptical cross-sections,
+		# bottom-to-top. Smooth tapered anatomy / clothing shells.
+		var dd: Dictionary = data[slot]
+		var rows: int = rings.size()
+		if rows < 2:
+			return
+		var base: int = dd["v"].size()
+		for r in rows:
+			var c: Vector3 = rings[r][0]
+			var rx: float = rings[r][1]
+			var rz: float = rings[r][2]
+			for i in seg:
+				var a := TAU * i / seg
+				var nrm := Vector3(cos(a) * rz, 0.0, sin(a) * rx).normalized()
+				_push(dd, c + Vector3(cos(a) * rx, 0.0, sin(a) * rz), nrm,
+					Vector2(float(i) / seg, float(r) / max(1, rows - 1)), bone, bone2, w2)
+		for r in rows - 1:
+			for i in seg:
+				var j := (i + 1) % seg
+				var i0 := base + r * seg + i
+				var i1 := base + r * seg + j
+				var i2 := base + (r + 1) * seg + j
+				var i3 := base + (r + 1) * seg + i
+				dd["idx"].append_array([i0, i1, i2, i0, i2, i3])
+		if caps:
+			var c0: Vector3 = rings[0][0]
+			var b0: int = dd["v"].size()
+			_push(dd, c0, Vector3(0, -1, 0), Vector2(0.5, 0.0), bone, bone2, w2)
+			for i in seg:
+				var j := (i + 1) % seg
+				dd["idx"].append_array([b0, base + j, base + i])
+			var cn: Vector3 = rings[rows - 1][0]
+			var b1: int = dd["v"].size()
+			_push(dd, cn, Vector3(0, 1, 0), Vector2(0.5, 1.0), bone, bone2, w2)
+			var top := base + (rows - 1) * seg
+			for i in seg:
+				var j := (i + 1) % seg
+				dd["idx"].append_array([b1, top + i, top + j])
+
 	func sphere(slot: int, center: Vector3, r: Vector3, bone: int, bone2 := -1, w2 := 0.0, seg := 10, rings := 6) -> void:
 		var dd: Dictionary = data[slot]
 		var grid := []
@@ -263,46 +303,123 @@ static func _col(a) -> Color:
 
 
 static func build_body(parts: Parts, params: Dictionary) -> void:
+	# ---- v2 anatomy: lofted torso/limbs, layered clothing, sculpted head ----
 	var build: float = params.get("build", 0.5)      # 0 thin .. 1 heavy
-	var bw := 0.86 + build * 0.42                      # width multiplier
+	var bw := 0.88 + build * 0.36                    # girth multiplier (subtler)
 	var fem: bool = params.get("fem", false)
-	var hipw := (1.02 if fem else 0.94) * bw
-	var shw := (0.94 if fem else 1.06) * bw
-	# torso
-	parts.box(M_TOP, rest_global("hips") + Vector3(0, 0.04, 0), Vector3(0.30 * hipw, 0.20, 0.19 * bw), BI["hips"], BI["spine"], 0.35)
-	parts.box(M_TOP, rest_global("spine") + Vector3(0, 0.06, 0), Vector3(0.28 * bw, 0.18, 0.18 * bw), BI["spine"], BI["chest"], 0.3)
-	parts.box(M_TOP, rest_global("chest") + Vector3(0, 0.07, 0), Vector3(0.34 * shw, 0.22, 0.20 * bw), BI["chest"])
-	parts.cyl(M_SKIN, rest_global("neck"), rest_global("neck") + Vector3(0, 0.10, 0.01), 0.055, 0.05, BI["neck"])
-	# head: skull box + face plate + nose + ears
+	var hipw := (1.06 if fem else 0.96) * bw
+	var shw := (0.92 if fem else 1.08) * bw
+	var hips := rest_global("hips")
+	var spine := rest_global("spine")
+	var chest := rest_global("chest")
+	var neck := rest_global("neck")
+	# torso: pelvis loft + chest loft (overlapping at waist)
+	parts.loft(M_TOP, [
+		[hips + Vector3(0, -0.06, 0), 0.150 * hipw, 0.100 * bw],
+		[hips + Vector3(0, 0.02, 0), 0.156 * hipw, 0.104 * bw],
+		[spine + Vector3(0, -0.02, 0), 0.138 * bw, 0.096 * bw],
+		[spine + Vector3(0, 0.06, 0), 0.148 * bw, 0.100 * bw]],
+		BI["hips"], BI["spine"], 0.35)
+	parts.loft(M_TOP, [
+		[spine + Vector3(0, 0.04, 0), 0.146 * bw, 0.099 * bw],
+		[chest + Vector3(0, 0.00, 0), 0.168 * shw, 0.106 * bw],
+		[chest + Vector3(0, 0.08, 0), 0.176 * shw, 0.102 * bw],
+		[chest + Vector3(0, 0.14, 0), 0.128 * shw, 0.088 * bw]],
+		BI["spine"], BI["chest"], 0.3)
+	# jacket shell: offset loft waist->shoulders + collar + hem (real cloth layer)
+	parts.loft(M_TOP, [
+		[hips + Vector3(0, 0.00, 0), 0.170 * hipw, 0.115 * bw],
+		[spine + Vector3(0, 0.00, 0), 0.156 * bw, 0.108 * bw],
+		[chest + Vector3(0, 0.02, 0), 0.180 * shw, 0.116 * bw],
+		[chest + Vector3(0, 0.10, 0), 0.186 * shw, 0.112 * bw],
+		[chest + Vector3(0, 0.15, 0), 0.140 * shw, 0.096 * bw]],
+		BI["spine"], BI["chest"], 0.25)
+	parts.loft(M_TOP, [
+		[neck + Vector3(0, -0.02, -0.01), 0.085, 0.075],
+		[neck + Vector3(0, 0.045, -0.012), 0.078, 0.070]], BI["chest"], -1, 0.0, 10)
+	# glutes + shoulder caps
+	for sgn in [1.0, -1.0]:
+		parts.sphere(M_LEGS, hips + Vector3(sgn * 0.075 * hipw, -0.04, -0.055),
+			Vector3(0.085, 0.085, 0.075), BI["hips"])
+	# neck + head
+	parts.cyl(M_SKIN, neck + Vector3(0, -0.02, 0), neck + Vector3(0, 0.10, 0.012), 0.058, 0.050, BI["neck"], -1, 0.0, 10)
 	var hg := rest_global("head")
-	parts.box(M_SKIN, hg + Vector3(0, 0.09, -0.01), Vector3(0.155, 0.20, 0.185), BI["head"])
-	parts.quad(M_FACE, hg + Vector3(-0.0775, 0.02, 0.083), hg + Vector3(0.0775, 0.02, 0.083),
-		hg + Vector3(0.0775, 0.175, 0.083), hg + Vector3(-0.0775, 0.175, 0.083), Vector3(0, 0, 1), BI["head"])
-	parts.box(M_SKIN, hg + Vector3(0, 0.085, 0.095), Vector3(0.03, 0.05, 0.03), BI["head"])
-	parts.box(M_SKIN, hg + Vector3(0.082, 0.10, 0.0), Vector3(0.02, 0.05, 0.04), BI["head"])
-	parts.box(M_SKIN, hg + Vector3(-0.082, 0.10, 0.0), Vector3(0.02, 0.05, 0.04), BI["head"])
+	parts.sphere(M_SKIN, hg + Vector3(0, 0.105, -0.012), Vector3(0.096, 0.112, 0.104), BI["head"], -1, 0.0, 14, 10)
+	# jaw + chin + cheeks + brow + nose + lips + ears
+	parts.loft(M_SKIN, [
+		[hg + Vector3(0, 0.045, 0.010), 0.078, 0.088],
+		[hg + Vector3(0, 0.010, 0.022), 0.062, 0.072],
+		[hg + Vector3(0, -0.015, 0.030), 0.040, 0.050]], BI["head"], -1, 0.0, 10)
+	parts.sphere(M_SKIN, hg + Vector3(0, 0.005, 0.070), Vector3(0.026, 0.022, 0.024), BI["head"])
+	for sgn in [1.0, -1.0]:
+		parts.sphere(M_SKIN, hg + Vector3(sgn * 0.052, 0.075, 0.045), Vector3(0.022, 0.024, 0.022), BI["head"])
+		parts.sphere(M_SKIN, hg + Vector3(sgn * 0.096, 0.095, -0.005), Vector3(0.012, 0.034, 0.024), BI["head"])
+	parts.box(M_SKIN, hg + Vector3(0, 0.128, 0.078), Vector3(0.052, 0.016, 0.018), BI["head"])
+	parts.loft(M_SKIN, [
+		[hg + Vector3(0, 0.105, 0.088), 0.014, 0.014],
+		[hg + Vector3(0, 0.070, 0.100), 0.017, 0.020]], BI["head"], -1, 0.0, 8)
+	parts.box(M_SKIN, hg + Vector3(0, 0.052, 0.086), Vector3(0.026, 0.010, 0.012), BI["head"])
+	# face texture plate, just proud of the skull front
+	parts.quad(M_FACE, hg + Vector3(-0.070, 0.045, 0.0965), hg + Vector3(0.070, 0.045, 0.0965),
+		hg + Vector3(0.070, 0.170, 0.090), hg + Vector3(-0.070, 0.170, 0.090), Vector3(0, 0, 1), BI["head"])
 	_hair(parts, params, hg)
-	# arms
+	# arms: deltoid, tapered upper/sleeve, elbow, forearm, cuff, hand w/ thumb+fingers
 	for side in ["l", "r"]:
 		var sgn := 1.0 if side == "l" else -1.0
-		var sh := rest_global("shoulder_" + side) + Vector3(sgn * 0.10 * shw, 0, 0)
-		parts.sphere(M_TOP, sh, Vector3(0.075, 0.075, 0.075), BI["upper_arm_" + side])
-		var ua := rest_global("upper_arm_" + side)
-		var fa := ua + rest_global("forearm_" + side).normalized() * 0.0
-		parts.cyl(M_TOP, ua, ua + Vector3(0, -0.27, 0.01), 0.052 * bw, 0.044, BI["upper_arm_" + side])
-		var fao := ua + Vector3(0, -0.27, 0.01)
-		parts.cyl(M_SKIN, fao, fao + Vector3(0, -0.25, 0.01), 0.042, 0.033, BI["forearm_" + side])
-		var ha := fao + Vector3(0, -0.25, 0.01)
-		parts.box(M_SKIN, ha + Vector3(0, -0.05, 0.01), Vector3(0.045, 0.11, 0.09), BI["hand_" + side])
-	# legs
+		var ua := rest_global("upper_arm_" + side) + Vector3(sgn * 0.015, 0, 0)
+		parts.sphere(M_TOP, ua + Vector3(0, 0.01, 0), Vector3(0.070 * shw, 0.070, 0.070), BI["upper_arm_" + side])
+		var elbow := ua + Vector3(0, -0.275, 0.012)
+		parts.loft(M_SKIN, [
+			[ua + Vector3(0, -0.01, 0), 0.052 * bw, 0.052 * bw],
+			[ua + Vector3(0, -0.14, 0.006), 0.048 * bw, 0.048 * bw],
+			[elbow, 0.041, 0.041]], BI["upper_arm_" + side])
+		parts.loft(M_TOP, [
+			[ua + Vector3(0, 0.005, 0), 0.064 * shw, 0.064 * shw],
+			[ua + Vector3(0, -0.16, 0.007), 0.058 * bw, 0.058 * bw],
+			[elbow + Vector3(0, 0.02, 0), 0.052, 0.052]], BI["upper_arm_" + side])
+		parts.sphere(M_SKIN, elbow, Vector3(0.040, 0.042, 0.040), BI["forearm_" + side])
+		var wrist := elbow + Vector3(0, -0.255, 0.010)
+		parts.loft(M_SKIN, [
+			[elbow + Vector3(0, -0.02, 0), 0.043, 0.043],
+			[elbow + Vector3(0, -0.10, 0.004), 0.045, 0.043],
+			[wrist, 0.029, 0.026]], BI["forearm_" + side])
+		parts.loft(M_TOP, [
+			[elbow + Vector3(0, -0.01, 0), 0.054, 0.054],
+			[wrist + Vector3(0, 0.035, 0), 0.044, 0.042],
+			[wrist + Vector3(0, 0.005, 0), 0.040, 0.038]], BI["forearm_" + side])
+		# hand: palm + fingers + thumb
+		var hd := wrist + Vector3(0, -0.045, 0.004)
+		parts.loft(M_SKIN, [
+			[wrist + Vector3(0, -0.005, 0), 0.030, 0.042],
+			[hd, 0.032, 0.046],
+			[hd + Vector3(0, -0.055, 0.004), 0.026, 0.040]], BI["hand_" + side], -1, 0.0, 8)
+		parts.box(M_SKIN, hd + Vector3(sgn * 0.030, -0.020, 0.012), Vector3(0.016, 0.045, 0.020), BI["hand_" + side])
+	# legs: tapered thigh + pants shell, knee, calf w/ bulge, ankle, shoe w/ sole+toe
 	for side in ["l", "r"]:
 		var th := rest_global("thigh_" + side)
-		parts.cyl(M_LEGS, th, th + Vector3(0, -0.44, 0), 0.085 * bw * hipw, 0.062, BI["thigh_" + side])
-		var sh2 := th + Vector3(0, -0.44, 0)
-		parts.cyl(M_LEGS, sh2, sh2 + Vector3(0, -0.43, 0), 0.058, 0.040, BI["shin_" + side])
-		var ft := sh2 + Vector3(0, -0.43, 0)
-		parts.box(M_SHOE, ft + Vector3(0, -0.035, 0.05), Vector3(0.09, 0.08, 0.26), BI["foot_" + side])
-		parts.box(M_SHOE, ft + Vector3(0, -0.055, 0.16), Vector3(0.085, 0.05, 0.10), BI["toe_" + side])
+		var knee := th + Vector3(0, -0.44, 0.01)
+		parts.loft(M_LEGS, [
+			[th + Vector3(0, 0.02, 0), 0.092 * bw * hipw, 0.096 * bw * hipw],
+			[th + Vector3(0, -0.20, 0.005), 0.080 * bw, 0.084 * bw],
+			[knee, 0.060, 0.062]], BI["thigh_" + side])
+		parts.loft(M_LEGS, [
+			[th + Vector3(0, 0.03, 0), 0.100 * bw * hipw, 0.104 * bw * hipw],
+			[th + Vector3(0, -0.24, 0.006), 0.088 * bw, 0.092 * bw],
+			[knee + Vector3(0, 0.03, 0), 0.070, 0.072]], BI["thigh_" + side])
+		parts.sphere(M_LEGS, knee, Vector3(0.058, 0.060, 0.058), BI["shin_" + side])
+		var ankle := knee + Vector3(0, -0.435, -0.01)
+		parts.loft(M_LEGS, [
+			[knee + Vector3(0, -0.03, 0), 0.058, 0.060],
+			[knee + Vector3(0, -0.13, 0.006), 0.060, 0.062],
+			[knee + Vector3(0, -0.28, 0.0), 0.042, 0.044],
+			[ankle, 0.032, 0.034]], BI["shin_" + side])
+		var ft := ankle + Vector3(0, -0.03, 0.01)
+		parts.box(M_SHOE, ft + Vector3(0, -0.028, 0.045), Vector3(0.088, 0.036, 0.255), BI["foot_" + side])
+		parts.loft(M_SHOE, [
+			[ft + Vector3(0, 0.01, 0.02), 0.052, 0.090],
+			[ft + Vector3(0, 0.055, 0.01), 0.056, 0.100],
+			[ft + Vector3(0, 0.085, -0.02), 0.048, 0.078]], BI["foot_" + side], -1, 0.0, 10)
+		parts.sphere(M_SHOE, ft + Vector3(0, -0.015, 0.155), Vector3(0.046, 0.030, 0.052), BI["toe_" + side])
 
 
 static func _hair(parts: Parts, params: Dictionary, hg: Vector3) -> void:

@@ -183,6 +183,34 @@ func _process(_delta: float) -> bool:
 				_check(nsc is Control and nsc.anchor_right == 1.0 and nsc.anchor_bottom == 1.0,
 					"scene root fills window: " + sp)
 				nsc.queue_free()
+		50:
+			# visual-overhaul regression gates: geometry detail budgets
+			var hum = Humanoid.build({"height": 1.83, "build": 0.55, "skin": 2, "hair": "crop",
+				"hair_color": 0, "face": 4, "outfit_colors": {}})
+			var hmi: MeshInstance3D = hum.get_node("Skeleton3D").get_child(0)
+			var htris := 0
+			for si in hmi.mesh.get_surface_count():
+				var a: Array = hmi.mesh.surface_get_arrays(si)
+				htris += a[Mesh.ARRAY_INDEX].size() / 3
+			_check(htris >= 1500 and htris <= 14000, "humanoid v2 triangle budget (%d)" % htris)
+			hum.queue_free()
+			var veh = VehicleBody3D.new()
+			veh.set_script(load("res://scripts/vehicle/vehicle.gd"))
+			root.add_child(veh)
+			veh.setup("sedan")
+			var vtris := 0
+			var vmi: MeshInstance3D = veh.get_node_or_null("BodyMI") if veh.get_node_or_null("BodyMI") else null
+			if vmi == null:
+				for ch in veh.get_children():
+					if ch is MeshInstance3D and ch.mesh is ArrayMesh:
+						vmi = ch
+						break
+			if vmi and vmi.mesh:
+				for si in vmi.mesh.get_surface_count():
+					var va: Array = vmi.mesh.surface_get_arrays(si)
+					vtris += va[Mesh.ARRAY_INDEX].size() / 3
+			_check(vtris >= 200 and vtris <= 9000, "vehicle v2 triangle budget (%d)" % vtris)
+			veh.queue_free()
 		48:
 			# gunfire hitscan
 			if _player:
