@@ -120,7 +120,7 @@ func _show_home() -> void:
 		["MAP", "i_map", _show_map], ["JOBS", "i_objective", _show_jobs], ["RADIO", "i_radio", _show_radio],
 		["CALLS", "i_call", _show_contacts], ["BAG", "i_gun", _show_inventory], ["MSGS", "i_msg", _show_msgs],
 		["SAVE", "i_phone", _show_save], ["SETUP", "i_armor", _show_settings], ["NEWS", "i_star", _show_news],
-		["STATS", "i_star", _show_stats],
+		["STATS", "i_star", _show_stats], ["GARAGE", "i_map", _show_garage],
 	]
 	for a in apps:
 		var b := Button.new()
@@ -735,6 +735,96 @@ func _stat_line(title: String, sub: String) -> VBoxContainer:
 	l2.add_theme_color_override("font_color", Color(0.8, 0.78, 0.7))
 	v.add_child(l2)
 	return v
+
+
+func _player() -> Node:
+	var g := get_tree().get_nodes_in_group("player")
+	return g[0] if g.size() else null
+
+
+func _show_garage() -> void:
+	_clear()
+	_app = "garage"
+	_header("GARAGE")
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.offset_top = 54
+	vb.add_theme_constant_override("separation", 8)
+	_screen.add_child(vb)
+	# keep the car you're sitting in — insurance on a hot ride
+	var p := _player()
+	if p != null and p.in_vehicle != null:
+		var vid: String = str(p.in_vehicle.vehicle_def_id)
+		var kb := Button.new()
+		if vid in WorldState.owned_vehicles:
+			kb.text = "You're driving your own %s." % Db.vehicle(vid).get("name", vid)
+			kb.disabled = true
+		else:
+			kb.text = "KEEP THIS RIDE — %s (files it as yours)" % Db.vehicle(vid).get("name", vid)
+			kb.pressed.connect(_keep_ride)
+		kb.custom_minimum_size = Vector2(0, 54)
+		kb.add_theme_font_size_override("font_size", 14)
+		vb.add_child(kb)
+	if WorldState.owned_vehicles.is_empty():
+		var l := Label.new()
+		l.text = "No rides on file. Buy one at a garage, or keep what you're driving."
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_color_override("font_color", Color(0.7, 0.68, 0.62))
+		vb.add_child(l)
+		return
+	var fee := Label.new()
+	fee.text = "Delivery to your curb: 40 cr."
+	fee.add_theme_font_size_override("font_size", 13)
+	fee.add_theme_color_override("font_color", Color(0.7, 0.68, 0.62))
+	vb.add_child(fee)
+	for vid in WorldState.owned_vehicles:
+		var v: Dictionary = Db.vehicle(str(vid))
+		var b := Button.new()
+		b.text = "SUMMON — %s" % v.get("name", vid)
+		b.custom_minimum_size = Vector2(0, 54)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 15)
+		b.pressed.connect(_summon_vehicle.bind(str(vid)))
+		vb.add_child(b)
+
+
+func _keep_ride() -> void:
+	var p := _player()
+	if p == null or p.in_vehicle == null:
+		return
+	var vid: String = str(p.in_vehicle.vehicle_def_id)
+	if vid not in WorldState.owned_vehicles:
+		WorldState.owned_vehicles.append(vid)
+	AudioDirector.sfx("ui_confirm", 0.3)
+	Bus.notification.emit("%s filed to your garage." % Db.vehicle(vid).get("name", vid), "mission")
+	close_phone()
+
+
+func _summon_vehicle(vid: String) -> void:
+	if WorldState.money < 40:
+		Bus.notification.emit("Delivery fee is 40 cr. You're short.", "error")
+		AudioDirector.sfx("ui_error", 0.2)
+		return
+	var p := _player()
+	if p == null:
+		return
+	# nearest point on any traffic lane — "your curb"
+	var best: Vector3 = p.global_position + Vector3(5, 0, 0)
+	var bd := 1e9
+	for lane in WorldGen.lanes:
+		for pt in lane:
+			var d: float = (pt - p.global_position).length()
+			if d < bd:
+				bd = d
+				best = pt
+	var city := get_node_or_null("/root/CityLife")
+	if city == null or not city.has_method("give_player_vehicle"):
+		return
+	WorldState.add_money(-40)
+	city.give_player_vehicle(vid, best + Vector3(0, 0.5, 0))
+	AudioDirector.sfx("veh_start", 0.4)
+	Bus.notification.emit("%s delivered to the nearest curb." % Db.vehicle(vid).get("name", vid), "mission")
+	close_phone()
 
 
 func _show_news() -> void:

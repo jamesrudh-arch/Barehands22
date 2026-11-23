@@ -1,5 +1,27 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 14: the garage
+
+- **GARAGE phone app**: any ride you're sitting in can be filed as yours
+  ("KEEP THIS RIDE") — the insurance trick every career thief needs.
+- Owned rides (kept, or bought at a garage) can be **summoned to the
+  nearest curb** anywhere in Cinder City for a 40 cr delivery fee —
+  parked on a traffic lane point, ready to go.
+- `owned_vehicles` was already serialized; saves (v4) carry the garage
+  across sessions.
+- Harness **86 checks, 0 fails, 0 script errors**.
+
+## 2026-11-23 — DEPTH WAVE 13: the city hears everything
+
+- **Sound propagation**: gunfire/explosions/homicides ripple outward —
+  every civilian within earshot panics even with zero line of sight
+  (explosions 45 m, shots 34 m). Combatants and hostiles don't spook at
+  their own war.
+- Weather muffles the ripple: rain cuts the radius ×0.7, fog ×0.85 —
+  storm nights are the professional's friend (and the suppressor still
+  prevents the crime signal entirely).
+- Harness **85 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 12: weather plays the game
 
 - **Fog** cuts NPC sightlines to 15 m (rain 21 m) and slows suspicion
