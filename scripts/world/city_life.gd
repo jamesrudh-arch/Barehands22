@@ -21,6 +21,10 @@ var _last_crime_pos := Vector3.ZERO
 var _last_crime_t := 0.0
 var _roadblock_nodes: Array = []
 var _arrest_t := 0.0
+var _last_seen := Vector3.ZERO
+var _seen_t := 999.0
+var _search_center := Vector3.ZERO
+var _search_i := 0
 var _amb_district := ""
 
 const PED_SCENE := "res://scripts/npc/npc.gd"
@@ -279,12 +283,29 @@ func _police_tick(delta: float, player: Node) -> void:
 			_clear_roadblocks()
 		return
 	var pp: Vector3 = player.global_position
+	# --- perception: units only know where they last SAW you ---
+	_seen_t += delta
+	var can_see := _police_see_player(player)
+	if can_see:
+		_last_seen = pp
+		_seen_t = 0.0
+	var target_pos := pp
+	if _seen_t > 3.5:
+		# lost sight: converge on last known position, then search around it
+		if _search_center == Vector3.ZERO or (_last_seen - _search_center).length() > 30.0:
+			_search_center = _last_seen
+			_search_i = 0
+		var ring := 6.0 + float(_search_i % 5) * 5.0
+		var ang := float(_search_i) * 2.399   # golden-angle sweep
+		target_pos = _search_center + Vector3(cos(ang) * ring, 0, sin(ang) * ring)
 	for u in police_units.duplicate():
 		if not is_instance_valid(u["node"]):
 			police_units.erase(u)
 			continue
 		var n: Node3D = u["node"]
-		var to: Vector3 = pp - n.global_position
+		if _seen_t > 3.5 and fmod(_seen_t, 2.0) < delta:
+			_search_i += 1
+		var to: Vector3 = target_pos - n.global_position
 		var dist: float = to.length()
 		if u["kind"] == "car":
 			# drive toward player
@@ -294,16 +315,37 @@ func _police_tick(delta: float, player: Node) -> void:
 			n.engine_force = 60.0 * 22.0 if dist > 8.0 else 0.0
 			if n.has_method("_set_brake"):
 				n._set_brake(6.0 if dist < 8.0 else 1.0)
-			if dist < 4.5 and player.in_vehicle == null:
+			if dist < 4.5 and player.in_vehicle == null and (pp - n.global_position).length() < 6.0:
 				_try_arrest(delta, player, dist)
 		else:
 			if n.state != n.State.COMBAT and n.state != n.State.DEAD:
 				n.state = n.State.COMBAT
-			if dist < 2.0 and player.in_vehicle == null:
+			if dist < 2.0 and player.in_vehicle == null and (pp - n.global_position).length() < 2.6:
 				_try_arrest(delta, player, dist)
 	# roadblocks at 3+
 	if wanted >= 3 and _roadblock_nodes.is_empty():
 		_make_roadblock(pp)
+
+
+func _police_see_player(player: Node) -> bool:
+	# any unit within 55 m with unobstructed LOS keeps the chase honest
+	var space := player.get_world_3d().direct_space_state
+	for u in police_units:
+		if not is_instance_valid(u["node"]):
+			continue
+		var n: Node3D = u["node"]
+		var d := (player.global_position - n.global_position).length()
+		if d > 55.0:
+			continue
+		var from: Vector3 = n.global_position + Vector3(0, 1.4, 0)
+		var to: Vector3 = player.global_position + Vector3(0, 1.0, 0)
+		var q := PhysicsRayQueryParameters3D.create(from, to)
+		q.exclude = [n.get_rid(), player.get_rid()]
+		q.collision_mask = 1   # static world only — units never block each other
+		var hit := space.intersect_ray(q)
+		if hit.is_empty():
+			return true
+	return false
 
 
 func _try_arrest(delta: float, player: Node, dist: float) -> void:
