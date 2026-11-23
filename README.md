@@ -14,6 +14,7 @@ and everyone keeps score.
 | Document | Purpose |
 |---|---|
 | `docs/DEVELOPMENT_STATE.md` | Current stage, done/remaining, blockers, exact next action |
+| `docs/FINAL_REPORT.md` | Honest per-requirement delivery status |
 | `docs/MASTER_DESIGN.md` | Master game design document |
 | `docs/TECHNICAL_ARCHITECTURE.md` | Engine decisions, systems architecture, documented sources |
 | `docs/ART_DIRECTION.md` | Visual identity: palette, materials, lighting, camera, characters |

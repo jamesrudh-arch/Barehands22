@@ -1,0 +1,33 @@
+# LEVERAGE — Decision Log
+
+Format: decision → reason → **source/verification**. Engine facts were
+verified against the Godot 4.7.2 source tree built in-sandbox
+(`/tmp/godot-4.7.2-stable`) and the official XOGOT docs (xibbon/XogotDocs);
+web-fetched pages are cited by URL.
+
+| # | Decision | Reason | Source / verification |
+|---|---|---|---|
+| D-01 | Engine = Godot **4.7.2-stable**, renderer **Mobile** | Requirement; Mobile = Vulkan/RenderingDevice path with reduced feature set, documented as the right choice for phones | Godot manual "3D renderers" (via XogotDocs mirror): Forward+ desktop / **Mobile** for Vulkan mobile / Compatibility fallback; `project.godot renderer/rendering_method="mobile"` |
+| D-02 | Target **XOGOT on iPhone**: GDScript only, no C#, no compiled addons/GDExtension | XOGOT on iPad/iPhone supports GDScript only (C#/Swift on the Mac version, which is not the target) | Official XOGOT docs (github.com/xibbon/XogotDocs): language & addon constraints; docs manual mirrors Godot **4.5** era → API usage restricted to 4.5-documented features |
+| D-03 | Build engine from source in sandbox | Official release-assets CDN unreachable from sandbox (SSL_ERROR_SYSCALL); codeload.github.com is permitted | api.github.com releases/latest → 4.7.2-stable; codeload tarball built headless (x11=no wayland=no, 45 min, 2 CPU) |
+| D-04 | **Forge all assets procedurally**; decline Kenney/Quaternius/PolyPizza/OpenGameArt/AssetLib | Distinctive-art-direction requirement + trivially clean licensing + XOGOT no-addons; store kits read as "asset flip" | KenneyNL org surveyed via GitHub API (CC0 kits exist); decision recorded; generators in `tools/forge/` |
+| D-05 | Textures ≤1024², power-of-two, tileable | Mobile GPUs typically cap 4096²; non-POT repeating textures can fail on mobile | Godot manual "3D rendering limitations" (XogotDocs mirror) |
+| D-06 | City = **merged per-district ArrayMesh chunks + trimesh StaticBody collision**, generated at load; no scene-instanced buildings | ~90 draw calls for the whole city; mobile-safe; one-shot build ~1–2 s desktop | Implemented `world_gen.gd`; verified headless (75+ bodies, raycast ground checks) |
+| D-07 | Characters = one **procedural skinned-mesh builder** (22 bones) + procedural AnimDriver; no glTF, no animation clips | Zero external assets; identical quality for player/16 named/25 peds/enemies; anim memory ≈ 0 | `humanoid.gd` + `anim_driver.gd`; harness-verified skeleton build |
+| D-08 | Trimesh winding discipline: collision faces must point at the colliding side (CCW seen from front) | Godot concave collision is **single-sided** — first build had inverted ground-plate top faces → everything fell through the world | Verified in-engine via raycast probes (flow6–flow10); fixed `Acc.box()` top quad; regression covered by harness + on_floor check |
+| D-09 | Touch controls inject into the **same input actions** via `Input.action_press/release`; stick writes `player.touch_move` | "One authoritative input map" requirement; impossible for touch and map to desync | hud.gd `_press/_release`; CONTROLS.md |
+| D-10 | Autoload UI singletons (DialogueUI/ShopUI/PhoneUI/Cutscene) instead of per-scene UI | Menus/phone must survive scene swaps; mission system needs global access; layers ordered 30–60 | project.godot autoload order; layer constants in scripts |
+| D-11 | Missions as **data-driven stage machines** (16 verbs) instead of bespoke mission scripts | 20 missions × hand-scripting is unmaintainable; JSON stages + effects + checks keep content editable and save-friendly | `data/missions.json` + `mission_manager.gd`; harness stage-advance test |
+| D-12 | Interiors generated **on demand, one at a time**; return position stored | Memory ceiling on phones; 19 room defs cover all enterable POIs | `interior_manager.gd`; harness enter/exit test |
+| D-13 | Police = dispatch table over wanted level (cars at ≥1 w/ siren, foot units, roadblocks ≥3, arrest-on-contact timer, heat decay 25 s/star out of sight) | Pursuit drama without navigation meshes; lane-free straight pursuit is readable on mobile | `city_life._police_tick`; harness wanted-set + unit spawn |
+| D-14 | Audio: WAV loops via `AudioStreamWAV.loop_mode` (no `.loop` property); OGG via `.loop`; 5 custom buses; pooled players; vox = bark blips not VO | API correctness verified against 4.7 source (`scene/resources/audio_stream_wav.h`); full VO out of scope honestly | audio_director.gd; ASSET_REGISTER §4–6 |
+| D-15 | Vehicles: `VehicleBody3D` + `VehicleWheel3D`; **no `brake_force` on the body** — per-wheel `brake`; props are `use_as_steering`/`use_as_traction` | 4.x API reality (verified in `scene/3d/physics/vehicle_body_3d.h`); earlier code assumed 3.x-style names | vehicle.gd `_set_brake()` |
+| D-16 | Crash detection by velocity-delta, not `total_applied_impulse` | That field doesn't exist on PhysicsDirectBodyState3D in 4.x | vehicle.gd `_physics_process` |
+| D-17 | `ParticleProcessMaterial` has **no `emission_texture`** — particles use textured billboard QuadMesh draw passes | Verified at runtime (invalid assignment error); fixed Effects.burst | effects.gd |
+| D-18 | `current_scene` must be set explicitly when adding scenes manually (`root.add_child`) — done in `Game.goto_scene` and the harness | Godot only auto-sets `current_scene` on `change_scene*`; every `_scene()` helper returned null otherwise | game.gd; harness init |
+| D-19 | Typed-inference discipline: never `var x := <Variant expr>`; annotate or wrap | GDScript `INFERENCE_ON_VARIANT` is **error-by-default** (gdscript_warning.h) — 40+ hard parse errors otherwise | verified in engine source; sweep applied repo-wide |
+| D-20 | Save = 3 JSON slots in `user://` + settings separate; autosave slot 0 on mission complete | XOGOT sandbox storage maps to iOS app container `user://`; JSON survives app updates | save_system.gd; harness roundtrip |
+| D-21 | Fonts: DejaVu (Bitstream Vera/Arev license) copied from official repo tarball | Permissive, redistributable, screen-legible; license recorded verbatim | codeload dejavu-fonts; LICENSES.md §3 |
+| D-22 | Headless harness as **SceneTree script** (`-s res://tests/harness.gd`) | Boots real autoloads + real city without a display; assertions + exit code = CI-able | tests/harness.gd (21 checks) |
+| D-23 | News/radio feed generated from player deeds (missions, wanted) into `WorldState.news_queue` | "City keeps score" pillar; phone NEWS app must never be a static list | city_life.push_news; phone_ui NEWS |
+| D-24 | No navmesh for NPCs/traffic/police | Lane loops + straight-line pursuit + obstacle raycasts are sufficient at mobile sim budgets; navmesh baking at runtime is costly | city_life/npc controllers |

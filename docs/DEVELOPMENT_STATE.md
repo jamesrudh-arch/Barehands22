@@ -110,6 +110,15 @@ visual check, 60 FPS validation.
 ## Exact next action
 1. Extend harness: full m01 playthrough (talk→choice→alley→cutscene→ruth),
    arrest/busted path, death/respawn path, race + escort side jobs.
+2. Close K-01 (traffic reads lights via CityLife.traffic_green_at),
+   K-11 (touch jump button), K-12 (news placeholder substitution).
+3. Device pass per docs/VERIFICATION_GUIDE.md §B–§E when an iPhone/XOGOT
+   environment is available; flip DEVICE-ONLY rows with evidence.
+
+## Delivery
+- Branch pushed to origin (github.com/jamesrudh-arch/Barehands22,
+  arena/9f25f474-barehands22). Docs suite complete (15 docs incl.
+  FINAL_REPORT). Harness 21/21, flow probes green, 0 script errors.
 5. Write remaining docs: DESIGN, TECH_ARCHITECTURE, ART_DIRECTION,
    WORLD_CHARACTERS, CONTROL_MAP, ASSET_REGISTER (+licenses),
    REQUIREMENTS_TRACEABILITY, DECISION_LOG, CHANGELOG, TEST_REPORTS,
