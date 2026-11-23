@@ -484,6 +484,7 @@ func _process(_delta: float) -> bool:
 			_check('"fire_barrel"' in clsrc2 and "burning" in clsrc2, "barrel fires burn for real (90s)")
 			var shsrc3 := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
 			_check("repair_full" in vhsrc and "_build_repair" in shsrc3, "Dex's Garage repairs hulls + tires")
+			_check("Hitman" in clsrc2 or "Cleaner" in clsrc2, "deep grudge escalates to armed hit squads")
 			var vsrc4 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
 			_check("_burn_t" in vsrc4 and '"burning"' in vsrc4, "wrecks burn for 45s with flickering light")
 			_check("_fire_tick" in clsrc2 and 'ambient("fire"' in clsrc2, "fire ambience crackles near burning things")

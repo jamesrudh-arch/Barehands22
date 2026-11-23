@@ -12,6 +12,18 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 31: the grudge grows teeth
+
+- **Faction escalation**: past **−70 rep**, collections stop being
+  collectors. A hit squad arrives — one extra body, armed (Syndicate
+  Hitmen with pistols / Halcyon Cleaners with SMGs and armor), and the
+  warning changes tone: *"They aren't collecting anymore. They're
+  finishing."*
+- The −35 collector tier is unchanged; the ladder now reads: cold
+  shoulder (−25 shops) → grudge (−60 refused service) → collection
+  (−35 ambushes) → **the hit (−70)**.
+- Harness **122 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 29: fire you can hear, and watch die
 
 - **Wrecks burn for 45 s**: flickering firelight (sine + noise jitter),
