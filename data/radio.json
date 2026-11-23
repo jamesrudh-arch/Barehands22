@@ -1,14 +1,66 @@
 {
-  "stations": [
-    {"id": "noir_fm", "name": "Noir FM 91.3", "tag": "after-hours Cinder City",
-     "tracks": ["music_explore_kiln", "music_explore_docks", "music_explore_heights", "music_menu"],
-     "news": true},
-    {"id": "static_88", "name": "Static 88", "tag": "the sound of the slag line",
-     "tracks": ["music_explore_neon", "music_explore_slag", "music_combat"],
-     "news": false},
-    {"id": "furnace_classic", "name": "Furnace Classic", "tag": "corporate-approved calm",
-     "tracks": ["music_explore_furnace", "music_ending"],
-     "news": true},
-    {"id": "off", "name": "Radio Off", "tag": "", "tracks": [], "news": false}
-  ]
+ "stations": [
+  {
+   "id": "noir_fm",
+   "name": "Noir FM 91.3",
+   "tag": "after-hours Cinder City",
+   "tracks": [
+    "music_explore_kiln",
+    "music_explore_docks",
+    "music_explore_heights",
+    "music_menu"
+   ],
+   "news": true,
+   "chatter": [
+    "You're riding the night with Noir FM. Keep it smooth.",
+    "That rain on your windshield? That's just the city crying. Next track.",
+    "Word on the wire: Halcyon's shipping something big through Berth 7. We don't ask questions. Neither should you.",
+    "A shout-out to the cab drivers still working the Furnace. You know who you are.",
+    "Syndicate money, family money \u2014 it all spends the same at Ruth's. Back to the music."
+   ]
+  },
+  {
+   "id": "static_88",
+   "name": "Static 88",
+   "tag": "the sound of the slag line",
+   "tracks": [
+    "music_explore_neon",
+    "music_explore_slag",
+    "music_combat"
+   ],
+   "news": false,
+   "chatter": [
+    "STATIC 88 \u2014 all distortion, no apologies.",
+    "Eyewitnesses say a body turned up near the docks last night. Cops are calling it 'an ongoing matter.' We call it Tuesday.",
+    "Reminder: the city wants you calm, medicated, and indoors. Stay loud.",
+    "Caller on line three says she saw drones over Crown Heights. Caller, we believe you.",
+    "Halcyon Pharmaceuticals would like to remind you that compliance is a lifestyle."
+   ]
+  },
+  {
+   "id": "furnace_classic",
+   "name": "Furnace Classic",
+   "tag": "corporate-approved calm",
+   "tracks": [
+    "music_explore_furnace",
+    "music_ending"
+   ],
+   "news": true,
+   "chatter": [
+    "Furnace Classic \u2014 the songs your grandfather welded to.",
+    "Union Local 9 wants you to know: the picket line at the Slagworks is open, and so is the coffee.",
+    "This next one's for everybody working second shift. You built this city. Don't let them forget it.",
+    "Weather's turning. Keep your windows up and your radio warm.",
+    "And that was a deep cut from '32. They don't press them like that anymore."
+   ]
+  },
+  {
+   "id": "off",
+   "name": "Radio Off",
+   "tag": "",
+   "tracks": [],
+   "news": false,
+   "chatter": []
+  }
+ ]
 }

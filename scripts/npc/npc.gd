@@ -560,9 +560,22 @@ func _gawk(dt: float) -> void:
 
 
 func _combat_state(dt: float, player: Node) -> void:
-	if player == null:
+	# TARGET SELECTION: nearest of player vs rival-faction NPC. Cinder City's
+	# crews hate each other as much as they hate you — turf clashes erupt
+	# and you can watch, join, or loot the aftermath.
+	var target: Node3D = player
+	if hostile and faction_tag != "":
+		var rival := _find_rival(26.0)
+		if rival != null:
+			var dp := 1e9
+			if player != null:
+				dp = (player.global_position - global_position).length()
+			var dr: float = (rival.global_position - global_position).length()
+			if dr < dp * 0.85:
+				target = rival
+	if target == null:
 		return
-	var to_p: Vector3 = (player.global_position - global_position)
+	var to_p: Vector3 = (target.global_position - global_position)
 	var dist := to_p.length()
 	combat.in_combat = true
 	combat.combat_timer = 5.0
@@ -613,8 +626,12 @@ func _combat_state(dt: float, player: Node) -> void:
 			Effects.burst(muz, "muzzle", dir)
 			Effects.tracer(muz, muz + dir * 40.0)
 			# hit chance by distance
-			if randf() < clampf(0.55 - dist * 0.008 + Difficulty.accuracy_bonus(), 0.08, 0.72) and player.combat:
-				player.combat.take_hit(float(w.get("dmg", 18)) * Difficulty.enemy_dmg_mult(), -dir, "bullet", self)
+			var tc = target.get("combat")
+			if randf() < clampf(0.55 - dist * 0.008 + Difficulty.accuracy_bonus(), 0.08, 0.72) and tc:
+				var dmg_out: float = float(w.get("dmg", 18))
+				if target == player:
+					dmg_out *= Difficulty.enemy_dmg_mult()
+				tc.take_hit(dmg_out, -dir, "bullet", self)
 			_attack_cd = 60.0 / float(w.get("rpm", 300)) * randf_range(2.5, 4.5) * (1.35 - Difficulty.aggression() * 0.35)
 			anim.aiming = true
 			_mag -= 1
@@ -673,6 +690,25 @@ func _attack_pool() -> Array:
 			return ["hook", "jab", "kick_r", "heavy", "kick_high", "cross"]
 		_:
 			return ["jab", "cross", "hook", "kick_r", "heavy"]
+
+
+func _find_rival(radius: float) -> Node3D:
+	var best: Node3D = null
+	var bd := radius
+	for n in get_tree().get_nodes_in_group("enemy"):
+		if n == self or not is_instance_valid(n):
+			continue
+		var nf: String = str(n.get("faction_tag"))
+		if nf == "" or nf == faction_tag:
+			continue
+		var c = n.get("combat")
+		if c == null or c.dead:
+			continue
+		var d: float = (n.global_position - global_position).length()
+		if d < bd:
+			bd = d
+			best = n
+	return best
 
 
 func _nearby_allies(radius: float) -> Array:
@@ -804,6 +840,8 @@ func _on_died(_cause: String) -> void:
 	remove_from_group("enemy")
 	add_to_group("corpse")
 	if hostile:
+		_drop_loot()
+	if hostile:
 		WorldState.stats["kos"] += 1
 		for n in get_tree().get_nodes_in_group("enemy"):
 			if n != self and is_instance_valid(n) and (n.global_position - global_position).length() < 30.0:
@@ -813,6 +851,31 @@ func _on_died(_cause: String) -> void:
 		for n in get_tree().get_nodes_in_group("humanoid"):
 			if n != self and (n.global_position - global_position).length() < 25.0:
 				n.react("gunshots", global_position)
+
+
+func _drop_loot() -> void:
+	## Pockets pay: cash always, ammo for whatever they carried, sometimes
+	## a bandage. Loot spawns as a pickup so looting is a deliberate beat —
+	## and lingering over bodies is how you get caught with them.
+	var cash := int(randf_range(8.0, 26.0) * (1.0 + Difficulty.threat()))
+	WorldState.add_money(cash)
+	AudioDirector.sfx_at("cash", global_position + Vector3(0, 0.4, 0), 0.5)
+	var ammo_map := {"gun_pistol": "ammo_9mm", "gun_smg": "ammo_smg", "gun_shotgun": "ammo_12g", "gun_rifle": "ammo_308"}
+	if ammo_map.has(_weapon_id) and randf() < 0.65:
+		_spawn_loot_pickup(ammo_map[_weapon_id])
+	elif _weapon_id.begins_with("melee_") and randf() < 0.3:
+		_spawn_loot_pickup(_weapon_id)
+	if randf() < 0.22:
+		_spawn_loot_pickup("bandage")
+
+
+func _spawn_loot_pickup(item: String) -> void:
+	var p := Area3D.new()
+	p.set_script(load("res://scripts/missions/pickup.gd"))
+	p.set_meta("item", item)
+	p.set_meta("mode", "world")
+	get_parent().add_child(p)
+	p.global_position = global_position + Vector3(randf_range(-0.6, 0.6), 0.2, randf_range(-0.6, 0.6))
 
 
 func save_state() -> Dictionary:

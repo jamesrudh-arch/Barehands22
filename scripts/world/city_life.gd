@@ -76,7 +76,7 @@ func _process(delta: float) -> void:
 	# faction grudges
 	_grudge_tick(delta, player)
 	# radio
-	_radio_tick(player)
+	_radio_tick(delta, player)
 	# adaptive music (explore -> tension -> combat -> chase)
 	_music_tick(delta, player)
 	# events
@@ -391,6 +391,12 @@ func _police_tick(delta: float, player: Node) -> void:
 				n._set_brake(6.0 if dist < 8.0 else 1.0)
 			if dist < 4.5 and player.in_vehicle == null and (pp - n.global_position).length() < 6.0:
 				_try_arrest(delta, player, dist)
+			# drive-by: at 2+ stars cruisers open fire through the glass —
+			# hits the player's vehicle when driving, the player on foot
+			u["shoot_t"] = float(u.get("shoot_t", randf_range(0.5, 2.0))) - delta
+			if wanted >= 2 and dist < 34.0 and dist > 6.0 and u["shoot_t"] <= 0.0:
+				u["shoot_t"] = randf_range(1.6, 3.2) * (1.35 - Difficulty.aggression() * 0.35)
+				_cruiser_shot(n, player, dist)
 		else:
 			if n.state != n.State.COMBAT and n.state != n.State.DEAD:
 				n.state = n.State.COMBAT
@@ -522,6 +528,31 @@ func _police_see_player(player: Node) -> bool:
 	return false
 
 
+func _cruiser_shot(n: Node3D, player: Node, dist: float) -> void:
+	## Patrol-car drive-by: tracer, report, and a hit roll that damages
+	## whatever the player is riding (or the player). Accuracy scales with
+	## Difficulty; moving targets are genuinely hard to hit.
+	var muz: Vector3 = n.global_position + Vector3(0.55, 1.1, 0)
+	var tgt: Vector3 = player.global_position + Vector3(0, 1.0, 0)
+	if player.in_vehicle != null:
+		tgt = player.in_vehicle.global_position + Vector3(0, 0.7, 0)
+	var dir: Vector3 = (tgt - muz).normalized()
+	dir += Vector3(randf_range(-0.05, 0.05), randf_range(-0.02, 0.04), randf_range(-0.05, 0.05))
+	AudioDirector.sfx_at("shot_pistol", muz, 0.8)
+	Effects.burst(muz, "muzzle", dir)
+	Effects.tracer(muz, muz + dir * 45.0)
+	var speed_penalty: float = 0.0
+	if player.in_vehicle != null and player.in_vehicle.has_method("speed_kmh"):
+		speed_penalty = clampf(player.in_vehicle.speed_kmh() / 160.0, 0.0, 0.35)
+	var chance := clampf(0.42 - dist * 0.006 + Difficulty.accuracy_bonus() - speed_penalty, 0.05, 0.6)
+	if randf() < chance:
+		if player.in_vehicle != null and player.in_vehicle.has_method("damage"):
+			player.in_vehicle.damage(float(randf_range(4.0, 9.0)))
+			Effects.burst(tgt, "spark", dir)
+		elif player.combat:
+			player.combat.take_hit(float(randf_range(7.0, 13.0)) * Difficulty.enemy_dmg_mult(), dir, "bullet", n)
+
+
 func _try_arrest(delta: float, player: Node, dist: float) -> void:
 	if player.in_vehicle != null:
 		return
@@ -592,6 +623,17 @@ func _spawn_event(pp: Vector3) -> void:
 				f.setup_enemy("thug_light", pos, "none")
 				f.hostile = false
 				event_actors.append(f)
+		"turf_war":
+			# rival factions tear into each other; the player is a spectator
+			# (or an opportunist) until someone spots them
+			for side in [["thug_light", "thug_grappler", "crew"], ["halcyon_guard", "crowe_gunman", "corp"]]:
+				for i in 2:
+					var n := CharacterBody3D.new()
+					n.set_script(load(PED_SCENE))
+					get_parent().add_child(n)
+					n.setup_enemy(side[i % 2], pos + Vector3(randf_range(-5, 5), 0, randf_range(-5, 5)) + (Vector3(6, 0, 0) if side[2] == "corp" else Vector3(-6, 0, 0)), side[2])
+					event_actors.append(n)
+			Bus.notification.emit("Turf war brewing — Syndicate and Halcyon are squaring up.", "warn")
 		"traffic_collision":
 			for i in 2:
 				var v := VehicleBody3D.new()
@@ -710,9 +752,10 @@ func _traffic_light_cycle() -> void:
 
 # --------------------------------------------------------------- ambience ---
 var _radio_track_i := 0
+var _chatter_t := 45.0
 
 
-func _radio_tick(player: Node) -> void:
+func _radio_tick(delta: float, player: Node) -> void:
 	var st := _station()
 	if st.is_empty():
 		return
@@ -723,6 +766,14 @@ func _radio_tick(player: Node) -> void:
 		return
 	if AudioDirector.current_music != tracks[_radio_track_i % tracks.size()]:
 		AudioDirector.play_music(tracks[_radio_track_i % tracks.size()], 1.2)
+	# DJ chatter between songs — the city has a voice even at 3 a.m.
+	var ch: Array = st.get("chatter", [])
+	if not ch.is_empty():
+		_chatter_t -= delta
+		if _chatter_t <= 0.0:
+			_chatter_t = randf_range(75.0, 150.0)
+			AudioDirector.sfx("radio_static", 0.12)
+			Bus.notification.emit("[RADIO] %s" % ch[randi() % ch.size()], "info")
 
 
 func _station() -> Dictionary:
