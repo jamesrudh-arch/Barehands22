@@ -20,6 +20,7 @@ var news_templates: Array = []
 var barks: Dictionary = {}          # context -> list of lines
 var collectibles: Dictionary = {}
 var combat_styles: Dictionary = {}
+var properties: Dictionary = {}      # id -> buyable business def
 
 const FILES := {
 	"items": "res://data/items.json",
@@ -36,6 +37,7 @@ const FILES := {
 	"shops": "res://data/shops.json",
 	"radio": "res://data/radio.json",
 	"combat_styles": "res://data/combat_styles.json",
+	"properties": "res://data/properties.json",
 }
 
 

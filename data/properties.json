@@ -1,0 +1,44 @@
+{
+ "noodle_stall": {
+  "name": "Aunt Adaeze's Noodle Stall",
+  "district": "kiln_row",
+  "price": 1500,
+  "income": 90,
+  "blurb": "She keeps cooking. You keep earning. Best deal in Kiln Row."
+ },
+ "cab_share": {
+  "name": "Cab Medallion Share",
+  "district": "neon_mile",
+  "price": 2200,
+  "income": 130,
+  "blurb": "One cab, one night shift, one cut of every meter in the Mile."
+ },
+ "laundromat": {
+  "name": "Slag Spin Laundromat",
+  "district": "slagworks",
+  "price": 3000,
+  "income": 175,
+  "blurb": "Half the money that comes out is clean. Allegedly."
+ },
+ "radio_slot": {
+  "name": "Static 88 Ad Slot",
+  "district": "the_furnace",
+  "price": 1200,
+  "income": 65,
+  "blurb": "You own 3 a.m. airtime. Sell it to anyone desperate enough."
+ },
+ "dock_lease": {
+  "name": "Berth 7 Sublease",
+  "district": "ashfall_docks",
+  "price": 4200,
+  "income": 240,
+  "blurb": "Dex watches the crates. Don't ask what's in them."
+ },
+ "lounge_room": {
+  "name": "Noir Lounge Back Room",
+  "district": "neon_mile",
+  "price": 6000,
+  "income": 340,
+  "blurb": "A cut of the card tables. Julian pretends not to notice."
+ }
+}
