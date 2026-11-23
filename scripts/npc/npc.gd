@@ -144,11 +144,11 @@ func setup_enemy(kind: String, pos: Vector3, faction: String) -> void:
 			_weapon_id = "gun_smg" if randf() < 0.4 else "melee_bat"
 			_style_id = "weapon"
 			_armor_visual()
-			combat.armor_prot = 30.0
+			combat.armor_prot = 0.30
 		"cop":
 			_weapon_id = "gun_pistol"
 			_style_id = "weapon"
-			combat.armor_prot = 20.0
+			combat.armor_prot = 0.20
 		_:
 			_style_id = ["brawler", "kickboxing", "drunken"][randi() % 3]
 	combat.set_style(_style_id)
