@@ -830,7 +830,8 @@
     "id": "race",
     "type": "race",
     "text": "Win the Quay Sprint.",
-    "track": "race_quay"
+    "track": "race_quay",
+    "pursuit": 2
    }
   ],
   "rewards": {
@@ -853,7 +854,8 @@
     "id": "race",
     "type": "race",
     "text": "Win the Furnace Loop.",
-    "track": "race_furnace"
+    "track": "race_furnace",
+    "pursuit": 3
    }
   ],
   "rewards": {
@@ -1049,7 +1051,8 @@
     "text": "Courier run across the Mile \u2014 beat the clock.",
     "from": "poi_noir_lounge",
     "to": "poi_casino",
-    "time": 100
+    "time": 100,
+    "pursuit": 2
    },
    {
     "id": "r3",
@@ -1061,6 +1064,45 @@
   "rewards": {
    "money": 650,
    "xp": 200
+  }
+ },
+ "side_bait": {
+  "title": "Bait Car",
+  "act": 9,
+  "giver": "dex",
+  "repeatable": true,
+  "district": "ashfall_docks",
+  "summary": "Dex needs the CCPD's attention somewhere else. Make noise, survive three stars, deliver the car to Berth 7 while every cruiser in Cinder chases you.",
+  "stages": [
+   {
+    "id": "b1",
+    "type": "goto",
+    "text": "Meet Dex at Berth 7.",
+    "poi": "poi_berth7"
+   },
+   {
+    "id": "b2",
+    "type": "drive_timed",
+    "text": "Take the bait car across the Docks under THREE stars. Survive 120 seconds.",
+    "from": "poi_berth7",
+    "to": "poi_warehouse12",
+    "time": 120,
+    "pursuit": 3
+   },
+   {
+    "id": "b3",
+    "type": "objective",
+    "text": "Shake the heat and get to Berth 7 clean.",
+    "check": "wanted<=1"
+   }
+  ],
+  "rewards": {
+   "money": 1100,
+   "xp": 300,
+   "faction": [
+    "crew",
+    5
+   ]
   }
  }
 }

@@ -1,5 +1,19 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 11: scripted chases
+
+- **Mission pursuits**: `drive_timed`/`race` stages accept a `pursuit`
+  star level — the job scripts the heat (cruisers, drive-bys, roadblocks,
+  PIT, spike strips all come from the existing pursuit stack). Borrowed
+  stars are given back at stage cleanup unless the player earned worse.
+- Quay Sprint now runs at 2 stars, Furnace Loop at 3, the High Road
+  courier run at 2.
+- **NEW SIDE JOB — "Bait Car"** (Dex, Ashfall Docks, repeatable): drive a
+  bait car Berth 7 → Warehouse 12 under THREE stars in 120 s, then shake
+  the heat to wanted ≤1. 1100 cr, crew +5, 300 XP.
+- Harness extended to **84 checks** (cinematics wiring, drive-bys, turf
+  wars, loot drops, siren-yielding traffic, scripted pursuits, side_bait).
+
 ## 2026-11-23 — DEPTH WAVE 10: fight-feel, living city, hotter pursuits
 
 - **Cinematics autoload** (`scripts/core/cinematics.gd`): micro time-scale
