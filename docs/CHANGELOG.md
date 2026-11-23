@@ -1,5 +1,15 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 20: a drawn gun clears the street
+
+- **Civilians panic at brandished weapons**: walk around on foot with a
+  gun out in the open and people within 22 m (with line of sight)
+  scream, scatter, and often call it in — no more strolling through the
+  Mile with a rifle like it's a handbag. Crouching doesn't hide an
+  out-and-out gun; holstered weapons and drive-bys from cars are
+  unaffected (the car IS the disguise).
+- Harness **96 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 19: drive-bys
 
 - **Lean out and work the trigger**: guns fire from cars (not bikes —

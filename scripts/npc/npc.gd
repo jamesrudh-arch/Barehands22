@@ -332,6 +332,15 @@ func _routine(dt: float, player: Node, dist: float) -> void:
 		elif combat.in_combat or (player.combat and player.combat.in_combat):
 			if randf() < 0.05:
 				_react_crime(player)
+	# A DRAWN GUN clears the street: civilians don't wait to find out what
+	# it's for. Screams, scatter, and a decent chance someone calls it in.
+	if player and not player.dead and hostile == false and dist < 22.0 \
+			and player.in_vehicle == null and player.weapons != null \
+			and player.weapons.weapon_id != "" and player.weapons.is_gun() \
+			and not player.get("crouch_held") and _los_clear(player):
+		if randf() < 2.2 * dt:
+			_bark("gunshots")
+			_react_crime(player)
 	if _wait_t > 0.0:
 		_wait_t -= dt
 		velocity = Vector3.ZERO
