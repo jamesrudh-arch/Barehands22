@@ -1,5 +1,13 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 26: the map learns to talk
+
+- **District heat bleeds onto the phone map**: angry neighborhoods glow
+  red (alpha scales with heat01) — plan routes around the heat you made.
+- **Owned businesses appear as teal `$` markers** at their district's
+  center — your portfolio, cartographed.
+- Harness **112 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 25: the coach learns the new verbs
 
 - Three new contextual tutorial steps: **lockpick** (fires the first

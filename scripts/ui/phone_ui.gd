@@ -235,6 +235,10 @@ func _draw_map() -> void:
 		var seen: bool = did in WorldState.visited_districts
 		if seen:
 			v.draw_rect(Rect2(p0, p1 - p0), Color(0.16, 0.15, 0.14), true)
+			# district heat bleeds onto the map: angry neighborhoods glow red
+			var heat01: float = WorldState.district_heat01(str(did))
+			if heat01 > 0.02:
+				v.draw_rect(Rect2(p0, p1 - p0), Color(0.9, 0.22, 0.16, 0.05 + heat01 * 0.24), true)
 			v.draw_rect(Rect2(p0, p1 - p0), Color(0.4, 0.36, 0.3), false, 1.0)
 			var d := Db.district(did)
 			v.draw_string(ThemeDB.fallback_font, p0 + Vector2(4, 14), d.get("name", did), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.65, 0.5))
@@ -253,6 +257,16 @@ func _draw_map() -> void:
 			pts.append(to_screen.call(Vector2(p.x, p.z)))
 		pts.append(pts[0])
 		v.draw_polyline(pts, Color(0.35, 0.33, 0.3), 1.5)
+	# owned businesses: your money on the map
+	for pid in WorldState.owned_properties:
+		var pr: Dictionary = Db.properties.get(str(pid), {})
+		var pdid: String = str(pr.get("district", ""))
+		if not WorldGen.district_bounds.has(pdid):
+			continue
+		var br: Rect2 = WorldGen.district_bounds[pdid]
+		var c0: Vector2 = to_screen.call(Vector2(br.position.x + br.size.x * 0.5, br.position.y + br.size.y * 0.5))
+		v.draw_rect(Rect2(c0 - Vector2(4, 4), Vector2(8, 8)), Color(0.23, 0.91, 0.69), true)
+		v.draw_string(ThemeDB.fallback_font, c0 + Vector2(7, 4), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.1, 0.35, 0.25))
 	# GPS route
 	if WorldState.gps_active:
 		var pl = Game.player

@@ -458,6 +458,7 @@ func _process(_delta: float) -> bool:
 			var tutsrc := FileAccess.get_file_as_string("res://scripts/ui/tutorial.gd")
 			_check('"lockpick"' in tutsrc and '"driveby"' in tutsrc and '"garage"' in tutsrc, "tutorial coaches the new verbs")
 			_check('tutorial_hint.emit("lockpick")' in plsrc4 and 'tutorial_hint.emit("garage")' in plsrc4 and 'tutorial_hint.emit("driveby")' in plsrc4, "new-verb hints fire from gameplay")
+			_check("district_heat01" in phsrc2 and "owned_properties" in phsrc2, "map shows district heat + owned businesses")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
