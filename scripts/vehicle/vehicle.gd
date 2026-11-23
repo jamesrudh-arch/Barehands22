@@ -10,6 +10,7 @@ var driver: Node = null          # player node when occupied
 var is_traffic: bool = false
 var is_police: bool = false
 var is_player_owned: bool = false   # mission rides, shop buys, garage summons
+var locked: bool = false            # parked civilian cars: pick or smash
 var parked: bool = true
 var color: Color = Color(0.3, 0.32, 0.36)
 

@@ -21,6 +21,8 @@ var crouch_held := false
 var sprint_held := false
 var lock_target: Node3D = null
 var in_vehicle: Node = null
+var _hotwire_t := 0.0
+var _hotwire_target: Node = null
 var _seat_offset := Vector3(0, 0.78, -0.1)
 var interact_target: Node = null
 var _look_delta := Vector2.ZERO
@@ -668,10 +670,13 @@ func _near_hostile() -> bool:
 # ------------------------------------------------------------- interaction --
 func _handle_interact(delta: float) -> void:
 	# vehicle entry (F) comes first — you can't hide a body from inside a car
+	if _hotwire_t > 0.0:
+		_hotwire_tick(delta)
+		return
 	if Input.is_action_just_pressed("vehicle_enter") and not in_vehicle:
 		var v0 := _find_vehicle()
 		if v0 != null:
-			enter_vehicle(v0)
+			_request_enter(v0)
 			return
 	# body hiding takes priority — the clock is always ticking on a corpse
 	var body := _find_body()
@@ -724,7 +729,42 @@ func _find_vehicle() -> Node:
 	return best
 
 
-func enter_vehicle(v: Node) -> void:
+func _request_enter(v: Node) -> void:
+	## Locked cars: pick it quiet (needs a lockpick, 2.2 s standing still)
+	## or smash the window (instant, LOUD, uglier crime). Owned rides and
+	## anything already open just... open.
+	if not bool(v.get("locked")):
+		enter_vehicle(v)
+		return
+	if WorldState.inventory.get("lockpick", 0) > 0:
+		_hotwire_target = v
+		_hotwire_t = 2.2
+		Bus.interaction_available.emit("Picking lock...")
+		AudioDirector.sfx("cloth_rustle", 0.3)
+	else:
+		AudioDirector.sfx_at("glass_break", v.global_position + Vector3(0, 0.9, 0))
+		v.locked = false
+		Bus.notification.emit("Window smashed. Subtle.", "warn")
+		enter_vehicle(v, true)
+
+
+func _hotwire_tick(delta: float) -> void:
+	_hotwire_t -= delta
+	var v := _hotwire_target
+	if v == null or not is_instance_valid(v) or (v.global_position - global_position).length() > 3.6:
+		_hotwire_t = 0.0
+		_hotwire_target = null
+		Bus.interaction_cleared.emit()
+		return
+	Bus.interaction_available.emit("Picking lock... %.1fs" % _hotwire_t)
+	if _hotwire_t <= 0.0:
+		_hotwire_target = null
+		v.locked = false
+		AudioDirector.sfx("veh_door_open", 0.4)
+		enter_vehicle(v)
+
+
+func enter_vehicle(v: Node, loud: bool = false) -> void:
 	in_vehicle = v
 	# bikes: the rider stays visible in a riding posture; cars: hidden inside
 	visible = v.vehicle_type == "bike"
@@ -736,6 +776,8 @@ func enter_vehicle(v: Node) -> void:
 	# hot-wiring somebody else's ride is a crime — owned rides are clean
 	if not bool(v.get("is_player_owned")):
 		var sev := 3 if bool(v.get("is_traffic")) else 2
+		if loud:
+			sev = mini(5, sev + 1)   # smashed glass finds witnesses itself
 		Bus.crime_committed.emit("theft", sev, global_position)
 		WorldState.stats["thefts"] = WorldState.stats.get("thefts", 0) + 1
 		if sev == 3:
