@@ -24,6 +24,8 @@ var _st_bar: ProgressBar
 var _ar_bar: ProgressBar
 var _money_lbl: Label
 var _stars_lbl: Label
+var _phone_lbl: Label
+var _phone_t := 0.0
 var _clock_lbl: Label
 var _district_lbl: Label
 var _objective_lbl: Label
@@ -78,6 +80,8 @@ func _ready() -> void:
 	Bus.vehicle_entered.connect(func(_t): _update_vehicle_ui(true))
 	Bus.vehicle_exited.connect(func(): _update_vehicle_ui(false))
 	Bus.game_state_changed.connect(_on_state)
+	CallManager.state_changed.connect(func(_s): _refresh_phone_badge())
+	CallManager.new_message.connect(func(_t): _refresh_phone_badge())
 
 
 func _on_state(s: StringName) -> void:
@@ -117,6 +121,22 @@ func _bar(color: Color, w: float) -> ProgressBar:
 	return b
 
 
+func _refresh_phone_badge() -> void:
+	if _phone_lbl == null:
+		return
+	if CallManager.state == 1:
+		var nm: String = Db.character(CallManager.current.get("char", "")).get("short", "Unknown")
+		_phone_lbl.text = "☎ %s CALLING — open PHONE" % nm.to_upper()
+		_phone_lbl.modulate = Color(1, 0.85, 0.4)
+	elif CallManager.state == 2:
+		_phone_lbl.text = "☎ IN CALL"
+		_phone_lbl.modulate = Color(0.6, 1, 0.8)
+	else:
+		var u: int = CallManager.unread_count()
+		_phone_lbl.text = "✉ %d UNREAD" % u if u > 0 else ""
+		_phone_lbl.modulate = Color(0.95, 0.72, 0.25)
+
+
 func _build_top() -> void:
 	_money_lbl = _lbl(20, Color(0.6, 0.9, 0.6))
 	_money_lbl.anchor_left = 1.0
@@ -145,6 +165,17 @@ func _build_top() -> void:
 	_clock_lbl.offset_bottom = 28
 	_clock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(_clock_lbl)
+	# phone status badge: ringing call / unread messages
+	_phone_lbl = _lbl(13, Color(0.95, 0.72, 0.25))
+	_phone_lbl.anchor_left = 0.5
+	_phone_lbl.anchor_right = 0.5
+	_phone_lbl.offset_left = -140
+	_phone_lbl.offset_right = 140
+	_phone_lbl.offset_top = 30
+	_phone_lbl.offset_bottom = 48
+	_phone_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_phone_lbl.text = ""
+	_root.add_child(_phone_lbl)
 	_district_lbl = _lbl(16, Color(0.95, 0.72, 0.25))
 	_district_lbl.anchor_left = 0.5
 	_district_lbl.anchor_right = 0.5
@@ -488,6 +519,14 @@ func _process(delta: float) -> void:
 		_hp_bar.value = player.combat.hp / player.combat.max_hp * 100.0
 		_st_bar.value = player.combat.stamina / player.combat.max_stamina * 100.0
 		_ar_bar.value = clampf(player.combat.armor, 0.0, 100.0)
+	# phone badge pulse while ringing; periodic refresh for unread counts
+	_phone_t += delta
+	if CallManager.state == 1:
+		_phone_lbl.modulate.a = 0.55 + 0.45 * sin(_phone_t * 9.0)
+	else:
+		_phone_lbl.modulate.a = 1.0
+	if fmod(_phone_t, 1.0) < delta:
+		_refresh_phone_badge()
 	# clock/weather/district
 	_clock_lbl.text = "%s  •  %s  •  DAY %d" % [WorldState.hour_of_day_string(), WorldState.weather_name().to_upper(), WorldState.day]
 	var d := Db.district(WorldState.current_district)
