@@ -376,6 +376,21 @@ func _process(_delta: float) -> bool:
 			var phsrc := FileAccess.get_file_as_string("res://scripts/ui/phone_ui.gd")
 			_check("_show_stats" in phsrc and "push_news" in phsrc, "phone dossier + news feed wired")
 			ws6.factions["crew"] = rep0
+			# --- wave 10/11: cinematics, living city, pursuit staging ---
+			var cin = root.get_node_or_null("Cinematics")
+			_check(cin != null, "Cinematics autoload present")
+			var ccsrc := FileAccess.get_file_as_string("res://scripts/combat/combat_controller.gd")
+			_check("_last_kill_check" in ccsrc and "Cinematics.hitstop" in ccsrc, "kill-cam + hit-stop wired into combat")
+			var clsrc2 := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
+			_check("_cruiser_shot" in clsrc2 and "turf_war" in clsrc2 and "_chatter_t" in clsrc2, "drive-bys, turf wars, radio chatter wired")
+			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
+			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
+			_check("_police_siren_near" in vsrc2 and "police_car" in vsrc2, "traffic yields to sirens")
+			_check("_apply_pursuit" in msrc and "prev_wanted" in msrc, "scripted mission pursuits wired")
+			_check(db.mission("side_bait").get("stages", []).size() == 3, "side_bait chase mission exists")
+			var evs = root.get_node("Db").events
+			_check(evs.has("turf_war"), "turf_war world event registered")
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()

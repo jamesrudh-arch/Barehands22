@@ -77,7 +77,7 @@ func _refresh_offers() -> void:
 		var giver: String = Db.mission(mid).get("giver", Db.mission(mid).get("contact", "marcus"))
 		CallManager.schedule_call(giver, "offer", mid, 6.0)
 		break
-	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops"]:
+	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait"]:
 		var m := Db.mission(sid)
 		if not m.get("repeatable", false) and completed.has(sid):
 			continue
@@ -135,6 +135,24 @@ func _cleanup_stage() -> void:
 		if is_instance_valid(a) and a.get("keep_after_stage") != true:
 			a.queue_free()
 	actors.clear()
+	# scripted pursuit heat is borrowed, not earned: give it back
+	if rt.has("prev_wanted"):
+		WorldState.set_wanted(mini(WorldState.wanted, int(rt["prev_wanted"])))
+
+
+func _apply_pursuit() -> void:
+	## Chase restaging: a stage can script wanted stars ("pursuit": 2-4) so
+	## the full pursuit stack — cruisers, drive-bys, roadblocks, PIT, spikes
+	## — is part of the JOB, not just of open-world crime.
+	var lvl := int(stage.get("pursuit", 0))
+	if lvl <= 0:
+		return
+	rt["prev_wanted"] = WorldState.wanted
+	if WorldState.wanted < lvl:
+		WorldState.set_wanted(lvl)
+		WorldState.heat_decay = 0.0
+		Bus.notification.emit("Heat's on the job — %d stars. Drive." % lvl, "warn")
+		AudioDirector.sfx("ui_notify", 0.4)
 
 
 # ------------------------------------------------------------------ stages --
@@ -191,8 +209,10 @@ func _setup_stage() -> void:
 			rt["in_veh"] = false
 			if t == "drive_timed":
 				rt["time"] = float(stage.get("time", 90))
+			_apply_pursuit()
 		"race":
 			_setup_race()
+			_apply_pursuit()
 		"escort":
 			_setup_escort()
 		"search":
