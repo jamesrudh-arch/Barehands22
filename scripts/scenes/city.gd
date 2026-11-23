@@ -329,8 +329,15 @@ func _enter_safehouse(pid: String, data: Dictionary) -> void:
 		if WorldState.wanted > 0:
 			WorldState.set_wanted(0)
 			Bus.notification.emit("You lay low. Heat cooled.", "info")
+	elif WorldState.money >= 250:
+		# PAID LAY-LOW: serious heat doesn't sleep off, but the block can
+		# be persuaded to forget a face — and a car — for 250 cr.
+		WorldState.add_money(-250)
+		WorldState.set_wanted(WorldState.wanted - 2)
+		AudioDirector.sfx("cash", 0.3)
+		Bus.notification.emit("250 cr changes hands. Nobody saw you come in. (-2 stars)", "info")
 	else:
-		Bus.notification.emit("Too hot to sleep easy — they'll still be looking.", "warn")
+		Bus.notification.emit("Too hot to sleep easy — they'll still be looking. (250 cr would buy quiet.)", "warn")
 
 
 func _open_stash(pid: String, data: Dictionary) -> void:
