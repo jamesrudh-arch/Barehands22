@@ -62,7 +62,7 @@ func _start_ring(info: Dictionary) -> void:
 	state = State.RINGING
 	current = info
 	_ring_t = 0.0
-	var st := AudioDirector.stream("res://assets/audio/phone_ring.wav")
+	var st := AudioDirector.stream("res://assets/audio/sfx/phone_ring.wav")
 	if st:
 		st.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		_ring_player.stream = st
@@ -94,7 +94,7 @@ func answer_call() -> void:
 	if state != State.RINGING:
 		return
 	_ring_player.stop()
-	AudioDirector.sfx("phone_connect", 0.0, 0.9)
+	AudioDirector.sfx("phone_connect", 0.02, 0.9)
 	state = State.IN_CALL
 	_log("answered")
 	state_changed.emit(state)
@@ -180,7 +180,7 @@ func _conversation_for(info: Dictionary) -> Array:
 			var m: Dictionary = Db.mission(mid)
 			return [
 				{"who": name, "text": "Eli. It's %s. Keep your voice down." % name, "dur": 3.2},
-				{"who": name, "text": m.get("brief", "There's work. Are you in?"), "dur": 4.2},
+				{"who": name, "text": m.get("summary", "There's work. Are you in?"), "dur": 4.2},
 				{"who": "Eli", "text": "Where?", "dur": 1.6},
 				{"who": name, "text": "Check the job on your phone. And Eli — don't be late.", "dur": 3.4},
 				{"who": "SYS", "text": "Mission added: %s" % m.get("title", mid), "dur": 2.4}]
@@ -199,7 +199,7 @@ func _conversation_for(info: Dictionary) -> Array:
 
 
 func place_outgoing(cid: String) -> void:
-	var st := AudioDirector.stream("res://assets/audio/phone_ringback.wav")
+	var st := AudioDirector.stream("res://assets/audio/sfx/phone_ringback.wav")
 	if st:
 		_ring_player.stream = st
 		_ring_player.play()
@@ -217,7 +217,7 @@ func send_message(char_id: String, thread_tag: String, text: String) -> void:
 		threads[tid] = []
 	threads[tid].append({"from": char_id, "text": text, "read": false,
 		"hour": _hour()})
-	AudioDirector.sfx("phone_msg", 0.0, 0.8)
+	AudioDirector.sfx("phone_msg", 0.02, 0.8)
 	new_message.emit(tid)
 
 
