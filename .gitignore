@@ -1,0 +1,12 @@
+# Godot 4 generated/import data — never commit
+.godot/
+*.tmp
+export_presets.cfg.local
+
+# Python tool caches
+__pycache__/
+*.pyc
+
+# OS cruft
+.DS_Store
+Thumbs.db

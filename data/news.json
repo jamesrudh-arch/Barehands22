@@ -1,0 +1,35 @@
+{
+  "templates": [
+    {"id": "news_base", "text": "CCPD reports checkpoint delays across {district}. Commuters are advised to remain patient and observable."},
+    {"id": "news_halcyon", "text": "Halcyon Dynamics shares rose today on news of a 'Cinder City revitalization portfolio'. Analysts call the portfolio 'several entire neighborhoods'."},
+    {"id": "news_docks", "text": "Berth inspections continue at Ashfall Docks. The Syndicate declines to comment, as is traditional."},
+    {"id": "news_refinery", "text": "The Cinder Refinery flare entered its thirty-ninth consecutive year of operation. Officials describe it as 'iconic'."},
+    {"id": "news_wanted", "text": "Police seek a suspect described only as 'cooperative until cornered'. Residents are reminded that cornering is police work."},
+    {"id": "news_kiln", "text": "St. Ember's bell returns to service after 40 years. Kiln Row reports mixed feelings and one proposal."},
+    {"id": "news_heat", "text": "An active police operation is underway near {district}. If you hear sirens, mind your business; if you hear two sirens, mind it faster."},
+    {"id": "news_crowe", "text": "Crowe Credit Co. reminds borrowers that 'every day is a good day to settle'. The reminder was printed in pencil."},
+    {"id": "news_fight", "text": "Unsanctioned boxing continues at an undisclosed yard. Bookmakers describe the odds as 'emotional'."},
+    {"id": "news_rain", "text": "Rain expected through the week. The Department of Streets reminds drivers that puddles are, legally, still streets."}
+  ],
+  "barks": {
+    "greet": ["Eli Vane. Your ma would've loved this weather.", "You look like trouble with good posture.", "Walk safe, Vane. The street's got moods."],
+    "fear": ["Hey— hey, I didn't see nothing!", "Not me, please, I pay my rent ON TIME—", "Somebody call the— no, no, don't look at me like that!"],
+    "combat": ["Somebody DO something!", "That's it, get him!", "I'm filming this for my cousin!"],
+    "gunshots": ["GUN! GUN!", "Everybody DOWN!", "Not again, I JUST paid for this window!"],
+    "rain": ["Rain again. City smells like pennies.", "Umbrella's a Furnace luxury, friend.", "Good night for ghosts and bad decisions."],
+    "night": ["You're out late, Vane.", "Streetlights're out on 4th. Again.", "Heard singing from the refinery. Never ask twice."],
+    "police": ["Blues are sweeping. Keep your hands boring.", "Checkpoint on the arterial. I'd walk the alleys.", "Okoro's crew. She's fair. Fair's not the same as kind."],
+    "work": ["Manifest's short two crates and my neck's short one patience.", "Crane's singing again. Bearings, probably.", "Tide's out; the gulls own the quay now."],
+    "vendor": ["Hot! Hot and cheap! Mostly hot!", "Two for one after midnight, friend!", "Buy something or buy nothing, but stand somewhere else!"],
+    "young": ["You seen Dex's new paint? Criminal. Positively.", "Yard 4's taking bets again, fyi. Fyi!", "My cousin says Halcyon's tower hums at night. My cousin says lots of things."],
+    "kind": ["Bless you, child. Eat something warm.", "The shelter could use hands, not money. Hands stay longer.", "St. Ember's door's never locked. Neither's mine."],
+    "drunk": ["I'm FINE. The street moved, not me.", "One more and I'm a new man. A worse one, but new.", "Sing it with me— no? Rude."],
+    "guard": ["Badge's decorative, patience isn't. Move along.", "Halcyon property ends at the curb. Mostly.", "I've worked twelve hours. Test me gently."],
+    "music": ["Coins keep the song going, friend!", "This one's for the night shift!", "Request? Requests cost double after midnight!"],
+    "tourist": ["Is that the refinery? It's BEAUTIFUL at dusk, honestly.", "Our guide said don't talk to locals. So, briefly: hello.", "Where's the good view? The paid one or the true one?"],
+    "city": ["Quarter's tight this month. Everything's a quarter now.", "Halcyon bought my building. Rent's 'market rate'. Market for whom?", "Keep your head down and your steps quick. Classic Furnace advice."],
+    "thank": ["You didn't have to do that. Won't forget it.", "Owe you one, Vane. Small cities keep tallies.", "Ruth was right about you. Told her so."],
+    "hostile": ["Crowe's people ask about you. I don't answer. Mostly.", "You're the Vane with the brother trouble. Charming.", "Syndicate colors on YOU? Bold. Stupid, but bold."],
+    "busted": ["Told you the blues remember faces!", "There goes another one through the system.", "Hope the cell's warm, friend. They never are."],
+    "respect": ["Yard 4 champ walks among us. Saw the bout. Brutal. Beautiful.", "Heard you stood at the plaza. People talk. People remember.", "Gunnar says you're alright. From Gunnar, that's a medal."]}
+}

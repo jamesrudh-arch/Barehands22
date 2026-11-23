@@ -1,0 +1,12 @@
+{
+  "bandage": {"name": "Bandage", "kind": "consumable", "heal": 35, "use_time": 2.0, "price": 40, "blurb": "Gas-station gauze. Better than nothing."},
+  "medkit": {"name": "Field Medkit", "kind": "consumable", "heal": 80, "use_time": 3.5, "price": 120, "blurb": "Nia sells these 'for hiking'."},
+  "energy_drink": {"name": "Slag Cola", "kind": "consumable", "stamina": 60, "use_time": 1.0, "price": 15, "blurb": "Tastes like a battery. Works like one too."},
+  "lockpick": {"name": "Lockpick Set", "kind": "tool", "price": 60, "blurb": "Opens doors that forgot to be locked properly."},
+  "ledger_page": {"name": "Ledger Page", "kind": "collectible", "price": 0, "blurb": "A torn page from Crowe's books. Every page is a name."},
+  "favor_token": {"name": "Favor Token", "kind": "collectible", "price": 0, "blurb": "Cinder City runs on these. So do you, now."},
+  "ammo_9mm": {"name": "9mm Box", "kind": "ammo", "for": "gun_pistol", "amount": 30, "price": 30},
+  "ammo_smg": {"name": "SMG Drum", "kind": "ammo", "for": "gun_smg", "amount": 60, "price": 45},
+  "ammo_12g": {"name": "12g Shells", "kind": "ammo", "for": "gun_shotgun", "amount": 12, "price": 36},
+  "ammo_308": {"name": ".308 Clip", "kind": "ammo", "for": "gun_rifle", "amount": 10, "price": 40}
+}

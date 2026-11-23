@@ -1,0 +1,116 @@
+{
+  "eli": {
+    "name": "Elias \"Eli\" Vane", "short": "Eli", "title": "the protagonist",
+    "voice": "eli", "faction": "family", "age": 34,
+    "personality": ["weary", "dry", "protective", "slow-to-anger"],
+    "appearance": {"height": 1.83, "build": 0.55, "skin": 2, "hair": "crop", "hair_color": 0, "face": 4, "outfit": "outfit_default"},
+    "home_district": "kiln_row", "role": "player"
+  },
+  "marcus": {
+    "name": "Marcus Vane", "short": "Marcus", "title": "Eli's brother",
+    "voice": "marcus", "faction": "family", "age": 28,
+    "personality": ["charming", "desperate", "gambling", "loves-his-brother"],
+    "appearance": {"height": 1.78, "build": 0.42, "skin": 2, "hair": "fade", "hair_color": 1, "face": 5, "outfit": "outfit_shirt"},
+    "home_district": "kiln_row", "role": "story", "schedule": {"work": "neon_mile", "home": "kiln_row"}
+  },
+  "ruth": {
+    "name": "Mama Ruth Adeyemi", "short": "Ruth", "title": "owns Mama Ruth's Soul Food",
+    "voice": "mama_ruth", "faction": "family", "age": 61,
+    "personality": ["warm", "unsentimental", "knows-everyone", "feeds-people"],
+    "appearance": {"height": 1.62, "build": 0.75, "skin": 4, "hair": "wrap", "hair_color": 5, "face": 13, "outfit": "outfit_apron"},
+    "home_district": "kiln_row", "role": "story", "schedule": {"work": "kiln_row", "home": "kiln_row"},
+    "location_poi": "poi_ruths"
+  },
+  "roz": {
+    "name": "Rosalind \"Roz\" Mako", "short": "Roz", "title": "heads the Ashfall Syndicate",
+    "voice": "roz", "faction": "crew", "age": 39,
+    "personality": ["calm", "transactional", "secretly-sentimental", "ex-smuggler"],
+    "appearance": {"height": 1.75, "build": 0.5, "skin": 1, "hair": "bob", "hair_color": 2, "face": 9, "outfit": "outfit_syndicate"},
+    "home_district": "ashfall_docks", "role": "story", "schedule": {"work": "ashfall_docks", "night": "neon_mile"},
+    "location_poi": "poi_berth7"
+  },
+  "crane": {
+    "name": "Silas Crowe", "short": "Crowe", "title": "loan shark, Crowe Credit",
+    "voice": "crane", "faction": "none", "age": 57,
+    "personality": ["patient", "cruel", "bookish", "never-raises-voice"],
+    "appearance": {"height": 1.8, "build": 0.6, "skin": 5, "hair": "slick", "hair_color": 6, "face": 3, "outfit": "outfit_suit"},
+    "home_district": "the_furnace", "role": "antagonist", "location_poi": "poi_crowe_office"
+  },
+  "vivian": {
+    "name": "Vivian Halcyon", "short": "Vivian", "title": "CEO, Halcyon Dynamics",
+    "voice": "vivian", "faction": "corp", "age": 48,
+    "personality": ["precise", "patient", "ruthless-arithmetic", "publicly-charitable"],
+    "appearance": {"height": 1.72, "build": 0.4, "skin": 5, "hair": "chignon", "hair_color": 6, "face": 11, "outfit": "outfit_exec"},
+    "home_district": "crown_heights", "role": "antagonist", "location_poi": "poi_halcyon_tower"
+  },
+  "okoro": {
+    "name": "Det. Adaeze Okoro", "short": "Okoro", "title": "CCPD Major Crimes",
+    "voice": "det_okoro", "faction": "law", "age": 44,
+    "personality": ["clipped", "tired", "honest-ish", "hates-crowe"],
+    "appearance": {"height": 1.7, "build": 0.55, "skin": 4, "hair": "locs", "hair_color": 0, "face": 15, "outfit": "outfit_detective"},
+    "home_district": "the_furnace", "role": "story", "location_poi": "poi_precinct"
+  },
+  "bishop": {
+    "name": "\"Bishop\" Achebe", "short": "Bishop", "title": "runs the Slagworks shelter",
+    "voice": "bishop", "faction": "crew", "age": 52,
+    "personality": ["sermonic", "guarded", "owes-halcyon", "protects-kids"],
+    "appearance": {"height": 1.88, "build": 0.65, "skin": 5, "hair": "bald", "hair_color": 0, "face": 7, "outfit": "outfit_coat"},
+    "home_district": "slagworks", "role": "story", "location_poi": "poi_shelter"
+  },
+  "tess": {
+    "name": "Tess Marlowe", "short": "Tess", "title": "Eli's ex; Halcyon fixer",
+    "voice": "tess", "faction": "corp", "age": 33,
+    "personality": ["bright", "complicated", "always-three-exits", "still-cares"],
+    "appearance": {"height": 1.68, "build": 0.42, "skin": 1, "hair": "ponytail", "hair_color": 3, "face": 1, "outfit": "outfit_fixer"},
+    "home_district": "the_furnace", "role": "story", "schedule": {"work": "the_furnace", "night": "neon_mile"}
+  },
+  "gunnar": {
+    "name": "Gunnar Voss", "short": "Gunnar", "title": "foreman, Voss Haulage",
+    "voice": "gunnar", "faction": "family", "age": 49,
+    "personality": ["slow", "loyal", "grief-hardened", "hates-the-docks-at-night"],
+    "appearance": {"height": 1.92, "build": 0.85, "skin": 5, "hair": "buzz", "hair_color": 4, "face": 19, "outfit": "outfit_work"},
+    "home_district": "ashfall_docks", "role": "story", "location_poi": "poi_haulage"
+  },
+  "nia": {
+    "name": "Dr. Nia Okonkwo", "short": "Nia", "title": "walk-in clinic, no questions",
+    "voice": "nia", "faction": "none", "age": 37,
+    "personality": ["sharp", "brusque", "secretly-kind", "cash-only"],
+    "appearance": {"height": 1.66, "build": 0.45, "skin": 3, "hair": "afro", "hair_color": 0, "face": 17, "outfit": "outfit_clinic"},
+    "home_district": "kiln_row", "role": "service", "location_poi": "poi_clinic"
+  },
+  "padre_sol": {
+    "name": "Padre Sol Ibarr", "short": "Padre Sol", "title": "St. Ember's parish",
+    "voice": "padre_sol", "faction": "none", "age": 66,
+    "personality": ["soft-spoken", "keeps-confessions", "knows-where-bodies-are"],
+    "appearance": {"height": 1.7, "build": 0.5, "skin": 2, "hair": "tonsure", "hair_color": 6, "face": 21, "outfit": "outfit_clergy"},
+    "home_district": "kiln_row", "role": "story", "location_poi": "poi_church"
+  },
+  "dex": {
+    "name": "Dex Ferreira", "short": "Dex", "title": "wheelman, Ashfall Syndicate",
+    "voice": "dex", "faction": "crew", "age": 24,
+    "personality": ["fast-talking", "faster-driving", "loyal-to-roz", "hates-being-late"],
+    "appearance": {"height": 1.72, "build": 0.4, "skin": 1, "hair": "dreads", "hair_color": 1, "face": 10, "outfit": "outfit_crew"},
+    "home_district": "ashfall_docks", "role": "story", "location_poi": "poi_garage"
+  },
+  "mags": {
+    "name": "Mags Kowalczyk", "short": "Mags", "title": "gunsmith & pawn, licensed-ish",
+    "voice": "mags", "faction": "none", "age": 45,
+    "personality": ["dry", "precise", "no-politics", "counts-twice"],
+    "appearance": {"height": 1.7, "build": 0.6, "skin": 5, "hair": "bun", "hair_color": 2, "face": 14, "outfit": "outfit_work"},
+    "home_district": "slagworks", "role": "service", "location_poi": "poi_gunsmith"
+  },
+  "crowe_jr": {
+    "name": "Julian Crowe", "short": "Julian", "title": "Silas's son, collector",
+    "voice": "crowe_jr", "faction": "none", "age": 29,
+    "personality": ["sneering", "impatient", "daddy-issues", "loose-cannon"],
+    "appearance": {"height": 1.81, "build": 0.5, "skin": 5, "hair": "quiff", "hair_color": 3, "face": 6, "outfit": "outfit_suit_flashy"},
+    "home_district": "the_furnace", "role": "antagonist"
+  },
+  "argus": {
+    "name": "ARGUS", "short": "ARGUS", "title": "Halcyon tower security AI",
+    "voice": "halcyon_ai", "faction": "corp", "age": 0,
+    "personality": ["flat", "polite", "always-listening"],
+    "appearance": {"height": 0, "build": 0, "skin": 0, "hair": "none", "hair_color": 0, "face": 0, "outfit": "none"},
+    "home_district": "the_furnace", "role": "system", "location_poi": "poi_halcyon_tower"
+  }
+}

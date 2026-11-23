@@ -1,0 +1,17 @@
+{
+  "ruths": {"name": "Mama Ruth's Soul Food", "poi": "poi_ruths", "keeper": "ruth", "dialogue": "shop_ruths",
+    "stock": ["bandage", "energy_drink", "medkit"]},
+  "clinic": {"name": "Okonkwo Walk-In Clinic", "poi": "poi_clinic", "keeper": "nia", "dialogue": "shop_clinic",
+    "stock": ["bandage", "medkit", "energy_drink"]},
+  "market": {"name": "Kiln Row Market", "poi": "poi_market", "keeper": "vendor", "dialogue": "shop_market",
+    "stock": ["bandage", "energy_drink", "lockpick", "outfit_shirt", "outfit_dock", "outfit_clinic"]},
+  "pawn": {"name": "Pawn 24H", "poi": "poi_pawn", "keeper": "pawnkeep", "dialogue": "shop_pawn",
+    "stock": ["lockpick", "melee_pipe", "melee_bat", "melee_knife", "gun_pistol", "ammo_9mm", "armor_jacket", "outfit_suit"],
+    "buys": true},
+  "gunsmith": {"name": "Mags Gunsmith", "poi": "poi_gunsmith", "keeper": "mags", "dialogue": "shop_gunsmith",
+    "stock": ["gun_pistol", "gun_smg", "gun_shotgun", "gun_rifle", "ammo_9mm", "ammo_smg", "ammo_12g", "ammo_308",
+              "armor_jacket", "armor_vest", "armor_plate", "melee_crowbar", "melee_machete"],
+    "buys": true},
+  "motors": {"name": "Dex's Garage", "poi": "poi_garage", "keeper": "dex", "dialogue": "shop_motors",
+    "vehicles": ["muscle", "van", "sports", "bike", "truck"]}
+}

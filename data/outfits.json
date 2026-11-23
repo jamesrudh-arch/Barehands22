@@ -1,0 +1,8 @@
+{
+  "outfit_default": {"name": "Work Jacket", "colors": {"jacket": [64, 58, 52], "shirt": [140, 130, 116], "pants": [46, 44, 48], "shoes": [30, 28, 26]}, "price": 0},
+  "outfit_shirt": {"name": "Open Shirt", "colors": {"jacket": [150, 60, 50], "shirt": [190, 180, 160], "pants": [52, 50, 54], "shoes": [40, 36, 32]}, "price": 0},
+  "outfit_dock": {"name": "Dockworker Hi-Vis", "colors": {"jacket": [210, 130, 30], "shirt": [80, 80, 84], "pants": [40, 44, 52], "shoes": [36, 30, 24]}, "price": 120, "faction_note": "crew +2 when worn in docks"},
+  "outfit_suit": {"name": "Charcoal Suit", "colors": {"jacket": [38, 36, 44], "shirt": [210, 206, 198], "pants": [36, 34, 42], "shoes": [20, 18, 18]}, "price": 400, "faction_note": "corp +2 in Furnace/Heights"},
+  "outfit_syndicate": {"name": "Syndicate Colors", "colors": {"jacket": [90, 24, 40], "shirt": [30, 28, 30], "pants": [30, 30, 34], "shoes": [24, 22, 22]}, "price": 300, "faction_note": "crew +4, law -2"},
+  "outfit_clinic": {"name": "Scrub Greens", "colors": {"jacket": [70, 120, 100], "shirt": [70, 120, 100], "pants": [60, 104, 88], "shoes": [220, 220, 214]}, "price": 90}
+}
