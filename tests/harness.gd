@@ -476,6 +476,8 @@ func _process(_delta: float) -> bool:
 				cln.call("_fame_tick", 0.1)
 				_check(ws9.get_flag("fame_thefts5", false), "fame milestone fires once and persists")
 			ws9.stats["thefts"] = 0
+			var wcsrc := FileAccess.get_file_as_string("res://scripts/combat/weapons_controller.gd")
+			_check('add_style_xp("weapon"' in wcsrc, "gun hits feed WEAPON mastery")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

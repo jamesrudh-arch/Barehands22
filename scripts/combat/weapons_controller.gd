@@ -190,6 +190,9 @@ func _impact(obj: Object, hit: Dictionary, w: Dictionary, shooter_is_player: boo
 			cc.take_hit(dmg, (obj.global_position - owner_node.global_position).normalized() * -1.0, "bullet", owner_node)
 			if shooter_is_player:
 				Bus.crime_committed.emit("assault", 3, pos)
+				# gunplay feeds the WEAPON mastery track: hits grow it,
+				# kills grow it faster — mastery pays back as steadier hands
+				Progression.add_style_xp("weapon", 3.0 if cc.dead else 1.2)
 		return
 	if obj is Node3D and obj.is_in_group("vehicle"):
 		AudioDirector.sfx_at("imp_metal", pos)
