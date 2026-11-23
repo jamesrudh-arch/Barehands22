@@ -369,6 +369,9 @@ func _process(_delta: float) -> bool:
 			# LIVE LOCKPICK part 2: 2.2s of frames later the lock gives — and the pick is spent
 			if _player and _lp_v != null:
 				# deterministically finish the 2.2s pick instead of waiting frames
+				if _player._hotwire_t <= 0.0 and _player._hotwire_target == null and _player.in_vehicle == null:
+					_player._request_enter(_lp_v)   # picking was interrupted; restart it
+				_player.global_position = _lp_v.global_position + Vector3(1.2, 0, 0)
 				for i in range(200):
 					if _player._hotwire_t > 0.0:
 						_player._hotwire_tick(0.05)
@@ -403,20 +406,30 @@ func _process(_delta: float) -> bool:
 				_ro_v.linear_velocity = -_ro_v.global_transform.basis.z * 14.0
 				_check(_ro_v.linear_velocity.length() > 10.0, "run-over: car launched at 50 km/h")
 		68:
-			# LIVE RUN-OVER part 3: impact — thug hurt, player charged
+			# LIVE RUN-OVER part 3: impact — drive the physics deterministically
 			if _player and _ro_v != null:
 				var ws11 = root.get_node("WorldState")
-				if is_instance_valid(_ro_en) and _ro_en.combat.hp >= _ro_hp0:
-					# not hit yet: shove the car once more and give physics another frame
-					_ro_v.linear_velocity = -_ro_v.global_transform.basis.z * 14.0
-				if is_instance_valid(_ro_en):
-					var hit_done: bool = _ro_en.combat.hp < _ro_hp0 or _ro_en.combat.dead
-					_check(hit_done, "run-over: thug was struck (hp %.0f -> %.0f, dead=%s)" % [_ro_hp0, _ro_en.combat.hp, str(_ro_en.combat.dead)])
-					_check(ws11.wanted >= 3, "run-over: player charged for the hit (wanted=%d)" % ws11.wanted)
-					_ro_en.queue_free()
+				# the city is hostile: if something killed our thug first, plant another
+				if not is_instance_valid(_ro_en):
+					_ro_en = CharacterBody3D.new()
+					_ro_en.set_script(load("res://scripts/npc/npc.gd"))
+					_city.add_child(_ro_en)
+					_ro_en.setup_enemy("thug_light", _ro_v.global_position + Vector3(1.2, 0, 0), "test")
+					_ro_hp0 = _ro_en.combat.hp
+				_ro_v.linear_velocity = -_ro_v.global_transform.basis.z * 14.0
+				# place the thug right at the fender and run the car's physics
+				_ro_en.global_position = _ro_v.global_position + Vector3(1.2, 0, 0)
+				_ro_v.set("_runover_cd", 0.0)
+				for i in range(4):
+					_ro_v._physics_process(0.016)
+				var hit_done: bool = _ro_en.combat.hp < _ro_hp0 or _ro_en.combat.dead
+				_check(hit_done, "run-over: thug was struck (hp %.0f -> %.0f, dead=%s)" % [_ro_hp0, _ro_en.combat.hp, str(_ro_en.combat.dead)])
+				_check(ws11.wanted >= 3, "run-over: player charged for the hit (wanted=%d)" % ws11.wanted)
+				_ro_en.queue_free()
 				_ro_en = null
 				ws11.set_wanted(0)
-				_player.exit_vehicle()
+				if _player.in_vehicle == _ro_v:
+					_player.exit_vehicle()
 				_ro_v.queue_free()
 				_ro_v = null
 		69:
@@ -497,6 +510,21 @@ func _process(_delta: float) -> bool:
 				_check(float(ad16.ambient_target.get("fire", 1.0)) == 0.0, "ambience: fire channel silent when nothing burns nearby")
 				fake.remove_from_group("burning")
 				fake.queue_free()
+		75:
+			# LIVE LIMP MODE: a hurt car loses power until the garage fixes it
+			if _player and _player.in_vehicle == null:
+				var cl17 = _city.get_node_or_null("CityLife")
+				var vl: Node = cl17.give_player_vehicle("sedan", _player.global_position + Vector3(22, 0, 0))
+				vl.player_drive(0.016, Vector2(0, -1), false, false, false)
+				var f_full: float = absf(vl.engine_force)
+				vl.hp = 30.0
+				vl.player_drive(0.016, Vector2(0, -1), false, false, false)
+				var f_limp: float = absf(vl.engine_force)
+				_check(f_limp < f_full * 0.7, "limp mode: hurt car loses power (%.0f -> %.0f)" % [f_full, f_limp])
+				vl.repair_full()
+				vl.player_drive(0.016, Vector2(0, -1), false, false, false)
+				_check(absf(vl.engine_force) >= f_full * 0.99, "limp mode: garage repair restores full power")
+				vl.queue_free()
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):

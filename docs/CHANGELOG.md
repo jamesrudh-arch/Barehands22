@@ -12,6 +12,25 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 43: limp to the garage
+
+- **Limp mode**: below 40 hp a car gives you only 55% of its engine
+  and trails smoke puffs every half-second — the street can see
+  you're hurt, and so can the cops. Dex's repair bay (wave 30) is the
+  cure; the live test proves power drops and returns.
+- **Real bug fixed**: `repair_full()` and `puncture_tires()` assigned
+  `wheel_roll_friction` — a property that doesn't exist on Godot 4.7's
+  `VehicleWheel3D`, throwing a script error on EVERY garage repair and
+  EVERY spike strip since wave 30/14. Replaced with `brake` drag
+  (0.02 rolling / 0.9 on shredded rubber) + reset per-wheel engine
+  force. Caught the moment a behavioral test actually called the
+  function.
+- **Test flakiness killed**: run-over and lockpick live tests now drive
+  physics deterministically (direct `_physics_process` /
+  `_hotwire_tick` calls, thug respawn guard, re-arm on interrupt) —
+  three consecutive runs at a stable check count.
+- Harness **165 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 42: prove the burn, kill the dupe
 
 - **Real bug found + fixed**: the `fire_barrel` world event carried TWO

@@ -404,7 +404,10 @@ func player_exit() -> void:
 func player_drive(delta: float, mv: Vector2, brake: bool, handbrake: bool, horn: bool) -> void:
 	var d := Db.vehicle(vehicle_def_id)
 	var throttle := -mv.y
-	engine_force = throttle * float(d.get("power", 100)) * 22.0
+	# LIMP MODE: a badly hurt drivetrain only gives you half the engine,
+	# and everyone on the street can see the smoke. Get to Dex's.
+	var power_mult := 0.55 if hp < 40.0 and not _wrecked else 1.0
+	engine_force = throttle * float(d.get("power", 100)) * 22.0 * power_mult
 	_set_brake(8.0 if brake else 1.0)
 	_reversing = throttle < -0.05 and sp_kmh_for_reverse() < 8.0
 	if handbrake or (brake and speed_kmh() > 35.0):
@@ -658,7 +661,8 @@ func repair_full() -> void:
 	for w in get_children():
 		if w is VehicleWheel3D:
 			w.wheel_friction_slip = d.get("grip", 1.0) * 1.6 * wet
-			w.wheel_roll_friction = 0.02
+			w.engine_force = 0.0
+			w.brake = 0.02
 	AudioDirector.sfx_at("gear_shift", global_position, 0.3)
 
 
@@ -669,11 +673,12 @@ func puncture_tires() -> void:
 	for w in get_children():
 		if w is VehicleWheel3D:
 			w.wheel_friction_slip = 0.45
-			w.wheel_roll_friction = 0.9
+			w.brake = 0.9   # shredded rubber drags
 
 
 var _wrecked := false
 var _burn_t := 0.0
+var _limp_smoke_t := 0.0
 var _fire_light: OmniLight3D = null
 
 
@@ -817,6 +822,10 @@ func _physics_process(delta: float) -> void:
 			if to.length() < 13.0 and to.normalized().dot(fwd2) > 0.55:
 				if n.has_method("react"):
 					n.react("scramble", global_position)
+	_limp_smoke_t -= delta
+	if hp < 40.0 and not _wrecked and _limp_smoke_t <= 0.0:
+		_limp_smoke_t = 0.55
+		Effects.burst(global_position + Vector3(0, 1.0, 0.6), "smoke")
 	if _burn_t > 0.0:
 		_burn_t -= delta
 		if _fire_light != null:
