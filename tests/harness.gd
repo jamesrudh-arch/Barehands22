@@ -9,6 +9,8 @@ var _city: Node
 var _player: Node
 var _fails := 0
 var _checks := 0
+var _db_v: Node = null
+var _db_en: Node = null
 
 
 func _initialize() -> void:
@@ -315,6 +317,43 @@ func _process(_delta: float) -> bool:
 				_check(_player.focus <= 100.0, "focus meter present")
 				var pl2 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
 				_check("_tick_cover" in pl2 and "_try_stealth_takedown" in pl2, "soft cover + stealth takedown wired")
+		62:
+			# LIVE DRIVE-BY part 1: get in a car with a gun, park a thug beside it
+			if _player:
+				var ws9 = root.get_node("WorldState")
+				ws9.set_wanted(0)
+				var cl9 = _city.get_node_or_null("CityLife")
+				_db_v = cl9.give_player_vehicle("sedan", _player.global_position + Vector3(6, 0, 0))
+				_player.enter_vehicle(_db_v)
+				var wc9 = _player.weapons
+				wc9.give("gun_smg")
+				wc9.equip("gun_smg")
+				wc9.reserves["gun_smg"] = 90
+				wc9.mag = 30
+				_db_en = CharacterBody3D.new()
+				_db_en.set_script(load("res://scripts/npc/npc.gd"))
+				_city.add_child(_db_en)
+				_db_en.setup_enemy("thug_light", _db_v.global_position + Vector3(3.2, 0, 0), "test")
+				_check(_db_v != null and _player.in_vehicle == _db_v, "drive-by setup: player in sedan")
+		63:
+			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
+			if _player and _db_v != null and is_instance_valid(_db_en):
+				var ws9 = root.get_node("WorldState")
+				var wc9 = _player.weapons
+				var hp9: float = _db_en.combat.hp
+				var muz9: Vector3 = _db_v.global_position + Vector3(0.9, 1.2, 0)
+				var dir9: Vector3 = (_db_en.global_position + Vector3(0, 1.2, 0) - muz9).normalized()
+				var mag9: int = wc9.mag
+				var fired9: bool = wc9.try_fire(true, 2.0, muz9, dir9, true)
+				_check(fired9, "drive-by shot fired from vehicle")
+				_check(wc9.mag < mag9, "drive-by consumed ammo")
+				_check(_db_en.combat.hp < hp9, "drive-by bullet hit the enemy (hp %.0f -> %.0f)" % [hp9, _db_en.combat.hp])
+				_check(ws9.wanted >= 2, "gunfire from the car raised wanted (%d)" % ws9.wanted)
+				ws9.set_wanted(0)
+				_db_en.queue_free()
+				_db_en = null
+				_player.exit_vehicle()
+				_db_v = null
 		60:
 			# attachments + day-part schedules + pursuit escalation
 			var ws4 = root.get_node("WorldState")
