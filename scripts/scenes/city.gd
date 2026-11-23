@@ -300,7 +300,7 @@ func _enter_safehouse(pid: String, data: Dictionary) -> void:
 	if player:
 		player.combat.heal(player.combat.max_hp)
 	Game.request_autosave()
-	SaveSystem.save_game(1, {"district": Game.current_district})
+	Game.save_to_slot(1)
 	AudioDirector.sfx("shop_bell", 0.3)
 	Bus.notification.emit("SAFEHOUSE — %s. Saved. Wounds patched." % data.get("name", "rest stop"), "info")
 	if WorldState.wanted == 1:
