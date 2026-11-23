@@ -260,6 +260,7 @@ func _physics_process(delta: float) -> void:
 			_talk_state(dt)
 		State.FLEE:
 			_flee(dt, dt)
+			_try_hop_in_car()
 		State.GAWK:
 			_gawk(dt)
 		State.COMBAT:
@@ -564,6 +565,36 @@ func _flee(dt: float, _d: float) -> void:
 	if away.length() > 40.0:
 		state = State.ROUTINE
 		anim.sprint = false
+
+
+var _hop_t := 0.0
+
+
+func _try_hop_in_car() -> void:
+	## Fleeing civilians sometimes dive into a nearby traffic car and
+	## peel away — the block scattering from wave 32, with wheels.
+	if hostile:
+		return
+	_hop_t -= get_physics_process_delta_time()
+	if _hop_t > 0.0:
+		return
+	_hop_t = 1.0
+	for n in get_tree().get_nodes_in_group("vehicle"):
+		if not is_instance_valid(n) or not bool(n.get("is_traffic")) or n.get("_wrecked"):
+			continue
+		if (n.global_position - global_position).length() > 9.0:
+			continue
+		if n.speed_kmh() > 25.0:
+			continue
+		if n.has_method("civ_panic"):
+			n.civ_panic()
+			_bark("alert")
+			# they're gone: the car carries them off
+			var t := create_tween()
+			t.tween_property(self, "scale", Vector3(0.2, 0.2, 0.2), 0.25)
+			t.tween_callback(queue_free)
+			state = State.DEAD   # stop AI immediately (body never spawns)
+			return
 
 
 func _gawk(dt: float) -> void:

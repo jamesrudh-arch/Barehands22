@@ -24,6 +24,7 @@ var _skid_t := 0.0
 var _reversing := false
 var _engine_player: AudioStreamPlayer
 var _horn_t := 0.0
+var _panic_t := 0.0   ## civilian jumped in fleeing something: drive like it
 var _speed := 0.0
 var _lane: PackedVector3Array = PackedVector3Array()
 var _lane_i := 0
@@ -439,6 +440,15 @@ func set_lane(loop: PackedVector3Array, speed: float) -> void:
 	parked = false
 
 
+func civ_panic() -> void:
+	## A fleeing civilian dove into this traffic car. It peels out —
+	## faster lane speed, a scared horn — for a while, then settles.
+	if not is_traffic or _panic_t > 0.0:
+		return
+	_panic_t = randf_range(7.0, 11.0)
+	AudioDirector.sfx_at("veh_horn", global_position, 0.6)
+
+
 func traffic_tick(delta: float) -> void:
 	if _lane.is_empty():
 		return
@@ -462,6 +472,14 @@ func traffic_tick(delta: float) -> void:
 			if not cl.traffic_green_at(global_position + fwd2 * 10.0):
 				blocked = true
 	var desired := 0.0 if blocked else _traffic_speed
+	if _panic_t > 0.0:
+		# PEEL OUT: panicking drivers ignore courtesy, not physics
+		_panic_t -= delta
+		desired = maxf(desired, _traffic_speed * 1.9)
+		blocked = false
+		if _horn_ai_t <= 0.0:
+			_horn_ai_t = randf_range(1.4, 3.0)
+			AudioDirector.sfx_at("veh_horn", global_position, 0.5)
 	# living traffic: rain slows everyone; sirens nearby pull cars to the
 	# curb; a player car blocking the lane earns a horn
 	if WorldState.weather == WorldState.Weather.RAIN:

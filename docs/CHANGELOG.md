@@ -12,6 +12,18 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 34: the block has wheels
+
+- **Fleeing civilians commandeer traffic**: a panicked pedestrian
+  within 9 m of a slow traffic car dives in, the driver peels out —
+  lane speed ×1.9, nervous horn blasts, red-light manners gone — for
+  7–11 s, then settles back into traffic. Only civilians flee into
+  cars; gunmen keep fighting.
+- Vehicle `civ_panic()` + `_panic_t` timer; NPC `_try_hop_in_car()`
+  throttled to 1 Hz, shrink-out exit so the car visibly carries them
+  off.
+- Harness **128 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 33: a fresh coat of consequences
 
 - **Resprays at Dex's Garage**: a PAINT tab (motors only) sells 8
