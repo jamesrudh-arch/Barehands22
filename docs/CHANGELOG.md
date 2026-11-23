@@ -12,6 +12,17 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 33: a fresh coat of consequences
+
+- **Resprays at Dex's Garage**: a PAINT tab (motors only) sells 8
+  colors — Cinder Red, Midnight, Brass, Teal Wave, Bone, Plum, Steel,
+  Slag Orange — at 150 cr a pop. Works on the car you arrive in or the
+  nearest non-wreck within 10 m; wrecks don't get paint jobs.
+- `Vehicle.respray()` retints car body mesh surface 0 and bike
+  material overrides live, so your ride leaves the bay a different
+  car (at least to the neighbors).
+- Harness **126 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 32: two tonnes of consequences
 
 - **Run-overs are real**: any vehicle above ~14 km/h that touches a
