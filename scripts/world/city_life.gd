@@ -248,6 +248,8 @@ func _spawn_parked(pp: Vector3) -> void:
 		v.global_position = pos + Vector3(0, 0.45, 0)
 		v.rotation.y = randf() * TAU
 		v.parked = true
+		# most civilian cars are locked; bikes less so
+		v.locked = randf() < (0.35 if v.vehicle_type == "bike" else 0.6)
 		parked.append(v)
 		return
 

@@ -1,5 +1,15 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 18: lockpicks earn their keep
+
+- **Locked cars**: 60% of parked civilian cars (35% of bikes) now spawn
+  locked. With a Lockpick Set in the BAG, F starts a 2.2 s quiet pick
+  (walk away and it aborts); without one, you smash the window —
+  instant, loud (`glass_break` at the car), and the theft crime jumps a
+  severity level. The lockpick is finally a real tool, not inventory
+  decoration.
+- Harness **94 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 17: theft is a crime
 
 - **Hot-wiring is now a felony**: entering any vehicle you don't own
