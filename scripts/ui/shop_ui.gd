@@ -244,6 +244,7 @@ func _make_paint(v: Node, col: Color) -> void:
 		AudioDirector.sfx("ui_error", 0.2)
 		return
 	WorldState.add_money(-150)
+	WorldState.stats["resprays"] = WorldState.stats.get("resprays", 0) + 1
 	v.respray(col)
 	AudioDirector.sfx("gear_shift", 0.4)
 	Bus.notification.emit("Fresh paint. Try not to scratch it.", "mission")

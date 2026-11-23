@@ -12,6 +12,22 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 41: work for the new verbs
+
+- **Two new side jobs** that spend the systems recent waves built:
+  - **Torch Job** (Gunnar, repeatable, 700 cr): the union dispute
+    needs punctuation — wreck 2 vehicles while the block watches them
+    burn.
+  - **Clean Wheels** (Dex, repeatable, 1000 cr): lift a car, give it
+    fresh paint at the PAINT bay (wave 33), run it to Yard 4 under
+    two stars in 120 s. A dealership for previously loved cars.
+- **Relative stat goals** (`statd:` prefix): repeatable objectives now
+  count wrecks/thefts/resprays *since the stage started*, so last
+  Tuesday's chaos can't pre-complete today's job. New stats: `wrecks`
+  (every explosion), `resprays` (every paint job).
+- Behavioral test: statd ignores pre-existing stats, counts new ones.
+- Harness **157 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 40: you can see them panic
 
 - **Commandeered cars show their driver**: when a fleeing civilian

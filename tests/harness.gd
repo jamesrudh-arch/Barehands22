@@ -664,6 +664,30 @@ func _process(_delta: float) -> bool:
 			var vsrc6 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
 			_check('"paint"' in shsrc4 and "PAINTS" in shsrc4 and "_make_paint" in shsrc4, "garage offers paint resprays")
 			_check("func respray" in vsrc6 and "color = col" in vsrc6, "vehicles can be resprayed")
+			var mmsrc := FileAccess.get_file_as_string("res://scripts/missions/mission_manager.gd")
+			var db8x = root.get_node("Db")
+			_check(db8x.mission("side_torch").get("stages", []).size() == 2, "side_torch mission registered")
+			_check(db8x.mission("side_clean_wheels").get("stages", []).size() == 4, "side_clean_wheels mission registered")
+			_check("_check_objective" in mmsrc and "statd:" in mmsrc, "relative stat goals supported for repeatable jobs")
+			_check('"wrecks"' in vsrc6, "wrecks tracked as a stat")
+			var shsrc5 := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
+			_check('"resprays"' in shsrc5, "resprays tracked as a stat")
+			# behavioral: statd counts from stage start, not from all time
+			var mm7 = root.get_node("MissionManager")
+			var ws13 = root.get_node("WorldState")
+			var had9: String = mm7.active_id
+			var hadr9: Dictionary = mm7.rt.duplicate(true)
+			var hads9 = ws13.stats.get("wrecks", 0)
+			ws13.stats["wrecks"] = 7
+			mm7.active_id = "side_torch"
+			mm7.stage = db8x.mission("side_torch").get("stages", [])[1]
+			mm7.rt = {}
+			_check(not mm7._check_objective("statd:wrecks>=2"), "statd ignores pre-existing stats")
+			ws13.stats["wrecks"] = 9
+			_check(mm7._check_objective("statd:wrecks>=2"), "statd counts new wrecks since stage start")
+			mm7.active_id = had9
+			mm7.rt = hadr9
+			ws13.stats["wrecks"] = hads9
 			var npcsrc4 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_try_hop_in_car" in npcsrc4 and "civ_panic" in vsrc6, "fleeing civilians commandeer traffic cars")
 			_check("_panic_t" in vsrc6 and "1.9" in vsrc6, "panicked cars peel out faster")
