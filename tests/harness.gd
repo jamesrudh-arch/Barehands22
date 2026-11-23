@@ -13,6 +13,9 @@ var _db_v: Node = null
 var _db_en: Node = null
 var _lp_v: Node = null
 var _lp_n0 := 0
+var _ro_v: Node = null
+var _ro_en: Node = null
+var _ro_hp0 := 0.0
 
 
 func _initialize() -> void:
@@ -373,6 +376,47 @@ func _process(_delta: float) -> bool:
 				_player.exit_vehicle()
 				_lp_v.queue_free()
 				_lp_v = null
+		66:
+			# LIVE RUN-OVER part 1: seat the player, plant a thug ahead, floor it
+			if _player and _player.in_vehicle == null:
+				if _player.dead:
+					_player.dead = false
+					_player.combat.revive()
+				root.get_node("Game").cutscene_active = false
+				var ws11 = root.get_node("WorldState")
+				ws11.set_wanted(0)
+				var cl11 = _city.get_node_or_null("CityLife")
+				_ro_v = cl11.give_player_vehicle("sedan", _player.global_position + Vector3(8, 0, 0))
+				_player.global_position = _ro_v.global_position + Vector3(1.2, 0, 0)
+				_player.enter_vehicle(_ro_v)
+				_ro_en = CharacterBody3D.new()
+				_ro_en.set_script(load("res://scripts/npc/npc.gd"))
+				_city.add_child(_ro_en)
+				_ro_en.setup_enemy("thug_light", _ro_v.global_position - _ro_v.global_transform.basis.z * 3.0, "test")
+				_ro_hp0 = _ro_en.combat.hp
+				_check(_player.in_vehicle == _ro_v, "run-over setup: player driving")
+		67:
+			# LIVE RUN-OVER part 2: one frame of physics later the car is moving — throttle it at the thug
+			if _player and _ro_v != null and is_instance_valid(_ro_en):
+				_ro_v.linear_velocity = -_ro_v.global_transform.basis.z * 14.0
+				_check(_ro_v.linear_velocity.length() > 10.0, "run-over: car launched at 50 km/h")
+		68:
+			# LIVE RUN-OVER part 3: impact — thug hurt, player charged
+			if _player and _ro_v != null:
+				var ws11 = root.get_node("WorldState")
+				if is_instance_valid(_ro_en) and _ro_en.combat.hp >= _ro_hp0:
+					# not hit yet: shove the car once more and give physics another frame
+					_ro_v.linear_velocity = -_ro_v.global_transform.basis.z * 14.0
+				if is_instance_valid(_ro_en):
+					var hit_done: bool = _ro_en.combat.hp < _ro_hp0 or _ro_en.combat.dead
+					_check(hit_done, "run-over: thug was struck (hp %.0f -> %.0f, dead=%s)" % [_ro_hp0, _ro_en.combat.hp, str(_ro_en.combat.dead)])
+					_check(ws11.wanted >= 3, "run-over: player charged for the hit (wanted=%d)" % ws11.wanted)
+					_ro_en.queue_free()
+				_ro_en = null
+				ws11.set_wanted(0)
+				_player.exit_vehicle()
+				_ro_v.queue_free()
+				_ro_v = null
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):

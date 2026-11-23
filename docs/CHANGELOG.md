@@ -12,6 +12,19 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 38: prove the run-over
+
+- **Live run-over behavioral test**: harness seats the player in a
+  sedan, plants a thug 3 m off the nose, launches the car at 50 km/h,
+  and asserts the thug is struck AND the player is charged (wanted
+  ≥ 3) for it. Wave 32's physics, proven end to end.
+- **Real bug caught and fixed**: when a civilian died, `_on_died`
+  called `react()` on every nearby humanoid *without a method guard* —
+  the player has no `react()`, so any player-caused pedestrian death
+  (run-overs, wave 32) threw a script error. Guards added on both the
+  ally-down and gunshots notification loops, plus validity checks.
+- Harness **141 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 37: one pick per job
 
 - **Lockpicks are consumables now**: a completed 2.2 s pick spends one

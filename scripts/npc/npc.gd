@@ -907,12 +907,12 @@ func _on_died(_cause: String) -> void:
 	if hostile:
 		WorldState.stats["kos"] += 1
 		for n in get_tree().get_nodes_in_group("enemy"):
-			if n != self and is_instance_valid(n) and (n.global_position - global_position).length() < 30.0:
+			if n != self and is_instance_valid(n) and n.has_method("react") and (n.global_position - global_position).length() < 30.0:
 				n.react("ally_down", global_position)
 	else:
 		Bus.crime_committed.emit("homicide", 5, global_position)
 		for n in get_tree().get_nodes_in_group("humanoid"):
-			if n != self and (n.global_position - global_position).length() < 25.0:
+			if n != self and is_instance_valid(n) and n.has_method("react") and (n.global_position - global_position).length() < 25.0:
 				n.react("gunshots", global_position)
 
 
