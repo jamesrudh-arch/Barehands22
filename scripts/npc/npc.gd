@@ -14,6 +14,13 @@ var combat: CombatController
 var skeleton: Skeleton3D
 var state: int = State.ROUTINE
 var hostile: bool = false
+# --- combat tactics (wave 4) ---
+var _tactics_t := 0.0
+var _flank_side := 0.0
+var _stagger_t := 0.0
+var _retreat_t := 0.0
+var _call_cd := 8.0
+var _backoff_t := 0.0
 var faction_tag: String = ""
 
 var _target: Vector3 = Vector3.ZERO
@@ -326,9 +333,35 @@ func _combat_state(dt: float, player: Node) -> void:
 	combat.combat_timer = 5.0
 	_face(to_p.normalized(), dt)
 	_attack_cd -= dt
+	_call_cd -= dt
+	_stagger_t -= dt
+	_retreat_t -= dt
+	_backoff_t -= dt
+	# --- squad awareness: stagger, call for help, notify allies ---
+	var frac: float = combat.hp / maxf(1.0, combat.max_hp)
+	if frac < 0.35 and _stagger_t <= -1.0 and randf() < 0.6 * dt:
+		_stagger_t = randf_range(0.6, 1.1)
+		if _call_cd <= 0.0 and hostile:
+			_call_for_help()
+			_call_cd = randf_range(12.0, 20.0)
+	if frac < 0.25 and _retreat_t <= 0.0 and randf() < 0.25 * dt:
+		_retreat_t = randf_range(2.0, 3.5)
 	var gun: bool = _weapon_id != "" and Db.weapon(_weapon_id).get("kind", "") == "gun"
+	# --- re-evaluate tactics every ~1.2 s ---
+	_tactics_t -= dt
+	if _tactics_t <= 0.0:
+		_tactics_t = randf_range(0.9, 1.5)
+		var allies := _nearby_allies(22.0)
+		if allies.size() >= 2 and randf() < 0.55:
+			_flank_side = 1.0 if randf() < 0.5 else -1.0   # pincer: opposite sides converge
+		elif randf() < 0.25:
+			_flank_side = 1.0 if randf() < 0.5 else -1.0
+		else:
+			_flank_side = 0.0
+		if gun and frac < 0.3 and _retreat_t > 0.0:
+			_flank_side = 0.0
 	if gun:
-		if dist < 45.0 and _attack_cd <= 0.0:
+		if dist < 45.0 and _attack_cd <= 0.0 and _stagger_t <= 0.0:
 			# shoot with lead + spread
 			var dir := to_p.normalized() + Vector3(0, 1.2 / dist, 0)
 			dir += Vector3(randf_range(-0.03, 0.03), 0, randf_range(-0.03, 0.03))
@@ -344,31 +377,85 @@ func _combat_state(dt: float, player: Node) -> void:
 			anim.aiming = true
 		else:
 			anim.aiming = dist < 45.0
-		# keep distance
-		if dist < 12.0:
-			velocity = -to_p.normalized() * 2.4
-		elif dist > 30.0:
-			velocity = to_p.normalized() * 3.0
-		else:
-			velocity = Vector3.ZERO
+		# tactical movement: spacing + lateral flank + retreat when hurt
+		var move := Vector3.ZERO
+		if _retreat_t > 0.0 or dist < 9.0:
+			move += -to_p.normalized() * 2.8
+		elif dist > 32.0:
+			move += to_p.normalized() * 3.2
+		var lateral := to_p.normalized().cross(Vector3.UP)
+		move += lateral * (_flank_side * 3.0)
+		velocity = move
 		anim.mode = "locomote"
 		anim.tick(dt, combat.style.get("stance", {}))
 	else:
 		anim.aiming = false
-		if dist > 1.3:
-			velocity = to_p.normalized() * 3.4
+		var ideal := 1.25
+		if _stagger_t > 0.0 or _backoff_t > 0.0 or _retreat_t > 0.0:
+			# hurt: give ground, circle
+			var back := -to_p.normalized() * 2.2
+			var side := to_p.normalized().cross(Vector3.UP) * (2.0 if _flank_side >= 0 else -2.0)
+			velocity = back + side
+			anim.mode = "locomote"
+		elif dist > ideal:
+			var move := to_p.normalized() * 3.4
+			if absf(_flank_side) > 0.0 and dist > 3.0:
+				move += to_p.normalized().cross(Vector3.UP) * (_flank_side * 2.6)
+			velocity = move
 			anim.mode = "locomote"
 		else:
 			velocity = Vector3.ZERO
 			if _attack_cd <= 0.0 and not combat.attacking:
-				var kinds := ["jab", "cross", "hook", "kick_r", "heavy"]
+				var kinds := _attack_pool()
 				combat.request_attack(kinds[randi() % kinds.size()])
-				_attack_cd = randf_range(0.7, 1.6)
+				_attack_cd = randf_range(0.6, 1.5)
+				if randf() < 0.25:
+					_backoff_t = randf_range(0.5, 1.0)   # feint-and-reset, not a punching bag
 			anim.mode = "locomote"
 		anim.tick(dt, combat.style.get("stance", {}))
 
 
+func _attack_pool() -> Array:
+	match _style_id:
+		"kickboxing":
+			return ["kick_r", "kick_l", "kick_high", "jab", "cross", "heavy"]
+		"grappling":
+			return ["grab", "takedown", "jab", "hook", "heavy"]
+		"drunken":
+			return ["hook", "jab", "kick_r", "heavy", "kick_high", "cross"]
+		_:
+			return ["jab", "cross", "hook", "kick_r", "heavy"]
+
+
+func _nearby_allies(radius: float) -> Array:
+	var out := []
+	for n in get_tree().get_nodes_in_group("enemy"):
+		if n != self and is_instance_valid(n) and (n.global_position - global_position).length() < radius:
+			out.append(n)
+	return out
+
+
+func _call_for_help() -> void:
+	AudioDirector.sfx_at("shout_alert", global_position + Vector3(0, 1.5, 0))
+	# wake hostiles in range toward the fight; alert neutral faction friends
+	for n in get_tree().get_nodes_in_group("humanoid"):
+		if n == self or not is_instance_valid(n):
+			continue
+		var d := (n.global_position - global_position).length()
+		if d < 45.0:
+			if n.has_method("react"):
+				n.react("combat_call", global_position)
+
+
 func react(event: String, from: Vector3) -> void:
+	match event:
+		"combat_call", "ally_down":
+			if state != State.DEAD:
+				if event == "ally_down":
+					_stagger_t = 0.4          # flinch: a friend just dropped
+					combat.combat_timer = 6.0
+				if state != State.COMBAT and hostile:
+					state = State.COMBAT
 	match event:
 		"gunshots":
 			if state != State.DEAD:
@@ -445,6 +532,9 @@ func _on_died(_cause: String) -> void:
 	remove_from_group("enemy")
 	if hostile:
 		WorldState.stats["kos"] += 1
+		for n in get_tree().get_nodes_in_group("enemy"):
+			if n != self and is_instance_valid(n) and (n.global_position - global_position).length() < 30.0:
+				n.react("ally_down", global_position)
 	else:
 		Bus.crime_committed.emit("homicide", 5, global_position)
 		for n in get_tree().get_nodes_in_group("humanoid"):

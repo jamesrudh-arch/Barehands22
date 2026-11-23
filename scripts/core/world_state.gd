@@ -52,6 +52,9 @@ var owned_vehicles: Array = []
 # --- phone ---
 var phone_station: String = ""
 var call_log: Array = []
+var gps_active: bool = false
+var gps_target: Vector3 = Vector3.ZERO
+var gps_label: String = ""
 var msg_threads: Dictionary = {}
 var messages_read: Array = []
 var messages_pending: Array = []
@@ -257,6 +260,9 @@ func serialize() -> Dictionary:
 		"owned_vehicles": owned_vehicles.duplicate(),
 		"phone_station": phone_station,
 		"call_log": call_log,
+		"gps_active": gps_active,
+		"gps_target": [gps_target.x, gps_target.y, gps_target.z],
+		"gps_label": gps_label,
 		"msg_threads": msg_threads,
 		"messages_read": messages_read.duplicate(),
 		"messages_pending": messages_pending.duplicate(),
@@ -289,6 +295,11 @@ func deserialize(d: Dictionary) -> void:
 	owned_vehicles = d.get("owned_vehicles", [])
 	phone_station = d.get("phone_station", 0)
 	call_log = d.get("call_log", [])
+	gps_active = d.get("gps_active", false)
+	var gt: Array = d.get("gps_target", [])
+	if gt.size() == 3:
+		gps_target = Vector3(gt[0], gt[1], gt[2])
+	gps_label = d.get("gps_label", "")
 	msg_threads = d.get("msg_threads", {})
 	messages_read = d.get("messages_read", [])
 	messages_pending = d.get("messages_pending", [])

@@ -147,7 +147,56 @@ func _show_map() -> void:
 	_map_view.clip_contents = true
 	_screen.add_child(_map_view)
 	_map_view.draw.connect(_draw_map)
+	_map_view.gui_input.connect(_map_tap)
 	_map_view.queue_redraw()
+	var rb := Button.new()
+	rb.text = "ROUTE TO OBJECTIVE"
+	rb.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	rb.offset_left = -140
+	rb.offset_right = 140
+	rb.offset_top = -46
+	rb.offset_bottom = -12
+	rb.add_theme_font_size_override("font_size", 14)
+	rb.pressed.connect(func():
+		var mm := get_node_or_null("/root/MissionManager")
+		if mm and mm.rt.get("pos") is Vector3:
+			WorldState.gps_active = true
+			WorldState.gps_target = mm.rt["pos"]
+			WorldState.gps_label = mm.objective_text() if mm.has_method("objective_text") else "Objective"
+			Bus.notification.emit("GPS: %s" % WorldState.gps_label, "info")
+		else:
+			Bus.notification.emit("No active objective.", "info")
+		_map_view.queue_redraw())
+	_screen.add_child(rb)
+
+
+func _map_tap(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton) or not ev.pressed:
+		return
+	var wr := _map_rect()
+	var size := _map_view.size
+	var scale := minf(size.x / wr.size.x, size.y / wr.size.y)
+	var off := (size - wr.size * scale) * 0.5
+	var w := Vector2((ev.position.x - off.x) / scale + wr.position.x,
+		(ev.position.y - off.y) / scale + wr.position.y)
+	var best := ""
+	var bd := 14.0 * 14.0 / maxf(0.001, scale * scale)
+	for pid in WorldGen.pois:
+		var d2: Dictionary = WorldGen.pois[pid].get("data", {})
+		if not d2.has("at"):
+			continue
+		var at: Vector3 = d2["at"]
+		var dd := (Vector2(at.x, at.z) - w).length_squared()
+		if dd < bd:
+			bd = dd
+			best = pid
+	if best != "":
+		var dd2: Dictionary = WorldGen.pois[best].get("data", {})
+		WorldState.gps_active = true
+		WorldState.gps_target = dd2["at"]
+		WorldState.gps_label = str(dd2.get("name", best))
+		Bus.notification.emit("GPS: %s" % WorldState.gps_label, "info")
+		_map_view.queue_redraw()
 
 
 func _map_rect() -> Rect2:
@@ -193,6 +242,21 @@ func _draw_map() -> void:
 			pts.append(to_screen.call(Vector2(p.x, p.z)))
 		pts.append(pts[0])
 		v.draw_polyline(pts, Color(0.35, 0.33, 0.3), 1.5)
+	# GPS route
+	if WorldState.gps_active:
+		var pl = Game.player
+		if pl:
+			var path := WorldGen.route_world(pl.global_position, WorldState.gps_target)
+			if path.size() > 1:
+				var rp := PackedVector2Array()
+				for p in path:
+					rp.append(to_screen.call(Vector2(p.x, p.z)))
+				v.draw_polyline(rp, Color(0.23, 0.91, 0.69, 0.95), 3.0)
+			var dp := to_screen.call(Vector2(pl.global_position.x, pl.global_position.z))
+			v.draw_circle(dp, 5.0, Color(0.95, 0.72, 0.25))
+		var tp := to_screen.call(Vector2(WorldState.gps_target.x, WorldState.gps_target.z))
+		v.draw_circle(tp, 6.0, Color(0.23, 0.91, 0.69))
+		v.draw_circle(tp, 9.0, Color(0.23, 0.91, 0.69, 0.4), false, 2.0)
 	# POIs
 	for pid in WorldGen.pois:
 		var entry: Dictionary = WorldGen.pois[pid]

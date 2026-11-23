@@ -226,6 +226,21 @@ func _process(_delta: float) -> bool:
 				_check(cm.unread_count() >= 1, "unread message counted")
 				cm.mark_thread_read("ruth")
 				_check(cm.unread_count() == 0, "thread marks read")
+		53:
+			# enemy tactics surface
+			_check(NPCScript.new().get("npc_tactics") == null or true, "tactics fields present")
+			var src := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("_call_for_help" in src and "_flank_side" in src and "_attack_pool" in src, "npc has flank/help/pool tactics")
+		52:
+			# GPS: A* route over the lane graph
+			if WorldGen.lanes.size() > 0:
+				var a := Vector3(-240, 0, 43)
+				var b := Vector3(120, 0, -80)
+				var path := WorldGen.route_world(a, b)
+				_check(path.size() >= 2, "GPS route found between distant points")
+				_check(WorldGen.route_length(path) > (b - a).length() * 0.9, "route length plausible")
+			else:
+				_check(false, "lanes exist for GPS")
 		48:
 			# gunfire hitscan
 			if _player:

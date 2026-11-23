@@ -732,3 +732,103 @@ func set_night_emission(on: bool) -> void:
 	for k in _mats:
 		if k.begins_with("facade_"):
 			_mats[k].emission_energy_multiplier = 1.6 if on else 0.0
+
+# ------------------------------------------------------------------ GPS ----
+var _rg_nodes: PackedVector3Array = PackedVector3Array()
+var _rg_adj: Array = []                     # per node: Array of [node_idx, cost]
+var _rg_built := false
+
+
+func _route_graph_build() -> void:
+	_rg_nodes = PackedVector3Array()
+	_rg_adj = []
+	var index := {}
+	for lane in lanes:
+		var ids := []
+		for p in lane:
+			var key := Vector2(round(p.x * 2) / 2, round(p.z * 2) / 2)
+			if not index.has(key):
+				index[key] = _rg_nodes.size()
+				_rg_nodes.append(p)
+				_rg_adj.append([])
+			ids.append(index[key])
+		for i in ids.size():
+			var a: int = ids[i]
+			var b: int = ids[(i + 1) % ids.size()]
+			var c: float = (_rg_nodes[a] - _rg_nodes[b]).length()
+			_rg_adj[a].append([b, c])
+			_rg_adj[b].append([a, c])
+	# transfers: near-coincident nodes across loops
+	var n := _rg_nodes.size()
+	for i in n:
+		for j in range(i + 1, n):
+			if (_rg_nodes[i] - _rg_nodes[j]).length() < 5.0:
+				_rg_adj[i].append([j, 2.0])
+				_rg_adj[j].append([i, 2.0])
+	_rg_built = true
+
+
+func _rg_nearest(p: Vector3) -> int:
+	var best := 0
+	var bd := 1e18
+	for i in _rg_nodes.size():
+		var d := (_rg_nodes[i] - p).length_squared()
+		if d < bd:
+			bd = d
+			best = i
+	return best
+
+
+func route_world(from: Vector3, to: Vector3) -> PackedVector3Array:
+	if not _rg_built:
+		_route_graph_build()
+	if _rg_nodes.size() == 0:
+		return PackedVector3Array()
+	var start := _rg_nearest(from)
+	var goal := _rg_nearest(to)
+	if start == goal:
+		return PackedVector3Array([from, to])
+	var g := {}
+	var came := {}
+	g[start] = 0.0
+	var open := [[0.0, start]]
+	var done := {}
+	while open.size() > 0:
+		open.sort()
+		var cur: int = open[0][1]
+		open.remove_at(0)
+		if done.has(cur):
+			continue
+		done[cur] = true
+		if cur == goal:
+			break
+		for e in _rg_adj[cur]:
+			var nx: int = e[0]
+			var ng: float = g[cur] + e[1]
+			if not g.has(nx) or ng < g[nx]:
+				g[nx] = ng
+				came[nx] = cur
+				open.append([ng + (_rg_nodes[nx] - _rg_nodes[goal]).length(), nx])
+	if not came.has(goal) and start != goal:
+		return PackedVector3Array()
+	var path := PackedVector3Array()
+	var c: int = goal
+	path.append(to)
+	while c != start:
+		path.append(_rg_nodes[c])
+		if not came.has(c):
+			break
+		c = came[c]
+	path.append(from)
+	var rev := PackedVector3Array()
+	for i in range(path.size() - 1, -1, -1):
+		rev.append(path[i])
+	return rev
+
+
+func route_length(path: PackedVector3Array) -> float:
+	var L := 0.0
+	for i in path.size() - 1:
+		L += (path[i + 1] - path[i]).length()
+	return L
+
