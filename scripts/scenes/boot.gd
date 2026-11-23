@@ -15,8 +15,7 @@ func _ready() -> void:
 	_logo = TextureRect.new()
 	_logo.texture = load("res://assets/textures/ui/splash_dyoungs.png")
 	_logo.set_anchors_preset(Control.PRESET_CENTER)
-	_logo.offset_left = -220
-	_logo.offset_right = 220
+	_logo.set_meta("fit_half", float(220))
 	_logo.offset_top = -150
 	_logo.offset_bottom = 110
 	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -26,8 +25,7 @@ func _ready() -> void:
 	_name = Label.new()
 	_name.text = "D'YOUNGS GAMES"
 	_name.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_name.offset_left = -300
-	_name.offset_right = 300
+	_name.set_meta("fit_half", float(300))
 	_name.offset_top = -140
 	_name.offset_bottom = -100
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -38,8 +36,7 @@ func _ready() -> void:
 	_tag = Label.new()
 	_tag.text = "presents"
 	_tag.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_tag.offset_left = -300
-	_tag.offset_right = 300
+	_tag.set_meta("fit_half", float(300))
 	_tag.offset_top = -104
 	_tag.offset_bottom = -76
 	_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -49,6 +46,9 @@ func _ready() -> void:
 	add_child(_tag)
 	AudioDirector.play_music("music_menu", 1.0)
 
+
+	_refit()
+	UiFit.watch(self, _refit)
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -62,3 +62,7 @@ func _process(delta: float) -> void:
 	if _t > 3.4:
 		set_process(false)
 		get_tree().change_scene_to_file("res://scenes/menu/title.tscn")
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)

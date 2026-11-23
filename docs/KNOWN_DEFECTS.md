@@ -37,3 +37,7 @@ D-items are device verification, K-items are known code/content defects.
 
 Full voice acting; photoreal assets; multiplayer; navmesh pathfinding;
 network streaming; C#/native addons (XOGOT constraint).
+
+## Found on real device (XOGOT), fixed in code
+
+| ~~K-13~~ | **CLOSED (code), pending device re-check** | XOGOT/iOS runs the project **portrait** (its shell ignores `sensor_landscape`) and code-built UI used fixed pixel offsets sized for a wide viewport: notice/title text collapsed to one character per line, headings anchored off-screen, gray default clear color showed | Menus unusable on phone | New `scripts/ui/ui_fit.gd`: offsets clamped to live viewport (`fit_half`/`fit_pad` metas), re-applied on `size_changed`; HUD rebuilds its touch cluster on resize; `default_clear_color` set to night black. Harness check 47. **Needs one device re-run to confirm.** |

@@ -1,5 +1,12 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — XOGOT device pass #1: portrait UI fix (K-13)
+
+- First real-device boot succeeded (XOGOT on iPhone): engine, GDScript and scene flow run.
+- Defect found: XOGOT's iOS shell runs **portrait**, ignoring `sensor_landscape`; fixed-offset UI collapsed (one-char-per-line labels, off-screen headings, gray clear color).
+- Fix: `scripts/ui/ui_fit.gd` responsive helpers (clamp center/inset offsets to live viewport, refit on `size_changed`); applied across boot/title/notice/menu/dialogue/shop/phone/cutscene; HUD rebuilds touch cluster + refits centers on resize; `default_clear_color` = night black in project.godot.
+- Harness +2 checks (UiFit clamp math).
+
 ## 2026-11-23 — Defect burn-down (K-01/02/03/04/06/10/11/12 closed)
 
 - **K-01** traffic AI reads light state: `vehicle.gd _check_ahead` queries `CityLife.traffic_green_at` 10 m ahead; red = blocker.

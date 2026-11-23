@@ -161,6 +161,19 @@ func _process(_delta: float) -> bool:
 			if mm.active_id != "":
 				var sv: Dictionary = mm.save_state()
 				_check(sv.has("stage") and sv["stage"] >= 0, "mission save includes stage idx")
+		47:
+			# responsive UI clamp math (XOGOT portrait fix)
+			var fitc := Control.new()
+			root.add_child(fitc)
+			UiFit.center(fitc, 300.0)
+			var half_w: float = UiFit.vw(fitc) * 0.5 - 10.0
+			_check(fitc.offset_left == -fitc.offset_right and fitc.offset_right <= 300.0
+				and fitc.offset_right <= half_w + 0.001, "UiFit.center clamps to viewport")
+			UiFit.inset(fitc, 240.0)
+			_check(fitc.offset_left > 0.0 and fitc.offset_left <= 240.0
+				and fitc.offset_left >= UiFit.vw(fitc) * 0.06 - 0.001 or fitc.offset_left == 240.0,
+				"UiFit.inset keeps text column width")
+			fitc.queue_free()
 		48:
 			# gunfire hitscan
 			if _player:

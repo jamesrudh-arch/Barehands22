@@ -5,7 +5,7 @@ _Last updated: session 3 (systems integration + first engine-verified gameplay)_
 VERTICAL GAMEPLAY COMPLETE IN SANDBOX — the full city boots headless in the
 real Godot 4.7.2 binary; player, combat, vehicles, traffic, crowds, police,
 missions, dialogue, interiors, shops, phone, saves all execute with 0 script
-errors (harness 24/24 checks). Presentation flow (boot→title→notice→menu→city)
+errors (harness 26/26 checks). Presentation flow (boot→title→notice→menu→city)
 wired. Remaining: tutorial layer, radio-in-vehicle, news feed polish, device
 docs/verification guide, final audit.
 
@@ -66,7 +66,7 @@ docs/verification guide, final audit.
   notice.tscn (content advisory), menu.tscn (new/continue/settings/credits),
   city.tscn (env + day/night sun + rain particles + thunder + WorldGen build +
   CityLife + player spawn + HUD + event routing + radio news ticker).
-- TESTS: tests/harness.gd SceneTree harness — 24 checks, 0 fails:
+- TESTS: tests/harness.gd SceneTree harness — 26 checks, 0 fails:
   spawn/skeleton/combat/weapons/movement/melee/enemy damage+death/vehicle
   spawn+enter+drive (34.7 km/h)/prologue start/goto→talk stage advance/
   dialogue open/save+load roundtrip/wanted/peds+traffic+parked counts/

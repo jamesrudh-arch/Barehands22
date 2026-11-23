@@ -46,8 +46,7 @@ func _ready() -> void:
 	_scroll = ScrollContainer.new()
 	_scroll.anchor_right = 1.0
 	_scroll.anchor_bottom = 1.0
-	_scroll.offset_left = 40
-	_scroll.offset_right = -40
+	_scroll.set_meta("fit_pad", float(40))
 	_scroll.offset_top = 130
 	_scroll.offset_bottom = -110
 	_panel.add_child(_scroll)
@@ -82,6 +81,9 @@ func _ready() -> void:
 	_panel.add_child(close)
 	Bus.money_changed.connect(func(_m): _refresh_money())
 
+
+	_refit()
+	UiFit.watch(self, _refit)
 
 func open_shop(shop_id: String) -> void:
 	var s: Dictionary = Db.shops.get(shop_id, {})
@@ -307,3 +309,7 @@ func _heal() -> void:
 func _player() -> Node:
 	var g := get_tree().get_nodes_in_group("player")
 	return g[0] if g.size() else null
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)

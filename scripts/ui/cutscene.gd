@@ -37,8 +37,7 @@ func _ready() -> void:
 	_sub.anchor_right = 0.5
 	_sub.anchor_top = 1.0
 	_sub.anchor_bottom = 1.0
-	_sub.offset_left = -360
-	_sub.offset_right = 360
+	_sub.set_meta("fit_half", float(360))
 	_sub.offset_top = -140
 	_sub.offset_bottom = -80
 	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -70,6 +69,9 @@ func _ready() -> void:
 # {"v":"dialogue","tree":"dlg_..."}   (waits for dialogue end)
 # {"v":"flag","name":"...","value":true}
 # {"v":"notify","text":"..."}
+
+	_refit()
+	UiFit.watch(self, _refit)
 
 func play(id: String, finished: Callable = Callable()) -> void:
 	if playing:
@@ -335,3 +337,7 @@ func _scene() -> Node:
 	if t == null:
 		t = Engine.get_main_loop() as SceneTree
 	return t.current_scene if t != null else null
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)

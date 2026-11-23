@@ -26,6 +26,12 @@ proof** — the status vocabulary lives in `docs/TRACEABILITY.md`.
 
 ## B. Device visual pass (iPhone via XOGOT — first import)
 
+NOTE (2026-11-23): XOGOT's iOS shell runs the project in PORTRAIT regardless of
+`handheld/orientation`. All code-built UI is width-responsive since the K-13
+fix (`scripts/ui/ui_fit.gd`), so portrait and landscape both lay out correctly.
+After any repo update, re-import the fresh copy in XOGOT (old imports cache).
+
+
 1. Transfer this project folder to the iPhone (Files app / iCloud Drive /
    Working Copy) into **On My iPhone → Xogot** (per official XOGOT docs).
 2. Open in XOGOT; let it import (first import is longer).
