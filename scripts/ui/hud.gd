@@ -65,6 +65,8 @@ func _ready() -> void:
 	_build_toasts()
 	_build_touch()
 	_build_pause()
+	_fit_centers()
+	UiFit.watch(self, _on_vp_resized)
 	_root.visible = false
 	Bus.notification.connect(_notify)
 	Bus.interaction_available.connect(_prompt_show)
@@ -718,3 +720,28 @@ func _player() -> Node:
 
 func _city_life() -> Node:
 	return get_node_or_null("/root/City/CityLife")
+
+
+func _fit_centers() -> void:
+	UiFit.center(_toasts, 260.0)
+	UiFit.center(_prompt_lbl, 260.0)
+
+
+func _on_vp_resized() -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var s: Vector2 = vp.get_visible_rect().size
+	if s.x < 2.0 or s.y < 2.0:
+		return  # host hasn't sized the window yet; will fire again
+	for c in _root.get_children():
+		c.queue_free()
+	_build_top()
+	_build_bars()
+	_build_minimap()
+	_build_objective()
+	_build_toasts()
+	_build_touch()
+	_build_pause()
+	_root.visible = enabled
+	_fit_centers()

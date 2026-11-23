@@ -19,8 +19,7 @@ func _ready() -> void:
 	var logo := TextureRect.new()
 	logo.texture = load("res://assets/textures/ui/logo_leverage.png")
 	logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	logo.offset_left = -260
-	logo.offset_right = 260
+	logo.set_meta("fit_half", float(260))
 	logo.offset_top = 44
 	logo.offset_bottom = 240
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -31,8 +30,7 @@ func _ready() -> void:
 	_panel.anchor_right = 0.5
 	_panel.anchor_top = 0.5
 	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -230
-	_panel.offset_right = 230
+	_panel.set_meta("fit_half", float(230))
 	_panel.offset_top = -60
 	_panel.offset_bottom = 260
 	_panel.add_theme_constant_override("separation", 12)
@@ -40,6 +38,9 @@ func _ready() -> void:
 	_build_main()
 	AudioDirector.play_music("music_menu", 1.0)
 
+
+	_refit()
+	UiFit.watch(self, _refit)
 
 func _clear_panel() -> void:
 	for c in _panel.get_children():
@@ -196,3 +197,7 @@ Everyone has leverage on you."""
 	t.add_theme_color_override("font_color", Color(0.8, 0.78, 0.72))
 	_panel.add_child(t)
 	_menu_btn("BACK", func(): _build_main())
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)

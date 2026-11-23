@@ -41,8 +41,7 @@ func _ready() -> void:
 	panel.anchor_right = 0.5
 	panel.anchor_top = 1.0
 	panel.anchor_bottom = 1.0
-	panel.offset_left = -320
-	panel.offset_right = 320
+	panel.set_meta("fit_half", float(320))
 	panel.offset_top = -190
 	panel.offset_bottom = -30
 	var sb := StyleBoxTexture.new()
@@ -86,8 +85,7 @@ func _ready() -> void:
 	choice_box.anchor_right = 0.5
 	choice_box.anchor_top = 0.5
 	choice_box.anchor_bottom = 0.5
-	choice_box.offset_left = -220
-	choice_box.offset_right = 220
+	choice_box.set_meta("fit_half", float(220))
 	choice_box.offset_top = -140
 	choice_box.offset_bottom = 140
 	choice_box.add_theme_constant_override("separation", 10)
@@ -102,6 +100,8 @@ func _ready() -> void:
 	_tap.pressed.connect(_advance)
 	root.add_child(_tap)
 	Bus.dialogue_line.connect(_on_line)
+	_refit()
+	UiFit.watch(self, _refit)
 
 
 var _dim: ColorRect
@@ -310,8 +310,7 @@ func _bark_show(who: String, text: String, voice: String) -> void:
 		_bark_lbl.anchor_right = 0.5
 		_bark_lbl.anchor_top = 1.0
 		_bark_lbl.anchor_bottom = 1.0
-		_bark_lbl.offset_left = -300
-		_bark_lbl.offset_right = 300
+		_bark_lbl.set_meta("fit_half", float(300))
 		_bark_lbl.offset_top = -150
 		_bark_lbl.offset_bottom = -110
 		_bark_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -347,3 +346,7 @@ func close() -> void:
 	if not Cutscene.playing:
 		Game.cutscene_active = false
 	Bus.dialogue_ended.emit()
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)

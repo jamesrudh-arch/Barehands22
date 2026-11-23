@@ -28,8 +28,7 @@ func _ready() -> void:
 	_frame.anchor_right = 0.5
 	_frame.anchor_top = 0.5
 	_frame.anchor_bottom = 0.5
-	_frame.offset_left = -240
-	_frame.offset_right = 240
+	_frame.set_meta("fit_half", float(240))
 	_frame.offset_top = -330
 	_frame.offset_bottom = 330
 	var sb := StyleBoxTexture.new()
@@ -42,8 +41,7 @@ func _ready() -> void:
 	_root.add_child(_frame)
 	_screen = Control.new()
 	_screen.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_screen.offset_left = 18
-	_screen.offset_right = -18
+	_screen.set_meta("fit_pad", float(18))
 	_screen.offset_top = 18
 	_screen.offset_bottom = -18
 	_frame.add_child(_screen)
@@ -51,6 +49,9 @@ func _ready() -> void:
 	Bus.phone_closed.connect(func(): close_phone())
 	Bus.radio_news.connect(_on_news)
 
+
+	_refit()
+	UiFit.watch(self, _refit)
 
 func open_phone() -> void:
 	open = true
@@ -640,3 +641,7 @@ func _input(event: InputEvent) -> void:
 	if open and event.is_action_pressed("ui_cancel"):
 		close_phone()
 		get_viewport().set_input_as_handled()
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)

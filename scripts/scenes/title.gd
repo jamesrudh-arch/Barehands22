@@ -19,8 +19,7 @@ func _ready() -> void:
 	var logo := TextureRect.new()
 	logo.texture = load("res://assets/textures/ui/logo_leverage.png")
 	logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	logo.offset_left = -360
-	logo.offset_right = 360
+	logo.set_meta("fit_half", float(360))
 	logo.offset_top = 70
 	logo.offset_bottom = 330
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -29,8 +28,7 @@ func _ready() -> void:
 	var tag := Label.new()
 	tag.text = "EVERYONE HAS LEVERAGE ON YOU."
 	tag.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	tag.offset_left = -400
-	tag.offset_right = 400
+	tag.set_meta("fit_half", float(400))
 	tag.offset_top = 340
 	tag.offset_bottom = 372
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -40,8 +38,7 @@ func _ready() -> void:
 	_tap = Label.new()
 	_tap.text = "TAP TO CONTINUE"
 	_tap.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_tap.offset_left = -300
-	_tap.offset_right = 300
+	_tap.set_meta("fit_half", float(300))
 	_tap.offset_top = -90
 	_tap.offset_bottom = -50
 	_tap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -50,8 +47,7 @@ func _ready() -> void:
 	var ver := Label.new()
 	ver.text = "v0.9.0 — a D'Youngs Games story — Godot 4.7 / Mobile"
 	ver.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	ver.offset_left = -400
-	ver.offset_right = 400
+	ver.set_meta("fit_half", float(400))
 	ver.offset_top = -40
 	ver.offset_bottom = -14
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -60,6 +56,9 @@ func _ready() -> void:
 	add_child(ver)
 	AudioDirector.play_music("music_menu", 1.0)
 
+
+	_refit()
+	UiFit.watch(self, _refit)
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -80,3 +79,7 @@ func _input(event: InputEvent) -> void:
 		AudioDirector.sfx("ui_confirm", 0.2)
 		Game.goto_scene("res://scenes/menu/notice.tscn")
 		Game.set_state(Game.State.MENU)
+
+
+func _refit() -> void:
+	UiFit.refit_tree(self)
