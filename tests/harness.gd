@@ -401,6 +401,27 @@ func _process(_delta: float) -> bool:
 			_check(db7.items.has("ammo_357") and str(db7.items["ammo_357"].get("for","")) == "gun_magnum", "magnum ammo mapped")
 			var plsrc2 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
 			_check('"ammo":' in plsrc2 and "add_ammo" in plsrc2, "ammo items usable from the BAG")
+			# REGRESSION: on-foot vehicle entry must live in _handle_interact,
+			# reachable code — it was once stranded after a return in _find_body
+			var hi: int = plsrc2.find("func _handle_interact")
+			var fb: int = plsrc2.find("func _find_body")
+			var ve: int = plsrc2.find("vehicle_enter", hi)
+			_check(hi >= 0 and ve > hi and (fb < 0 or ve < fb), "on-foot vehicle entry reachable (regression guard)")
+			# and actually drive: spawn a car next to the player and enter it
+			var pl5 = root.get_node_or_null("City/Player")
+			if pl5 == null:
+				var g5: Array = get_nodes_in_group("player")
+				pl5 = g5[0] if not g5.is_empty() else null
+			if pl5 != null and pl5.in_vehicle == null:
+				var city5 := root.get_node_or_null("City")
+				var cl5 = root.get_node_or_null("CityLife")
+				if cl5 != null and cl5.has_method("give_player_vehicle"):
+					var veh5 = cl5.give_player_vehicle("sedan", pl5.global_position + Vector3(2.2, 0.3, 0))
+					pl5.enter_vehicle(veh5)
+					_check(pl5.in_vehicle == veh5, "player can enter an adjacent vehicle")
+					pl5.exit_vehicle()
+					if is_instance_valid(veh5):
+						veh5.queue_free()
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")

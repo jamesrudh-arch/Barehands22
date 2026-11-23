@@ -1,5 +1,15 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — CRITICAL FIX: on-foot vehicle entry was dead code
+
+- The `vehicle_enter` (F) handler had been stranded AFTER a `return`
+  inside `_find_body()` since the wave-9 body-hiding reorder — on foot,
+  pressing F next to any car did nothing. Entry now lives at the top of
+  `_handle_interact`, before body/interact priority.
+- Harness regression guard: source-position check that the on-foot
+  `vehicle_enter` branch is reachable, PLUS a live spawn-and-enter drive
+  test. Harness **92 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 16: hand cannons & loose rounds
 
 - **Two new guns**: the Judge .357 (58 dmg, 6 shots, brutal recoil,
