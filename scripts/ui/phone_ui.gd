@@ -147,7 +147,57 @@ func _show_map() -> void:
 	_map_view.clip_contents = true
 	_screen.add_child(_map_view)
 	_map_view.draw.connect(_draw_map)
+	_map_view.gui_input.connect(_map_tap)
 	_map_view.queue_redraw()
+	var rb := Button.new()
+	rb.text = "ROUTE TO OBJECTIVE"
+	rb.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	rb.offset_left = -140
+	rb.offset_right = 140
+	rb.offset_top = -46
+	rb.offset_bottom = -12
+	rb.add_theme_font_size_override("font_size", 14)
+	rb.pressed.connect(func():
+		var mm := get_node_or_null("/root/MissionManager")
+		if mm and mm.rt.get("pos") is Vector3:
+			WorldState.gps_active = true
+			WorldState.gps_target = mm.rt["pos"]
+			WorldState.gps_label = mm.objective_text() if mm.has_method("objective_text") else "Objective"
+			Bus.notification.emit("GPS: %s" % WorldState.gps_label, "info")
+		else:
+			Bus.notification.emit("No active objective.", "info")
+		_map_view.queue_redraw())
+	_screen.add_child(rb)
+
+
+func _map_tap(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton) or not ev.pressed:
+		return
+	var wr := _map_rect()
+	var size := _map_view.size
+	var scale := minf(size.x / wr.size.x, size.y / wr.size.y)
+	var off := (size - wr.size * scale) * 0.5
+	var w := Vector2((ev.position.x - off.x) / scale + wr.position.x,
+		(ev.position.y - off.y) / scale + wr.position.y)
+	var best := ""
+	var bd := 14.0 * 14.0 / maxf(0.001, scale * scale)
+	for pid in WorldGen.pois:
+		var d2: Dictionary = WorldGen.pois[pid].get("data", {})
+		if not d2.has("at"):
+			continue
+		var at: Array = d2["at"]
+		var dd := (Vector2(at[0], at[1]) - w).length_squared()
+		if dd < bd:
+			bd = dd
+			best = pid
+	if best != "":
+		var dd2: Dictionary = WorldGen.pois[best].get("data", {})
+		var at2: Array = dd2["at"]
+		WorldState.gps_active = true
+		WorldState.gps_target = Vector3(at2[0], 0, at2[1])
+		WorldState.gps_label = str(dd2.get("name", best))
+		Bus.notification.emit("GPS: %s" % WorldState.gps_label, "info")
+		_map_view.queue_redraw()
 
 
 func _map_rect() -> Rect2:
@@ -175,24 +225,47 @@ func _draw_map() -> void:
 		return Vector2((p.x - wr.position.x) * scale + off.x, (p.y - wr.position.y) * scale + off.y)
 	# water bg
 	v.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.08, 0.12))
-	# districts
+	# districts (fog of war: unvisited districts stay dark + unlabeled)
 	for did in WorldGen.district_bounds:
 		var r: Rect2 = WorldGen.district_bounds[did]
 		var p0: Vector2 = to_screen.call(r.position)
 		var p1: Vector2 = to_screen.call(r.end)
-		v.draw_rect(Rect2(p0, p1 - p0), Color(0.16, 0.15, 0.14), true)
-		v.draw_rect(Rect2(p0, p1 - p0), Color(0.4, 0.36, 0.3), false, 1.0)
-		var d := Db.district(did)
-		v.draw_string(ThemeDB.fallback_font, p0 + Vector2(4, 14), d.get("name", did), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.65, 0.5))
-	# roads (lane loops)
-	for lane in WorldGen.lanes:
+		var seen: bool = did in WorldState.visited_districts
+		if seen:
+			v.draw_rect(Rect2(p0, p1 - p0), Color(0.16, 0.15, 0.14), true)
+			v.draw_rect(Rect2(p0, p1 - p0), Color(0.4, 0.36, 0.3), false, 1.0)
+			var d := Db.district(did)
+			v.draw_string(ThemeDB.fallback_font, p0 + Vector2(4, 14), d.get("name", did), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.65, 0.5))
+		else:
+			v.draw_rect(Rect2(p0, p1 - p0), Color(0.045, 0.05, 0.06), true)
+			v.draw_string(ThemeDB.fallback_font, (p0 + p1) * 0.5 - Vector2(6, 0), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.25, 0.27, 0.3))
+	# roads (lane loops) — only where you have been
+	for li in WorldGen.lanes.size():
+		var lane: PackedVector3Array = WorldGen.lanes[li]
 		if lane.size() < 2:
+			continue
+		if not (WorldGen.lane_district[li] in WorldState.visited_districts):
 			continue
 		var pts := PackedVector2Array()
 		for p in lane:
 			pts.append(to_screen.call(Vector2(p.x, p.z)))
 		pts.append(pts[0])
 		v.draw_polyline(pts, Color(0.35, 0.33, 0.3), 1.5)
+	# GPS route
+	if WorldState.gps_active:
+		var pl = Game.player
+		if pl:
+			var path := WorldGen.route_world(pl.global_position, WorldState.gps_target)
+			if path.size() > 1:
+				var rp := PackedVector2Array()
+				for p in path:
+					rp.append(to_screen.call(Vector2(p.x, p.z)))
+				v.draw_polyline(rp, Color(0.23, 0.91, 0.69, 0.95), 3.0)
+			var dp: Vector2 = to_screen.call(Vector2(pl.global_position.x, pl.global_position.z))
+			v.draw_circle(dp, 5.0, Color(0.95, 0.72, 0.25))
+		var tp: Vector2 = to_screen.call(Vector2(WorldState.gps_target.x, WorldState.gps_target.z))
+		v.draw_circle(tp, 6.0, Color(0.23, 0.91, 0.69))
+		v.draw_circle(tp, 9.0, Color(0.23, 0.91, 0.69, 0.4), false, 2.0)
 	# POIs
 	for pid in WorldGen.pois:
 		var entry: Dictionary = WorldGen.pois[pid]
@@ -200,6 +273,9 @@ func _draw_map() -> void:
 		if not d.has("at"):
 			continue
 		var p: Vector2 = to_screen.call(Vector2(d["at"][0], d["at"][1]))
+		var pdist: String = WorldGen.pois[pid].get("district", "")
+		if not (pid in WorldState.discovered_pois) and not (pdist in WorldState.visited_districts):
+			continue
 		var col := Color(0.5, 0.8, 0.55)
 		match d.get("kind", ""):
 			"shop": col = Color(0.95, 0.75, 0.3)
@@ -339,6 +415,12 @@ func _show_contacts() -> void:
 		b.add_theme_font_size_override("font_size", 15)
 		b.pressed.connect(_call.bind(cid))
 		vb.add_child(b)
+	var sep := Label.new()
+	sep.text = "— RECENT CALLS —"
+	sep.add_theme_font_size_override("font_size", 12)
+	sep.add_theme_color_override("font_color", Color(0.6, 0.6, 0.58))
+	vb.add_child(sep)
+	_show_calls_log(vb)
 	# answer mission call if pending
 	var mm := get_node_or_null("/root/MissionManager")
 	if mm and mm.active_id != "" and mm.stage.get("type", "") == "phone" and mm.rt.get("rang", false):
@@ -354,6 +436,7 @@ func _show_contacts() -> void:
 
 func _call(cid: String) -> void:
 	close_phone()
+	CallManager.place_outgoing(cid)
 	var tree: String = "chat_" + str({"padre_sol": "padre", "crowe_jr": "julian"}.get(cid, cid))
 	if Db.dialogue.has(tree):
 		DialogueUI.start_tree(tree)
@@ -478,6 +561,7 @@ func _show_msgs() -> void:
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			l.add_theme_font_size_override("font_size", 14)
 			vb.add_child(l)
+	_show_threads(vb)
 	if vb.get_child_count() == 0:
 		var l := Label.new()
 		l.text = "No messages. The city is quiet — for now."
@@ -645,3 +729,83 @@ func _input(event: InputEvent) -> void:
 
 func _refit() -> void:
 	UiFit.refit_tree(self)
+
+
+func _show_calls_log(list: VBoxContainer) -> void:
+	var log: Array = WorldState.call_log.duplicate()
+	log.reverse()
+	for e in log:
+		var ch: Dictionary = Db.character(e.get("char", "eli"))
+		var row := HBoxContainer.new()
+		var ic := Label.new()
+		ic.text = "MISSED" if e.get("result") == "missed" else ("OUT" if e.get("result") == "out" else "IN")
+		ic.add_theme_color_override("font_color", Color(0.9, 0.3, 0.25) if e.get("result") == "missed" else Color(0.6, 0.8, 0.6))
+		ic.add_theme_font_size_override("font_size", 12)
+		row.add_child(ic)
+		var nm := Label.new()
+		nm.text = str(ch.get("name", e.get("char", "?")))
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nm.add_theme_font_size_override("font_size", 14)
+		row.add_child(nm)
+		var tm := Label.new()
+		tm.text = "%s %s" % [e.get("day", ""), e.get("hour", "")]
+		tm.add_theme_font_size_override("font_size", 11)
+		tm.add_theme_color_override("font_color", Color(0.6, 0.6, 0.58))
+		row.add_child(tm)
+		list.add_child(row)
+	if log.is_empty():
+		var empty := Label.new()
+		empty.text = "No recent calls."
+		empty.add_theme_font_size_override("font_size", 13)
+		list.add_child(empty)
+
+
+func _show_threads(list: VBoxContainer) -> void:
+	var threads: Dictionary = WorldState.msg_threads
+	if threads.is_empty():
+		var empty := Label.new()
+		empty.text = "No messages yet."
+		empty.add_theme_font_size_override("font_size", 13)
+		list.add_child(empty)
+	for tid in threads:
+		var ch: Dictionary = Db.character(tid)
+		var unread := 0
+		for m in threads[tid]:
+			if not m["read"]:
+				unread += 1
+		var b := Button.new()
+		var last: Dictionary = threads[tid][-1]
+		b.text = "%s%s — %s" % [str(ch.get("name", tid)), (" (%d new)" % unread) if unread > 0 else "", last.get("text", "")]
+		b.add_theme_font_size_override("font_size", 13)
+		b.custom_minimum_size = Vector2(0, 64)
+		var tidc: String = str(tid)
+		b.pressed.connect(func(): _open_thread(tidc))
+		list.add_child(b)
+
+
+func _open_thread(tid: String) -> void:
+	CallManager.mark_thread_read(tid)
+	var scr := ScrollContainer.new()
+	scr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_screen.add_child(scr)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scr.add_child(list)
+	var head := Label.new()
+	var ch: Dictionary = Db.character(tid)
+	head.text = str(ch.get("name", tid))
+	head.add_theme_font_size_override("font_size", 18)
+	head.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
+	list.add_child(head)
+	for m in WorldState.msg_threads[tid]:
+		var row := Label.new()
+		row.text = "%s · %s: %s" % [m.get("hour", ""), "THEM" if m.get("from") == tid else "YOU", m.get("text", "")]
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_theme_font_size_override("font_size", 13)
+		list.add_child(row)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(func():
+		scr.queue_free()
+		_show_msgs())
+	list.add_child(back)

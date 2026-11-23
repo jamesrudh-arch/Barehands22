@@ -87,6 +87,17 @@ func _find_ground(p: Vector3) -> Vector3:
 
 func _setup_environment() -> void:
 	env = load("res://assets/env/default_env.tres").duplicate()
+	# cinematic grade: filmic response, grounded contrast, controlled neon glow
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.adjustment_enabled = true
+	env.adjustment_brightness = 1.0
+	env.adjustment_contrast = 1.07
+	env.adjustment_saturation = 0.93
+	env.glow_enabled = true
+	env.glow_intensity = 0.32
+	env.glow_strength = 0.9
+	env.glow_bloom = 0.02
+	env.glow_hdr_threshold = 1.05
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -180,9 +191,16 @@ func _day_night() -> void:
 	sky_mat.sky_top_color = top
 	sky_mat.sky_horizon_color = top.lerp(Color(0.45, 0.33, 0.26), 0.35)
 	env.ambient_light_energy = 0.28 + dayness * 0.4
-	env.fog_enabled = WorldState.weather == WorldState.Weather.FOG or WorldState.is_night()
-	env.fog_density = 0.004 if WorldState.weather == WorldState.Weather.FOG else (0.0016 if WorldState.is_night() else 0.0008)
+	env.fog_enabled = WorldState.weather == WorldState.Weather.FOG or WorldState.is_night() or WorldState.weather == WorldState.Weather.RAIN
+	env.fog_density = 0.004 if WorldState.weather == WorldState.Weather.FOG else (0.0022 if WorldState.weather == WorldState.Weather.RAIN else (0.0016 if WorldState.is_night() else 0.0008))
 	env.fog_light_color = Color(0.28, 0.3, 0.36) if WorldState.is_night() else Color(0.55, 0.5, 0.45)
+	# wet roads: asphalt darkens + turns reflective as wetness climbs
+	var wet: float = WorldState.wetness
+	var road: StandardMaterial3D = WorldGen.mat("asphalt")
+	if road:
+		road.roughness = lerpf(1.0, 0.18, wet)
+		road.metallic = lerpf(0.0, 0.12, wet)
+		road.albedo_color = Color(1, 1, 1).lerp(Color(0.55, 0.57, 0.62), wet)
 
 
 func _on_weather(kind: String, _wet: float) -> void:
@@ -197,13 +215,139 @@ func _apply_weather(kind: String) -> void:
 		AudioDirector.ambient_off("rain")
 
 
+# ---------------------------------------------------------------- activities --
+func _start_gamble() -> void:
+	var bets := [50, 100, 250]
+	var opts := []
+	for b in bets:
+		opts.append({"label": "Bet %d cr on the dice" % b, "bet": b})
+	opts.append({"label": "Walk away", "bet": 0})
+	DialogueUI.start_choices("Lucky Seven — two dice, high roll wins. Double or nothing on a seven.", opts, _on_gamble)
+
+
+func _on_gamble(opt: Dictionary) -> void:
+	var bet: int = int(opt.get("bet", 0))
+	if bet <= 0:
+		Bus.notification.emit("You pocket your chips.", "info")
+		return
+	if WorldState.money < bet:
+		Bus.notification.emit("Not enough credits.", "error")
+		return
+	WorldState.add_money(-bet)
+	var a := randi_range(1, 6)
+	var b := randi_range(1, 6)
+	AudioDirector.sfx("cash", 0.3)
+	if a + b == 7:
+		WorldState.add_money(bet * 2)
+		Bus.notification.emit("SEVEN! %d cr → %d cr. The table groans." % [bet, bet * 2], "mission")
+	elif a + b >= 9:
+		WorldState.add_money(int(bet * 1.5))
+		Bus.notification.emit("Rolled %d+%d. You take %d cr." % [a, b, int(bet * 1.5)], "info")
+	elif a + b <= 4:
+		Bus.notification.emit("Rolled %d+%d. The house rakes your %d cr." % [a, b, bet], "error")
+	else:
+		WorldState.add_money(bet)
+		Bus.notification.emit("Rolled %d+%d. Push — bet returned." % [a, b], "info")
+	WorldState.stats["gambled"] = WorldState.stats.get("gambled", 0) + 1
+	get_tree().create_timer(1.6).timeout.connect(_start_gamble)
+
+
+func _start_fightclub() -> void:
+	var purse: int = 150 + int(WorldState.stats.get("fights_won", 0)) * 25
+	var opts := [
+		{"label": "Step into the ring (%d cr purse)" % purse, "fight": true},
+		{"label": "Not tonight", "fight": false},
+	]
+	DialogueUI.start_choices("Yard 4 — the ring is hot tonight. Crowd wants blood.", opts, func(o): _on_fightclub(o, purse))
+
+
+func _on_fightclub(opt: Dictionary, purse: int) -> void:
+	if not opt.get("fight", false):
+		return
+	if player == null:
+		return
+	Bus.notification.emit("ROUND ONE — fight!", "warn")
+	AudioDirector.sfx("crowd_loop", 0.4)
+	var kinds := ["thug_light", "thug_grappler", "thug_heavy"]
+	var kind: String = kinds[mini(WorldState.stats.get("fights_won", 0), 2)]
+	var n := CharacterBody3D.new()
+	n.set_script(load("res://scripts/npc/npc.gd"))
+	add_child(n)
+	n.setup_enemy(kind, player.global_position + Vector3(2.2, 0, 0), "ring")
+	n.display_name = "Ring Challenger"
+	# watch the bout: when the challenger dies, pay the purse
+	_watch_fight(n, purse)
+
+
+func _watch_fight(n: Node, reward: int) -> void:
+	if not is_instance_valid(n):
+		return
+	if n.state == n.State.DEAD:
+		WorldState.add_money(reward)
+		WorldState.stats["fights_won"] = WorldState.stats.get("fights_won", 0) + 1
+		Bus.notification.emit("K.O.! The purse is yours: +%d cr" % reward, "mission")
+		AudioDirector.sfx("cash", 0.4)
+		return
+	if player and player.dead:
+		Bus.notification.emit("The ring doctor waves it off.", "error")
+		return
+	get_tree().create_timer(0.5).timeout.connect(func(): _watch_fight(n, reward))
+
+
+func _enter_safehouse(pid: String, data: Dictionary) -> void:
+	# rest: save the game, heal, clear minor heat
+	Bus.poi_discovered.emit(pid)
+	if player:
+		player.combat.heal(player.combat.max_hp)
+	Game.request_autosave()
+	Game.save_to_slot(1)
+	AudioDirector.sfx("shop_bell", 0.3)
+	Bus.notification.emit("SAFEHOUSE — %s. Saved. Wounds patched." % data.get("name", "rest stop"), "info")
+	if WorldState.wanted == 1:
+		WorldState.set_wanted(0)
+		Bus.notification.emit("You lay low. Heat cooled.", "info")
+
+
+func _open_stash(pid: String, data: Dictionary) -> void:
+	Bus.poi_discovered.emit(pid)
+	if pid in WorldState.collected:
+		Bus.notification.emit("Already picked clean.", "info")
+		return
+	WorldState.collected.append(pid)
+	var rew: Dictionary = data.get("reward", {})
+	if int(rew.get("money", 0)) > 0:
+		WorldState.add_money(int(rew["money"]))
+	if rew.get("item", "") != "":
+		WorldState.add_item(rew["item"], 1)
+	AudioDirector.sfx("cash", 0.4)
+	Bus.notification.emit("HIDDEN STASH: %s (+%s cr%s)" % [data.get("name", "stash"),
+		rew.get("money", 0), ", +%s" % rew["item"] if rew.get("item", "") != "" else ""], "mission")
+	Game.request_autosave()
+
+
 func _on_world_event(event_id: String, payload: Dictionary) -> void:
 	match event_id:
 		"poi_enter":
 			var data: Dictionary = payload.get("data", {})
 			var pid: String = payload.get("poi", "")
-			if data.has("interior"):
+			if data.get("kind", "") == "safehouse":
+				_enter_safehouse(pid, data)
+			elif data.get("kind", "") == "hidden":
+				_open_stash(pid, data)
+			elif data.get("activity", "") == "gamble":
+				if data.has("interior"):
+					InteriorManager.enter(data["interior"], pid)
+				get_tree().create_timer(0.8).timeout.connect(_start_gamble)
+			elif data.get("activity", "") == "fightclub":
+				if data.has("interior"):
+					InteriorManager.enter(data["interior"], pid)
+				get_tree().create_timer(0.8).timeout.connect(_start_fightclub)
+			elif data.has("interior"):
 				InteriorManager.enter(data["interior"], pid)
+				var shop_id: String = data.get("shop", "")
+				if shop_id != "":
+					# let the door transition breathe, then the keeper greets you
+					get_tree().create_timer(0.8).timeout.connect(func(): ShopUI.open_shop(shop_id))
 			else:
 				Bus.notification.emit(data.get("name", "Here"), "info")
 				Bus.poi_discovered.emit(pid)

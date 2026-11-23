@@ -20,6 +20,7 @@ police scenes. Take breaks during long play sessions."""
 
 
 func _ready() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)  # root must fill the window (XOGOT/device fix)
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.03, 0.045)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -65,9 +66,32 @@ func _ready() -> void:
 		Game.goto_scene("res://scenes/menu/menu.tscn")
 		Game.set_state(Game.State.MENU))
 	add_child(b)
+
+	var dbg := Label.new()
+	dbg.name = "DbgInfo"
+	dbg.position = Vector2(6, 6)
+	dbg.add_theme_font_size_override("font_size", 9)
+	dbg.add_theme_color_override("font_color", Color(0.6, 0.6, 0.55, 0.9))
+	add_child(dbg)
+	_dbg = dbg
+	_dbg_text()
 	_refit()
 	UiFit.watch(self, _refit)
 
 
 func _refit() -> void:
 	UiFit.refit_tree(self)
+	_dbg_text()
+
+
+var _dbg: Label = null
+
+
+func _dbg_text() -> void:
+	if _dbg == null:
+		return
+	var vp := get_viewport()
+	var vs: Vector2 = vp.get_visible_rect().size if vp else Vector2.ZERO
+	_dbg.text = "vp %dx%d | root %dx%d | %s | Godot %s | %s" % [
+		int(vs.x), int(vs.y), int(size.x), int(size.y), OS.get_name(),
+		str(Engine.get_version_info().get("string", "?")), DisplayServer.get_name()]

@@ -46,11 +46,17 @@ var current_style: String = "brawler"
 
 # --- world knowledge ---
 var discovered_pois: Array = []
+var visited_districts: Array = []   # fog of war
 var collected: Array = []
 var owned_vehicles: Array = []
 
 # --- phone ---
 var phone_station: String = ""
+var call_log: Array = []
+var gps_active: bool = false
+var gps_target: Vector3 = Vector3.ZERO
+var gps_label: String = ""
+var msg_threads: Dictionary = {}
 var messages_read: Array = []
 var messages_pending: Array = []
 var calls_made: Array = []
@@ -64,6 +70,13 @@ const SAVE_VERSION := 3
 
 func _ready() -> void:
 	reset_all()
+	if not Bus.poi_discovered.is_connected(_on_poi_discovered):
+		Bus.poi_discovered.connect(_on_poi_discovered)
+
+
+func _on_poi_discovered(pid: String) -> void:
+	if not (pid in discovered_pois):
+		discovered_pois.append(pid)
 
 
 func reset_all() -> void:
@@ -90,6 +103,7 @@ func reset_all() -> void:
 	equipped_outfit = "outfit_default"
 	current_style = "brawler"
 	discovered_pois = []
+	visited_districts = []
 	collected = []
 	owned_vehicles = []
 	phone_station = ""
@@ -251,9 +265,15 @@ func serialize() -> Dictionary:
 		"equipped_outfit": equipped_outfit,
 		"current_style": current_style,
 		"discovered_pois": discovered_pois.duplicate(),
+		"visited_districts": visited_districts.duplicate(),
 		"collected": collected.duplicate(),
 		"owned_vehicles": owned_vehicles.duplicate(),
 		"phone_station": phone_station,
+		"call_log": call_log,
+		"gps_active": gps_active,
+		"gps_target": [gps_target.x, gps_target.y, gps_target.z],
+		"gps_label": gps_label,
+		"msg_threads": msg_threads,
 		"messages_read": messages_read.duplicate(),
 		"messages_pending": messages_pending.duplicate(),
 	}
@@ -281,8 +301,16 @@ func deserialize(d: Dictionary) -> void:
 	equipped_outfit = d.get("equipped_outfit", "outfit_default")
 	current_style = d.get("current_style", "brawler")
 	discovered_pois = d.get("discovered_pois", [])
+	visited_districts = d.get("visited_districts", [])
 	collected = d.get("collected", [])
 	owned_vehicles = d.get("owned_vehicles", [])
 	phone_station = d.get("phone_station", 0)
+	call_log = d.get("call_log", [])
+	gps_active = d.get("gps_active", false)
+	var gt: Array = d.get("gps_target", [])
+	if gt.size() == 3:
+		gps_target = Vector3(gt[0], gt[1], gt[2])
+	gps_label = d.get("gps_label", "")
+	msg_threads = d.get("msg_threads", {})
 	messages_read = d.get("messages_read", [])
 	messages_pending = d.get("messages_pending", [])

@@ -174,6 +174,97 @@ func _process(_delta: float) -> bool:
 				and fitc.offset_left >= UiFit.vw(fitc) * 0.06 - 0.001 or fitc.offset_left == 240.0,
 				"UiFit.inset keeps text column width")
 			fitc.queue_free()
+		49:
+			# menu scene roots must fill the window (XOGOT zero-size root regression)
+			for sp in ["res://scenes/menu/notice.tscn", "res://scenes/menu/title.tscn",
+					"res://scenes/menu/menu.tscn", "res://scenes/boot/boot.tscn"]:
+				var nsc = load(sp).instantiate()
+				root.add_child(nsc)
+				_check(nsc is Control and nsc.anchor_right == 1.0 and nsc.anchor_bottom == 1.0,
+					"scene root fills window: " + sp)
+				nsc.queue_free()
+		50:
+			# visual-overhaul regression gates: geometry detail budgets
+			var hum = Humanoid.build({"height": 1.83, "build": 0.55, "skin": 2, "hair": "crop",
+				"hair_color": 0, "face": 4, "outfit_colors": {}})
+			var hmi: MeshInstance3D = hum.get_node("Skeleton3D").get_child(0)
+			var htris := 0
+			for si in hmi.mesh.get_surface_count():
+				var a: Array = hmi.mesh.surface_get_arrays(si)
+				htris += a[Mesh.ARRAY_INDEX].size() / 3
+			_check(htris >= 1500 and htris <= 14000, "humanoid v2 triangle budget (%d)" % htris)
+			hum.queue_free()
+			var veh = VehicleBody3D.new()
+			veh.set_script(load("res://scripts/vehicle/vehicle.gd"))
+			root.add_child(veh)
+			veh.setup("sedan")
+			var vtris := 0
+			var vmi: MeshInstance3D = veh.get_node_or_null("BodyMI") if veh.get_node_or_null("BodyMI") else null
+			if vmi == null:
+				for ch in veh.get_children():
+					if ch is MeshInstance3D and ch.mesh is ArrayMesh:
+						vmi = ch
+						break
+			if vmi and vmi.mesh is ArrayMesh:
+				var am: ArrayMesh = vmi.mesh
+				for si in am.get_surface_count():
+					var va: Array = am.surface_get_arrays(si)
+					var idx = va[Mesh.ARRAY_INDEX]
+					var vtx = va[Mesh.ARRAY_VERTEX]
+					if idx != null and not (idx is PackedInt32Array and (idx as PackedInt32Array).size() == 0):
+						vtris += int(idx.size()) / 3
+					elif vtx != null:
+						vtris += int(vtx.size()) / 3
+			_check(vtris >= 200 and vtris <= 9000, "vehicle v2 triangle budget (%d)" % vtris)
+			veh.queue_free()
+		51:
+			# living phone: ring -> decline -> missed log; message threads
+			var cm = root.get_node_or_null("CallManager")
+			_check(cm != null, "CallManager autoload present")
+			if cm:
+				_check(cm.state == 0, "call manager idle at boot")
+				var gm = root.get_node("Game")
+				gm.set_state(gm.State.PLAYING)
+				var ws3 = root.get_node("WorldState")
+				ws3.set_wanted(0)          # earlier step left wanted=3; calls defer when hot
+				cm.schedule_call("marcus", "checkin")
+				_check(cm.state == 1, "incoming call rings")
+				cm.decline_call()
+				var ws = root.get_node("WorldState")
+				var lg: Array = ws.call_log
+				_check(lg.size() > 0 and lg[-1].get("result") == "missed", "declined call logged as missed")
+				cm.send_message("ruth", "t1", "harness ping")
+				_check(cm.unread_count() >= 1, "unread message counted")
+				cm.mark_thread_read("ruth")
+				_check(cm.unread_count() == 0, "thread marks read")
+		53:
+			# enemy tactics surface
+			var src := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("_call_for_help" in src and "_flank_side" in src and "_attack_pool" in src, "npc has flank/help/pool tactics")
+		52:
+			# GPS: A* route over the lane graph
+			var wg = root.get_node("WorldGen")
+			if wg.lanes.size() > 0:
+				var a := Vector3(-240, 0, 43)
+				var b := Vector3(120, 0, -80)
+				var path: PackedVector3Array = wg.route_world(a, b)
+				_check(path.size() >= 2, "GPS route found between distant points")
+				_check(wg.route_length(path) > (b - a).length() * 0.9, "route length plausible")
+			else:
+				_check(false, "lanes exist for GPS")
+		54:
+			# drive animation wiring
+			var ad := FileAccess.get_file_as_string("res://scripts/player/anim_driver.gd")
+			_check("veh_lean" in ad and "steer * 38.0" in ad, "anim driver has steering/bike-lean poses")
+			var pl := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			_check("anim.mode = \"ride\"" in pl, "player rides visibly on bikes")
+		55:
+			# fog of war
+			var ws2 = root.get_node("WorldState")
+			_check(ws2.visited_districts.size() >= 0, "visited_districts present")
+			ws2.visited_districts.append("test_district")
+			var ser: Dictionary = ws2.serialize()
+			_check("test_district" in ser.get("visited_districts", []), "fog persists in save")
 		48:
 			# gunfire hitscan
 			if _player:
@@ -181,7 +272,7 @@ func _process(_delta: float) -> bool:
 				_player.weapons.reserves["gun_pistol"] = 60
 				_player.weapons.try_fire(false, 0.016, _player.global_position + Vector3(0, 1.4, 0), -_player.global_transform.basis.z, true)
 				_check(true, "gunfire executed")
-		50:
+		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()
 			quit(0 if _fails == 0 else 1)

@@ -1,5 +1,20 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — CINEMATIC OVERHAUL WAVE 1 (visual rebuild)
+
+Ordered overhaul: replace toy-like presentation with grounded, cinematic
+crime-action quality. Wave 1 executed (see docs/VISUAL_QUALITY_REPORT.md):
+
+- humanoid v2: lofted anatomy, cloth layers, sculpted head, real hands/shoes
+- vehicle v2: lofted bodies, greenhouse glass, trim, interiors, rimmed wheels
+- city v2: branched trees, cornices/parapets, entrances, balconies, new props
+- cinematic grade: filmic tonemap + contrast/saturation + controlled glow
+- harness +2 budget gates (checks 50) locking the new detail level
+- device-blank-screen root cause fixed same day: 0x0 menu scene roots +
+  stretch aspect keep_height for portrait hosts
+
+Retained per order: control foundation, phone UI design, all runtime systems.
+
 ## 2026-11-23 — XOGOT device pass #1: portrait UI fix (K-13)
 
 - First real-device boot succeeded (XOGOT on iPhone): engine, GDScript and scene flow run.

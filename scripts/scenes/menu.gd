@@ -5,6 +5,7 @@ var _panel: VBoxContainer
 
 
 func _ready() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)  # root must fill the window (XOGOT/device fix)
 	Game.set_state(Game.State.MENU)
 	var bg := TextureRect.new()
 	bg.texture = load("res://assets/textures/ui/menu_bg.png")

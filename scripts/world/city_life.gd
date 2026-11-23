@@ -21,10 +21,17 @@ var _last_crime_pos := Vector3.ZERO
 var _last_crime_t := 0.0
 var _roadblock_nodes: Array = []
 var _arrest_t := 0.0
+var _last_seen := Vector3.ZERO
+var _seen_t := 999.0
+var _search_center := Vector3.ZERO
+var _search_i := 0
 var _amb_district := ""
 
 const PED_SCENE := "res://scripts/npc/npc.gd"
 const VEH_SCENE := "res://scripts/vehicle/vehicle.gd"
+
+
+var _checkin_t := 0.0
 
 
 func _ready() -> void:
@@ -42,6 +49,13 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_checkin_t += delta
+	if _checkin_t > 300.0:
+		_checkin_t = 0.0
+		if Game.state == Game.State.PLAYING and WorldState.wanted == 0 and randf() < 0.35:
+			var who: Array = ["marcus", "ruth", "padre", "sol"]
+			var kind := "warning" if WorldState.day >= 2 and randf() < 0.4 else "checkin"
+			CallManager.schedule_call(who[randi() % who.size()], kind)
 	var player := _player()
 	if player == null:
 		return
@@ -60,6 +74,8 @@ func _process(delta: float) -> void:
 	_police_tick(delta, player)
 	# radio
 	_radio_tick(player)
+	# adaptive music (explore -> tension -> combat -> chase)
+	_music_tick(delta, player)
 	# events
 	_event_cd -= delta
 	if _event_cd <= 0.0:
@@ -267,12 +283,29 @@ func _police_tick(delta: float, player: Node) -> void:
 			_clear_roadblocks()
 		return
 	var pp: Vector3 = player.global_position
+	# --- perception: units only know where they last SAW you ---
+	_seen_t += delta
+	var can_see := _police_see_player(player)
+	if can_see:
+		_last_seen = pp
+		_seen_t = 0.0
+	var target_pos := pp
+	if _seen_t > 3.5:
+		# lost sight: converge on last known position, then search around it
+		if _search_center == Vector3.ZERO or (_last_seen - _search_center).length() > 30.0:
+			_search_center = _last_seen
+			_search_i = 0
+		var ring := 6.0 + float(_search_i % 5) * 5.0
+		var ang := float(_search_i) * 2.399   # golden-angle sweep
+		target_pos = _search_center + Vector3(cos(ang) * ring, 0, sin(ang) * ring)
 	for u in police_units.duplicate():
 		if not is_instance_valid(u["node"]):
 			police_units.erase(u)
 			continue
 		var n: Node3D = u["node"]
-		var to: Vector3 = pp - n.global_position
+		if _seen_t > 3.5 and fmod(_seen_t, 2.0) < delta:
+			_search_i += 1
+		var to: Vector3 = target_pos - n.global_position
 		var dist: float = to.length()
 		if u["kind"] == "car":
 			# drive toward player
@@ -282,16 +315,37 @@ func _police_tick(delta: float, player: Node) -> void:
 			n.engine_force = 60.0 * 22.0 if dist > 8.0 else 0.0
 			if n.has_method("_set_brake"):
 				n._set_brake(6.0 if dist < 8.0 else 1.0)
-			if dist < 4.5 and player.in_vehicle == null:
+			if dist < 4.5 and player.in_vehicle == null and (pp - n.global_position).length() < 6.0:
 				_try_arrest(delta, player, dist)
 		else:
 			if n.state != n.State.COMBAT and n.state != n.State.DEAD:
 				n.state = n.State.COMBAT
-			if dist < 2.0 and player.in_vehicle == null:
+			if dist < 2.0 and player.in_vehicle == null and (pp - n.global_position).length() < 2.6:
 				_try_arrest(delta, player, dist)
 	# roadblocks at 3+
 	if wanted >= 3 and _roadblock_nodes.is_empty():
 		_make_roadblock(pp)
+
+
+func _police_see_player(player: Node) -> bool:
+	# any unit within 55 m with unobstructed LOS keeps the chase honest
+	var space: PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
+	for u in police_units:
+		if not is_instance_valid(u["node"]):
+			continue
+		var n: Node3D = u["node"]
+		var d: float = (player.global_position - n.global_position).length()
+		if d > 55.0:
+			continue
+		var from: Vector3 = n.global_position + Vector3(0, 1.4, 0)
+		var to: Vector3 = player.global_position + Vector3(0, 1.0, 0)
+		var q := PhysicsRayQueryParameters3D.create(from, to)
+		q.exclude = [n.get_rid(), player.get_rid()]
+		q.collision_mask = 1   # static world only — units never block each other
+		var hit: Dictionary = space.intersect_ray(q)
+		if hit.is_empty():
+			return true
+	return false
 
 
 func _try_arrest(delta: float, player: Node, dist: float) -> void:
@@ -538,6 +592,55 @@ func push_news(text: String) -> void:
 		if WorldState.news_queue.size() > 24:
 			WorldState.news_queue.pop_front()
 	Bus.radio_news.emit(text)
+
+
+var _music_state := "explore"
+var _music_hold := 0.0
+
+
+func _music_tick(delta: float, player: Node) -> void:
+	if Game.state != Game.State.PLAYING:
+		return
+	# player-chosen radio wins while riding
+	if player.in_vehicle != null and WorldState.phone_station != "":
+		_music_hold = 3.0
+		return
+	_music_hold = maxf(0.0, _music_hold - delta)
+	var combat_now: bool = player.combat != null and player.combat.in_combat
+	var police_near := false
+	for u in police_units:
+		if is_instance_valid(u["node"]) and (u["node"].global_position - player.global_position).length() < 60.0:
+			police_near = true
+			break
+	var target := "explore"
+	if WorldState.wanted >= 3 or (WorldState.wanted > 0 and police_near):
+		target = "chase"
+	elif combat_now:
+		target = "combat"
+	elif WorldState.wanted > 0:
+		target = "tension"
+	elif player.combat != null and player.combat.combat_timer > 0.0:
+		target = "combat"          # just finished a fight: hold the sting
+	# cinematic left a non-explore track playing while we're calm: restore
+	if target == "explore" and _music_state == "explore":
+		var cm: String = AudioDirector.current_music
+		if not cm.begins_with("music_explore") and player.in_vehicle == null and WorldState.phone_station == "" and _music_hold <= 0.0:
+			var dd := Db.district(Game.current_district)
+			AudioDirector.play_music(dd.get("music", "music_explore_kiln"), 2.0)
+	if target != _music_state:
+		if target == "explore" and _music_hold > 0.0:
+			return
+		_music_state = target
+		match target:
+			"chase":
+				AudioDirector.play_music("music_chase", 0.8)
+			"combat":
+				AudioDirector.play_music("music_combat", 0.7)
+			"tension":
+				AudioDirector.play_music("music_tension", 1.2)
+			"explore":
+				var d := Db.district(Game.current_district)
+				AudioDirector.play_music(d.get("music", "music_explore_kiln"), 2.5)
 
 
 func _on_district(did: String) -> void:

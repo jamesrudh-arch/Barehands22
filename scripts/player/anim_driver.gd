@@ -29,6 +29,9 @@ var attack_t: float = 0.0       # 0..1
 var attack_style: Dictionary = {}
 var block: bool = false
 var aiming: bool = false
+var steer: float = 0.0        # -1..1 steering input while driving
+var veh_speed01: float = 0.0  # 0..1 speed fraction while driving
+var veh_lean: float = 0.0     # bike lean -1..1
 var stagger: float = 0.0        # 0..1
 var down_t: float = -1.0        # 0..1 knocked down
 var getup_t: float = -1.0
@@ -309,7 +312,7 @@ func _getup_pose(pose: Dictionary, t: float) -> void:
 
 func _drive_pose(pose: Dictionary, bike: bool) -> void:
 	_setp(pose, "hips", Vector3(-80.0, 0, 0))
-	_setp(pose, "spine", Vector3(15.0 if bike else 8.0, 0, 0))
+	_setp(pose, "spine", Vector3((15.0 + veh_speed01 * 14.0) if bike else 8.0, 0, 0))
 	_setp(pose, "thigh_l", Vector3(70.0 if bike else 80.0, 0, -6.0))
 	_setp(pose, "thigh_r", Vector3(70.0 if bike else 80.0, 0, 6.0))
 	_setp(pose, "shin_l", Vector3(-40.0 if bike else 10.0, 0, 0))
@@ -326,6 +329,31 @@ func _drive_pose(pose: Dictionary, bike: bool) -> void:
 		_setp(pose, "upper_arm_r", Vector3(-55.0, 0, 18.0))
 		_setp(pose, "forearm_l", Vector3(-35.0, 0, 10.0))
 		_setp(pose, "forearm_r", Vector3(-35.0, 0, -10.0))
+	# steering input rotates the wheel: arms counter-rotate, torso follows
+	var sw := steer * 38.0
+	if bike:
+		_p(pose, "upper_arm_l", 0, 0, -sw * 0.35)
+		_p(pose, "upper_arm_r", 0, 0, -sw * 0.35)
+		# bike lean: whole body inclines into the turn
+		var bl := veh_lean * 16.0
+		_p(pose, "hips", 0, 0, bl)
+		_p(pose, "spine", 0, 0, bl * 0.7)
+		_p(pose, "chest", 0, 0, bl * 0.5)
+		_p(pose, "head", 0, -bl * 0.4, 0)
+		_p(pose, "thigh_l", 0, 0, bl * 0.3)
+		_p(pose, "thigh_r", 0, 0, bl * 0.3)
+	else:
+		_p(pose, "upper_arm_l", 0, 0, sw)
+		_p(pose, "upper_arm_r", 0, 0, sw)
+		_p(pose, "forearm_l", 0, 0, sw * 0.4)
+		_p(pose, "forearm_r", 0, 0, sw * 0.4)
+		_p(pose, "chest", 0, steer * 6.0, 0)
+		_p(pose, "head", 0, steer * 8.0, 0)
+	# road vibration at speed
+	if veh_speed01 > 0.3:
+		var vib := sin(idle_t * 38.0) * veh_speed01 * (1.6 if bike else 0.5)
+		_p(pose, "chest", vib, 0, 0)
+		_p(pose, "head", vib * 0.6, 0, 0)
 
 
 func _sit_pose(pose: Dictionary) -> void:

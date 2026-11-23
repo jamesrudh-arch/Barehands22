@@ -36,6 +36,7 @@ InteriorManager="*res://scripts/world/interior_manager.gd"
 Cutscene="*res://scripts/ui/cutscene.gd"
 DialogueUI="*res://scripts/ui/dialogue_ui.gd"
 MissionManager="*res://scripts/missions/mission_manager.gd"
+CallManager="*res://scripts/core/call_manager.gd"
 ShopUI="*res://scripts/ui/shop_ui.gd"
 PhoneUI="*res://scripts/ui/phone_ui.gd"
 Game="*res://scripts/core/game.gd"
@@ -47,7 +48,7 @@ window/size/viewport_height=1080
 window/size/mode=0
 window/size/resizable=true
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
+window/stretch/aspect="keep_height"
 window/handheld/orientation="sensor_landscape"
 
 [gui]

@@ -1,6 +1,16 @@
 # DEVELOPMENT STATE — LEVERAGE
 _Last updated: session 3 (systems integration + first engine-verified gameplay)_
 
+## OVERHAUL STATE (2026-11-23)
+
+Wave 1 (visual rebuild) DONE: humanoid v2, vehicle v2, city v2, cinematic
+grade — details and next waves in docs/VISUAL_QUALITY_REPORT.md §3.
+Device fixes same day: menu scene roots were 0x0 Controls (blank/broken UI on
+XOGOT), stretch aspect now keep_height for portrait hosts. Harness gates the
+new geometry budgets (check 50). NEXT ACTION: wave 2 = phone life (incoming
+calls, threads), then W3 map/GPS routes, W4 enemy tactics, W5 mission
+playability pass, W6 animation depth, W7 audio identity, W8 device passes.
+
 ## Stage
 VERTICAL GAMEPLAY COMPLETE IN SANDBOX — the full city boots headless in the
 real Godot 4.7.2 binary; player, combat, vehicles, traffic, crowds, police,
@@ -107,13 +117,27 @@ visual check, 60 FPS validation.
 - boot→title flow verified headless (main scene runs clean 40 s).
 - Flow verified: menu → new_game → city → prologue m01 stage go_ruths.
 
+## CINEMATIC OVERHAUL — wave status (2026-11-23)
+
+Waves 1–7 committed on arena/94fd4268-barehands22:
+- W1 `b77a388` humanoid v2 / vehicle v2 (+_wheel_mesh) / city v2 / filmic grade / check 50
+- W2 `ee01406` CallManager + call overlay + threads + forged phone audio / check 51
+- W3 `e2cd7e8` A* GPS routing over lane graph + phone-map route layer / check 52
+- W4 `e2cd7e8` enemy tactics: stagger, call-help, flank, retreat, style attack pools / check 53
+- W5 `56ecc9e` mission playability audit of all 20 missions; clerk char fixed; mission calls ring via CallManager
+- W6 `4f06df5` steering/bike-lean/vibration drive poses; visible bike rider / check 54
+- W7 `4f06df5`+`c2560d7` gearbox RPM sim + shift/skid SFX + reverse lights; adaptive music director
+- extras: fog of war `46846e9` (check 55), wet-road sheen + rain fog `349b070`,
+  opening cinematic cs_intro `e6678cb`, safehouses + hidden stashes `d20908d`,
+  shops now open `7dd7a0b`, casino + fight club playable `a323f76`,
+  HUD phone badge `c25fb6fa`
+
 ## Exact next action
-1. Extend harness: full m01 playthrough (talk→choice→alley→cutscene→ruth),
-   arrest/busted path, death/respawn path, race + escort side jobs.
-2. Close K-01 (traffic reads lights via CityLife.traffic_green_at),
-   K-11 (touch jump button), K-12 (news placeholder substitution).
+1. ~~Engine rebuild~~ DONE 2026-11-23: 4.7.2 built, headless import clean,
+   **harness checks=45 fails=0** — checks 50–55 runtime-TESTED.
+2. ~~Open PR~~ DONE: PR #3 (arena/94fd4268-barehands22 → main).
 3. Device pass per docs/VERIFICATION_GUIDE.md §B–§E when an iPhone/XOGOT
-   environment is available; flip DEVICE-ONLY rows with evidence.
+   environment is available; flip DEVICE-ONLY rows with evidence (W8).
 
 ## Delivery
 - Branch pushed to origin (github.com/jamesrudh-arch/Barehands22,

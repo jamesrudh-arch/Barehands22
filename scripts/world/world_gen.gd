@@ -325,7 +325,7 @@ func _reserved_cells(d: Dictionary, x0: float, z0: float, block: float, nx: int,
 	for lm in d.get("landmarks", []):
 		add.call(lm["at"][0], lm["at"][1], "landmark", lm)
 	for p in d.get("pois", []):
-		if p.get("kind", "") in ["home", "shop", "faction", "place", "activity", "law"]:
+		if p.get("kind", "") in ["home", "shop", "faction", "place", "activity", "law", "safehouse"]:
 			add.call(p["at"][0], p["at"][1], "poi_block", p)
 	return out
 
@@ -442,6 +442,23 @@ func _build_block(acc: Acc, c: Vector2, span: float, hmin: float, hmax: float, f
 		var slot := _slot_for_facade(pick[0])
 		var p := Vector3(c.x + off.x, 0, c.y + off.y)
 		acc.box(slot, p, Vector3(w, h, dp), Vector3(0.22, 0.22, 0.22))
+		# parapet lip + cornice band (architectural silhouette)
+		acc.box(mat_slot("concrete"), p + Vector3(0, h, 0), Vector3(w + 0.35, 0.35, dp + 0.35), Vector3(0.3, 0.3, 0.3))
+		if h > 9.0:
+			acc.box(mat_slot("concrete"), p + Vector3(0, h * 0.55, 0), Vector3(w + 0.18, 0.22, dp + 0.18), Vector3(0.3, 0.3, 0.3))
+		# entrance: recessed door + step + awning on the street face
+		if rng.randf() < 0.75:
+			acc.box(mat_slot("metal"), p + Vector3(rng.randf_range(-w * 0.3, w * 0.3), 1.15, dp / 2 + 0.06),
+				Vector3(1.5, 2.3, 0.12), Vector3(0.4, 0.4, 0.4), Color(0.12, 0.13, 0.15))
+			acc.box(mat_slot("concrete"), p + Vector3(0, 0.08, dp / 2 + 0.5), Vector3(2.4, 0.16, 1.0), Vector3(0.4, 0.4, 0.4))
+			acc.box(_extra_slot("wood", 96), p + Vector3(0, 2.6, dp / 2 + 0.55), Vector3(2.8, 0.09, 1.2), Vector3(0.4, 0.4, 0.4))
+		# balconies on some mid floors
+		if h > 12.0 and rng.randf() < 0.5:
+			var by := 4.0
+			while by < h - 2.0:
+				acc.box(mat_slot("concrete"), p + Vector3(w * 0.25, by, dp / 2 + 0.55), Vector3(2.2, 0.14, 1.1), Vector3(0.3, 0.3, 0.3))
+				acc.box(mat_slot("metal"), p + Vector3(w * 0.25, by + 0.5, dp / 2 + 1.05), Vector3(2.2, 0.9, 0.06), Vector3(0.3, 0.3, 0.3), Color(0.2, 0.2, 0.22))
+				by += rng.randf_range(3.2, 4.2)
 		# roof clutter
 		if rng.randf() < 0.6:
 			acc.box(mat_slot("rust"), p + Vector3(rng.randf_range(-w * 0.2, w * 0.2), h, rng.randf_range(-dp * 0.2, dp * 0.2)),
@@ -481,9 +498,26 @@ func _add_lamp(acc: Acc, p: Vector3, id: String, col: Array) -> void:
 
 
 func _add_tree(acc: Acc, p: Vector3, rng: RandomNumberGenerator) -> void:
-	var h := rng.randf_range(3.2, 5.2)
-	acc.cyl(_extra_slot("trunk", 94), p, p + Vector3(0, h * 0.5, 0), 0.14, 0.1, 6)
-	acc.cyl(_extra_slot("foliage", 95), p + Vector3(0, h * 0.45, 0), p + Vector3(0, h, 0), rng.randf_range(1.2, 1.9), 0.4, 7)
+	# v2: tapered trunk, real branches, layered crown blobs, per-tree variation
+	var h := rng.randf_range(3.6, 6.2)
+	var lean := Vector3(rng.randf_range(-0.06, 0.06), 0, rng.randf_range(-0.06, 0.06))
+	var trunk_top := p + Vector3(lean.x * h, h * 0.62, lean.z * h)
+	acc.cyl(_extra_slot("trunk", 94), p, trunk_top, 0.17, 0.10, 7)
+	var fol := _extra_slot("foliage", 95)
+	var nb := 2 + rng.randi() % 3
+	for i in nb:
+		var t := rng.randf_range(0.45, 0.8)
+		var base := p + Vector3(lean.x * h * t, h * t, lean.z * h * t)
+		var dirv := Vector3(rng.randf_range(-1, 1), rng.randf_range(0.5, 1.0), rng.randf_range(-1, 1)).normalized()
+		var bl := rng.randf_range(0.7, 1.4)
+		acc.cyl(_extra_slot("trunk", 94), base, base + dirv * bl, 0.06, 0.03, 5)
+		var cr := rng.randf_range(0.9, 1.5)
+		acc.cyl(fol, base + dirv * bl * 0.6, base + dirv * bl + Vector3(0, cr * 0.8, 0), cr, cr * 0.55, 7)
+	# crown: three overlapping squashed blobs
+	var c0 := trunk_top + Vector3(0, 0.5, 0)
+	acc.cyl(fol, c0 + Vector3(-0.5, -0.2, 0.2), c0 + Vector3(-0.7, 0.9, 0.3), 1.05, 0.62, 8)
+	acc.cyl(fol, c0 + Vector3(0.5, -0.1, -0.2), c0 + Vector3(0.75, 1.0, -0.3), 1.0, 0.58, 8)
+	acc.cyl(fol, c0 + Vector3(0, 0.3, 0), c0 + Vector3(lean.x * 3, 1.7, lean.z * 3), rng.randf_range(1.15, 1.6), 0.7, 9)
 
 
 func _add_prop(acc: Acc, kind: String, p: Vector3, rng: RandomNumberGenerator) -> void:
@@ -495,6 +529,24 @@ func _add_prop(acc: Acc, kind: String, p: Vector3, rng: RandomNumberGenerator) -
 			acc.box(_extra_slot("wood", 96), p + Vector3(0, 0.75, -0.25), Vector3(1.8, 0.5, 0.08), Vector3(0.5, 0.5, 0.5))
 		"hydrant":
 			acc.cyl(_neon_slot(), p, p + Vector3(0, 0.7, 0), 0.14, 0.1, 8, Color(0.7, 0.1, 0.1))
+			acc.box(_neon_slot(), p + Vector3(0, 0.72, 0), Vector3(0.3, 0.12, 0.16), Vector3(0.3, 0.3, 0.3), Color(0.7, 0.1, 0.1))
+		"bus_stop":
+			for sx in [-1.1, 1.1]:
+				acc.cyl(mat_slot("metal"), p + Vector3(sx, 0, 0), p + Vector3(sx, 2.3, 0), 0.05, 0.05, 6)
+			acc.box(mat_slot("metal"), p + Vector3(0, 2.35, 0), Vector3(2.6, 0.1, 1.0), Vector3(0.4, 0.4, 0.4))
+			acc.box(_extra_slot("wood", 96), p + Vector3(0, 0.45, -0.3), Vector3(2.2, 0.08, 0.5), Vector3(0.4, 0.4, 0.4))
+			acc.quad(_extra_slot("posters", 93), p + Vector3(-1.0, 0.4, -0.45), p + Vector3(1.0, 0.4, -0.45),
+				p + Vector3(1.0, 2.1, -0.45), p + Vector3(-1.0, 2.1, -0.45), Vector3(0, 0, -1),
+				Vector2(0, 0), Vector2(0.25, 0), Vector2(0.25, 0.25), Vector2(0, 0.25))
+		"dumpster":
+			acc.box(mat_slot("rust"), p + Vector3(0, 0.65, 0), Vector3(1.9, 1.2, 1.1), Vector3(0.5, 0.5, 0.5), Color(0.25, 0.32, 0.26))
+			acc.box(mat_slot("rust"), p + Vector3(0, 1.28, 0), Vector3(1.94, 0.1, 1.14), Vector3(0.5, 0.5, 0.5), Color(0.2, 0.26, 0.21))
+		"sign_pole":
+			acc.cyl(mat_slot("metal"), p, p + Vector3(0, 2.6, 0), 0.06, 0.06, 6)
+			acc.box(_extra_slot("signs", 92), p + Vector3(0, 2.9, 0), Vector3(0.9, 0.7, 0.06), Vector3(0.3, 0.3, 0.3))
+		"planter":
+			acc.box(mat_slot("concrete"), p + Vector3(0, 0.35, 0), Vector3(1.4, 0.7, 1.4), Vector3(0.4, 0.4, 0.4))
+			acc.cyl(_extra_slot("foliage", 95), p + Vector3(0, 0.6, 0), p + Vector3(0, 1.15, 0), 0.55, 0.35, 7)
 
 
 func _add_traffic_light(node: Node3D, p: Vector3, id: String) -> void:
@@ -680,3 +732,128 @@ func set_night_emission(on: bool) -> void:
 	for k in _mats:
 		if k.begins_with("facade_"):
 			_mats[k].emission_energy_multiplier = 1.6 if on else 0.0
+
+# ------------------------------------------------------------------ GPS ----
+var _rg_nodes: PackedVector3Array = PackedVector3Array()
+var _rg_adj: Array = []                     # per node: Array of [node_idx, cost]
+var _rg_built := false
+
+
+func _route_graph_build() -> void:
+	_rg_nodes = PackedVector3Array()
+	_rg_adj = []
+	var index := {}
+	for lane in lanes:
+		var ids := []
+		for p in lane:
+			var key := Vector2(round(p.x * 2) / 2, round(p.z * 2) / 2)
+			if not index.has(key):
+				index[key] = _rg_nodes.size()
+				_rg_nodes.append(p)
+				_rg_adj.append([])
+			ids.append(index[key])
+		for i in ids.size():
+			var a: int = ids[i]
+			var b: int = ids[(i + 1) % ids.size()]
+			var c: float = (_rg_nodes[a] - _rg_nodes[b]).length()
+			_rg_adj[a].append([b, c])
+			_rg_adj[b].append([a, c])
+	# transfers: near-coincident nodes
+	var n := _rg_nodes.size()
+	for i in n:
+		for j in range(i + 1, n):
+			if (_rg_nodes[i] - _rg_nodes[j]).length() < 5.0:
+				_rg_adj[i].append([j, 2.0])
+				_rg_adj[j].append([i, 2.0])
+	# k-NN stitching: lane loops are per-block islands; connect every node to
+	# its 2 nearest neighbours (cap 70 m) so the whole road network is one
+	# navigable graph with cycles.
+	for i in _rg_nodes.size():
+		var best := [[1e18, -1], [1e18, -1]]
+		for j in _rg_nodes.size():
+			if i == j:
+				continue
+			var dd := (_rg_nodes[i] - _rg_nodes[j]).length_squared()
+			if dd < best[0][0]:
+				best[1] = best[0]
+				best[0] = [dd, j]
+			elif dd < best[1][0]:
+				best[1] = [dd, j]
+		for b in best:
+			if b[1] >= 0 and b[0] < 70.0 * 70.0:
+				var c: float = sqrt(b[0])
+				var dup := false
+				for e in _rg_adj[i]:
+					if e[0] == b[1]:
+						dup = true
+						break
+				if not dup:
+					_rg_adj[i].append([b[1], c])
+					_rg_adj[b[1]].append([i, c])
+	_rg_built = true
+
+
+func _rg_nearest(p: Vector3) -> int:
+	var best := 0
+	var bd := 1e18
+	for i in _rg_nodes.size():
+		var d := (_rg_nodes[i] - p).length_squared()
+		if d < bd:
+			bd = d
+			best = i
+	return best
+
+
+func route_world(from: Vector3, to: Vector3) -> PackedVector3Array:
+	if not _rg_built:
+		_route_graph_build()
+	if _rg_nodes.size() == 0:
+		return PackedVector3Array()
+	var start := _rg_nearest(from)
+	var goal := _rg_nearest(to)
+	if start == goal:
+		return PackedVector3Array([from, to])
+	var g := {}
+	var came := {}
+	g[start] = 0.0
+	var open := [[0.0, start]]
+	var done := {}
+	while open.size() > 0:
+		open.sort()
+		var cur: int = open[0][1]
+		open.remove_at(0)
+		if done.has(cur):
+			continue
+		done[cur] = true
+		if cur == goal:
+			break
+		for e in _rg_adj[cur]:
+			var nx: int = e[0]
+			var ng: float = g[cur] + e[1]
+			if not g.has(nx) or ng < g[nx]:
+				g[nx] = ng
+				came[nx] = cur
+				open.append([ng + (_rg_nodes[nx] - _rg_nodes[goal]).length(), nx])
+	if not came.has(goal) and start != goal:
+		return PackedVector3Array()
+	var path := PackedVector3Array()
+	var c: int = goal
+	path.append(to)
+	while c != start:
+		path.append(_rg_nodes[c])
+		if not came.has(c):
+			break
+		c = came[c]
+	path.append(from)
+	var rev := PackedVector3Array()
+	for i in range(path.size() - 1, -1, -1):
+		rev.append(path[i])
+	return rev
+
+
+func route_length(path: PackedVector3Array) -> float:
+	var L := 0.0
+	for i in path.size() - 1:
+		L += (path[i + 1] - path[i]).length()
+	return L
+

@@ -21,6 +21,7 @@ var crouch_held := false
 var sprint_held := false
 var lock_target: Node3D = null
 var in_vehicle: Node = null
+var _seat_offset := Vector3(0, 0.78, -0.1)
 var interact_target: Node = null
 var _look_delta := Vector2.ZERO
 var touch_move := Vector2.ZERO      # virtual stick (HUD touch controls)
@@ -365,7 +366,12 @@ func _find_vehicle() -> Node:
 
 func enter_vehicle(v: Node) -> void:
 	in_vehicle = v
-	visible = false
+	# bikes: the rider stays visible in a riding posture; cars: hidden inside
+	visible = v.vehicle_type == "bike"
+	if visible:
+		var seat: Vector3 = v.get_meta("seat_offset", Vector3(0, 0.78, -0.1))
+		_seat_offset = seat
+		anim.mode = "ride"
 	set_physics_process(true)
 	v.player_enter(self)
 	Bus.vehicle_entered.emit(v.vehicle_type)
@@ -378,7 +384,12 @@ func exit_vehicle() -> void:
 		return
 	var v := in_vehicle
 	in_vehicle = null
+	top_level = false
 	visible = true
+	anim.mode = "locomote"
+	anim.steer = 0.0
+	anim.veh_speed01 = 0.0
+	anim.veh_lean = 0.0
 	v.player_exit()
 	# place beside
 	global_position = v.global_position + v.global_transform.basis.x * 1.6 + Vector3(0, 0.2, 0)
@@ -397,6 +408,17 @@ func _in_vehicle_tick(delta: float) -> void:
 	in_vehicle.player_drive(delta, Input.get_vector("move_left", "move_right", "move_forward", "move_back"),
 		Input.is_action_pressed("vehicle_brake"), Input.is_action_pressed("vehicle_handbrake"),
 		Input.is_action_just_pressed("horn"))
+	# rider posture on bikes: sit on the seat, lean with the machine
+	if visible:
+		var vb: Basis = in_vehicle.global_transform.basis
+		top_level = true
+		global_transform = Transform3D(vb, in_vehicle.global_position + vb * _seat_offset)
+		var mv := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+		anim.steer = mv.x
+		anim.veh_speed01 = clampf(in_vehicle.speed_kmh() / 90.0, 0.0, 1.0)
+		anim.veh_lean = clampf(-in_vehicle.steer_angle() if in_vehicle.has_method("steer_angle") else mv.x, -1.0, 1.0)
+		anim.speed = 0.0
+		anim.tick(delta, {})
 	# camera follows vehicle
 	cam_rig.target = in_vehicle
 	WorldState.stats["driven_km"] += in_vehicle.speed_kmh() * delta / 3600.0
@@ -424,6 +446,9 @@ func _track_district() -> void:
 	if d != Game.current_district:
 		Game.current_district = d
 		Bus.district_changed.emit(d)
+	if d != "" and d != "interior" and not (d in WorldState.visited_districts):
+		WorldState.visited_districts.append(d)
+		Bus.notification.emit("Discovered: %s" % Db.district(d).get("name", d), "info")
 
 
 # ------------------------------------------------------------------ story --
@@ -431,8 +456,10 @@ func start_story_intro() -> void:
 	if _story_started:
 		return
 	_story_started = true
-	if Game.mission_manager:
-		Game.mission_manager.begin_prologue()
+	# opening cinematic -> then hand over to the prologue mission
+	Cutscene.play("cs_intro", func():
+		if Game.mission_manager:
+			Game.mission_manager.begin_prologue())
 
 
 func on_combat_end() -> void:

@@ -119,6 +119,12 @@ func request_autosave() -> void:
 	SaveSystem.save_game(0, _save_extra())  # slot 0 doubles as autosave
 
 
+func save_to_slot(slot: int) -> void:
+	if player == null:
+		return
+	SaveSystem.save_game(slot, _save_extra())
+
+
 func _save_extra() -> Dictionary:
 	var extra := {
 		"player": player.save_state() if player else {},

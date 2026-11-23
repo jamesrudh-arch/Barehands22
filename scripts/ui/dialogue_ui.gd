@@ -26,6 +26,7 @@ func _ready() -> void:
 	layer = 40
 	root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 	# dim
