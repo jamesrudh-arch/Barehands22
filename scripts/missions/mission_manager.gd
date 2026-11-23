@@ -320,9 +320,13 @@ func _tick_stage(delta: float, player: Node) -> void:
 			rt["call_t"] = rt.get("call_t", 2.0) - delta
 			if rt["call_t"] <= 0.0 and not rt.get("rang", false):
 				rt["rang"] = true
-				AudioDirector.sfx("phone_ring", 0.5)
-				Bus.notification.emit("INCOMING CALL — answer via Phone (touch: PHONE)", "info")
 				rt["tree"] = stage.get("call", "call_tess_1")
+				var cm := get_node_or_null("/root/CallManager")
+				if cm and cm.has_method("schedule_call"):
+					cm.schedule_call(stage.get("char", "tess"), "mission", rt["tree"], 0.0)
+				else:
+					AudioDirector.sfx("phone_ring", 0.5)
+					Bus.notification.emit("INCOMING CALL — answer via Phone (touch: PHONE)", "info")
 		"cutscene", "choice":
 			pass
 		_:

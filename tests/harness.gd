@@ -228,7 +228,6 @@ func _process(_delta: float) -> bool:
 				_check(cm.unread_count() == 0, "thread marks read")
 		53:
 			# enemy tactics surface
-			_check(NPCScript.new().get("npc_tactics") == null or true, "tactics fields present")
 			var src := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_call_for_help" in src and "_flank_side" in src and "_attack_pool" in src, "npc has flank/help/pool tactics")
 		52:
@@ -248,7 +247,7 @@ func _process(_delta: float) -> bool:
 				_player.weapons.reserves["gun_pistol"] = 60
 				_player.weapons.try_fire(false, 0.016, _player.global_position + Vector3(0, 1.4, 0), -_player.global_transform.basis.z, true)
 				_check(true, "gunfire executed")
-		50:
+		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()
 			quit(0 if _fails == 0 else 1)

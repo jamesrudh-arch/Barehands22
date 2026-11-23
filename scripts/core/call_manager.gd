@@ -96,12 +96,18 @@ func answer_call() -> void:
 	_ring_player.stop()
 	AudioDirector.sfx("phone_connect", 0.0, 0.9)
 	state = State.IN_CALL
+	_log("answered")
+	state_changed.emit(state)
+	if current.get("kind", "") == "mission":
+		var mm := get_node_or_null("/root/MissionManager")
+		if mm and mm.has_method("answer_phone_call"):
+			_hide_overlay()
+			mm.answer_phone_call()
+			return
 	_line_i = 0
 	_line_t = 0.0
 	_lines = _conversation_for(current)
-	_log("answered")
 	_update_overlay_line()
-	state_changed.emit(state)
 
 
 func decline_call() -> void:
