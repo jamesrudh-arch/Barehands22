@@ -185,15 +185,16 @@ func _map_tap(ev: InputEvent) -> void:
 		var d2: Dictionary = WorldGen.pois[pid].get("data", {})
 		if not d2.has("at"):
 			continue
-		var at: Vector3 = d2["at"]
-		var dd := (Vector2(at.x, at.z) - w).length_squared()
+		var at: Array = d2["at"]
+		var dd := (Vector2(at[0], at[1]) - w).length_squared()
 		if dd < bd:
 			bd = dd
 			best = pid
 	if best != "":
 		var dd2: Dictionary = WorldGen.pois[best].get("data", {})
+		var at2: Array = dd2["at"]
 		WorldState.gps_active = true
-		WorldState.gps_target = dd2["at"]
+		WorldState.gps_target = Vector3(at2[0], 0, at2[1])
 		WorldState.gps_label = str(dd2.get("name", best))
 		Bus.notification.emit("GPS: %s" % WorldState.gps_label, "info")
 		_map_view.queue_redraw()
@@ -224,18 +225,26 @@ func _draw_map() -> void:
 		return Vector2((p.x - wr.position.x) * scale + off.x, (p.y - wr.position.y) * scale + off.y)
 	# water bg
 	v.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.08, 0.12))
-	# districts
+	# districts (fog of war: unvisited districts stay dark + unlabeled)
 	for did in WorldGen.district_bounds:
 		var r: Rect2 = WorldGen.district_bounds[did]
 		var p0: Vector2 = to_screen.call(r.position)
 		var p1: Vector2 = to_screen.call(r.end)
-		v.draw_rect(Rect2(p0, p1 - p0), Color(0.16, 0.15, 0.14), true)
-		v.draw_rect(Rect2(p0, p1 - p0), Color(0.4, 0.36, 0.3), false, 1.0)
-		var d := Db.district(did)
-		v.draw_string(ThemeDB.fallback_font, p0 + Vector2(4, 14), d.get("name", did), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.65, 0.5))
-	# roads (lane loops)
-	for lane in WorldGen.lanes:
+		var seen: bool = did in WorldState.visited_districts
+		if seen:
+			v.draw_rect(Rect2(p0, p1 - p0), Color(0.16, 0.15, 0.14), true)
+			v.draw_rect(Rect2(p0, p1 - p0), Color(0.4, 0.36, 0.3), false, 1.0)
+			var d := Db.district(did)
+			v.draw_string(ThemeDB.fallback_font, p0 + Vector2(4, 14), d.get("name", did), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.65, 0.5))
+		else:
+			v.draw_rect(Rect2(p0, p1 - p0), Color(0.045, 0.05, 0.06), true)
+			v.draw_string(ThemeDB.fallback_font, (p0 + p1) * 0.5 - Vector2(6, 0), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.25, 0.27, 0.3))
+	# roads (lane loops) — only where you have been
+	for li in WorldGen.lanes.size():
+		var lane: PackedVector3Array = WorldGen.lanes[li]
 		if lane.size() < 2:
+			continue
+		if not (WorldGen.lane_district[li] in WorldState.visited_districts):
 			continue
 		var pts := PackedVector2Array()
 		for p in lane:
@@ -264,6 +273,9 @@ func _draw_map() -> void:
 		if not d.has("at"):
 			continue
 		var p: Vector2 = to_screen.call(Vector2(d["at"][0], d["at"][1]))
+		var pdist: String = WorldGen.pois[pid].get("district", "")
+		if not (pid in WorldState.discovered_pois) and not (pdist in WorldState.visited_districts):
+			continue
 		var col := Color(0.5, 0.8, 0.55)
 		match d.get("kind", ""):
 			"shop": col = Color(0.95, 0.75, 0.3)

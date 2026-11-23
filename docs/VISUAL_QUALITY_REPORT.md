@@ -41,20 +41,42 @@ software concept renderer (`tools/concept/render_concept.py`) are the evidence.
 - **Cinematic grade** (`scripts/scenes/city.gd`): Filmic tonemap, contrast
   1.07 / saturation 0.93 adjustment, controlled glow (0.32) for neon bleed.
 
-## 3. Still below the bar — next waves (ordered)
+## 3. Wave ledger (status after each wave)
 
-- **W2 Phone life**: incoming-call state machine (ringtone, answer/decline
-  screen, missed-call log), message threads w/ read state, contact portraits.
-- **W3 Map/GPS**: route search over the 109-lane graph, draw route polyline,
-  POI iconography, fog-of-war discovery.
-- **W4 Enemy tactics**: flank/cover/retreat/call-help states; per-archetype
-  aggression & accuracy; suppressive behaviour for gunmen.
-- **W5 Mission completion pass**: playable sequences for every mission entry
-  (stage logic verified end-to-end, not text-only).
-- **W6 Animation depth**: idle/walk blends, hit reactions, enter/exit vehicle
-  poses (procedural bone drives on the existing skeleton).
-- **W7 Audio identity**: engine gears, footstep surfaces, ringtone, mix bus.
-- **W8 Device verification**: XOGOT passes §B–§E with this report as baseline.
+- **W1 Visual overhaul** — COMMITTED `b77a388`. Humanoid v2, vehicle v2
+  (incl. `_wheel_mesh`), city v2, filmic grade, triangle-budget gates (check 50).
+- **W2 Phone life** — COMMITTED `ee01406`. CallManager state machine
+  (IDLE/RINGING/IN_CALL, 22 s timeout, retry-when-calm queue), call overlay
+  (portrait/answer/decline/subtitles/hang-up), call log + message threads
+  with unread badges persisted in saves, mission offers arrive as real calls,
+  ambient character calls, forged ring/ringback/msg/connect audio (check 51).
+- **W3 Map/GPS** — COMMITTED `e2cd7e8`. A* over the lane graph
+  (`WorldGen.route_world`), route polyline + player dot + destination ring on
+  the phone map, tap-POI routing, ROUTE TO OBJECTIVE button, GPS state saved
+  (check 52). Fog-of-war discovery remains an open item (see §5).
+- **W4 Enemy tactics** — COMMITTED `e2cd7e8`. Stagger/give-ground when hurt,
+  call-for-help with convergence, ally-down flinch, pincer flanking, gun
+  spacing + retreat at low HP, per-style melee attack pools, feint backoff
+  (check 53).
+- **W5 Mission playability** — COMMITTED `56ecc9e`. Audited all 20 missions:
+  every stage type has runtime logic, all cutscene/dialogue/POI refs resolve;
+  fixed dangling `clerk` character; mission phone stages ring via CallManager;
+  ending chain (m12 → cs_ending → game_complete → menu) verified by audit.
+- **W6 Animation depth** — COMMITTED `4f06df5`. Steering-coupled driving
+  poses, visible bike rider with lean, road vibration (check 54).
+- **W7 Audio identity** — COMMITTED `4f06df5`. Gearbox RPM simulation with
+  shift dips + forged shift clunks, tyre skid SFX, reverse lights, per-style
+  engine pitch. Footstep surfaces already covered (5 surfaces × walk/run).
+- **W8 Device verification** — PENDING. XOGOT passes §B–§E with this report
+  as baseline. All runtime checks 50–54 await the rebuilt engine binary
+  (headless harness) — see honesty ledger.
+
+## 5. Open items
+
+- Fog-of-war / district discovery on the map (drawn districts are currently
+  always visible; discovery masking not implemented).
+- Runtime verification of harness checks 50–54 (engine rebuild in progress).
+- XOGOT/iPhone device verification of touch layout, audio mix, performance.
 
 ## 4. Honesty ledger
 

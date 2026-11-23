@@ -46,6 +46,7 @@ var current_style: String = "brawler"
 
 # --- world knowledge ---
 var discovered_pois: Array = []
+var visited_districts: Array = []   # fog of war
 var collected: Array = []
 var owned_vehicles: Array = []
 
@@ -69,6 +70,13 @@ const SAVE_VERSION := 3
 
 func _ready() -> void:
 	reset_all()
+	if not Bus.poi_discovered.is_connected(_on_poi_discovered):
+		Bus.poi_discovered.connect(_on_poi_discovered)
+
+
+func _on_poi_discovered(pid: String) -> void:
+	if not (pid in discovered_pois):
+		discovered_pois.append(pid)
 
 
 func reset_all() -> void:
@@ -95,6 +103,7 @@ func reset_all() -> void:
 	equipped_outfit = "outfit_default"
 	current_style = "brawler"
 	discovered_pois = []
+	visited_districts = []
 	collected = []
 	owned_vehicles = []
 	phone_station = ""
@@ -256,6 +265,7 @@ func serialize() -> Dictionary:
 		"equipped_outfit": equipped_outfit,
 		"current_style": current_style,
 		"discovered_pois": discovered_pois.duplicate(),
+		"visited_districts": visited_districts.duplicate(),
 		"collected": collected.duplicate(),
 		"owned_vehicles": owned_vehicles.duplicate(),
 		"phone_station": phone_station,
@@ -291,6 +301,7 @@ func deserialize(d: Dictionary) -> void:
 	equipped_outfit = d.get("equipped_outfit", "outfit_default")
 	current_style = d.get("current_style", "brawler")
 	discovered_pois = d.get("discovered_pois", [])
+	visited_districts = d.get("visited_districts", [])
 	collected = d.get("collected", [])
 	owned_vehicles = d.get("owned_vehicles", [])
 	phone_station = d.get("phone_station", 0)

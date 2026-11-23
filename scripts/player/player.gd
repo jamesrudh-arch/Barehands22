@@ -446,6 +446,9 @@ func _track_district() -> void:
 	if d != Game.current_district:
 		Game.current_district = d
 		Bus.district_changed.emit(d)
+	if d != "" and d != "interior" and not (d in WorldState.visited_districts):
+		WorldState.visited_districts.append(d)
+		Bus.notification.emit("Discovered: %s" % Db.district(d).get("name", d), "info")
 
 
 # ------------------------------------------------------------------ story --

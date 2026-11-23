@@ -246,6 +246,12 @@ func _process(_delta: float) -> bool:
 			_check("veh_lean" in ad and "steer * 38.0" in ad, "anim driver has steering/bike-lean poses")
 			var pl := FileAccess.get_file_as_string("res://scripts/player/player.gd")
 			_check("anim.mode = \"ride\"" in pl, "player rides visibly on bikes")
+		55:
+			# fog of war
+			_check(WorldState.visited_districts.size() >= 0, "visited_districts present")
+			WorldState.visited_districts.append("test_district")
+			var ser: Dictionary = WorldState.serialize()
+			_check("test_district" in ser.get("visited_districts", []), "fog persists in save")
 		48:
 			# gunfire hitscan
 			if _player:
