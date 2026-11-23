@@ -15,6 +15,11 @@ var color: Color = Color(0.3, 0.32, 0.36)
 var _body_mi: MeshInstance3D
 var _wheel_mis: Array = []
 var _engine_pitch := 1.0
+var _gear := 1
+var _rpm := 0.2
+var _shift_dip := 0.0
+var _skid_t := 0.0
+var _reversing := false
 var _engine_player: AudioStreamPlayer
 var _horn_t := 0.0
 var _speed := 0.0
@@ -59,6 +64,7 @@ func _build_mesh(d: Dictionary) -> void:
 	_length = 4.4 if int(d.get("seats", 4)) >= 4 else 3.9
 	_body_mi = MeshInstance3D.new()
 	if vehicle_type == "bike":
+		set_meta("seat_offset", Vector3(0, 0.95, -0.35))
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		_sb(st, Vector3(0, 0.55, 0), Vector3(0.16, 0.35, 1.5))          # frame/tank
@@ -397,6 +403,12 @@ func player_drive(delta: float, mv: Vector2, brake: bool, handbrake: bool, horn:
 	var throttle := -mv.y
 	engine_force = throttle * float(d.get("power", 100)) * 22.0
 	_set_brake(8.0 if brake else 1.0)
+	_reversing = throttle < -0.05 and sp_kmh_for_reverse() < 8.0
+	if handbrake or (brake and speed_kmh() > 35.0):
+		if _skid_t <= 0.0:
+			AudioDirector.sfx_at("veh_skid", global_position, 0.5)
+			_skid_t = 1.1
+	_skid_t -= delta
 	if handbrake:
 		_set_brake(22.0)
 		for w in get_children():
@@ -473,9 +485,25 @@ func _check_ahead() -> bool:
 
 
 func _set_brake(f: float) -> void:
+	_brake_on = f > 4.0
 	for w in get_children():
 		if w is VehicleWheel3D:
 			w.brake = f
+
+
+func sp_kmh_for_reverse() -> float:
+	return speed_kmh()
+
+
+var _brake_on := false
+
+
+func brake_active() -> bool:
+	return _brake_on
+
+
+func steer_angle() -> float:
+	return steering / 0.55
 
 
 func speed_kmh() -> float:
@@ -485,10 +513,40 @@ func speed_kmh() -> float:
 
 func _update_audio_and_lights(delta: float, night: bool) -> void:
 	var sp := speed_kmh()
-	_engine_pitch = 0.7 + clampf(sp / 140.0, 0.0, 1.3) * 0.9
+	var d := Db.vehicle(vehicle_def_id)
+	var top: float = float(d.get("top_speed", 160))
+	var bike: bool = vehicle_type == "bike"
+	var gears: int = 5 if bike else int(d.get("gears", 6))
+	# gearbox simulation: rpm climbs within a gear, then upshift drops it
+	var gear_top := top / float(gears)
+	if sp < 1.0:
+		_gear = 1
+	else:
+		_gear = clampi(int(sp / gear_top) + 1, 1, gears)
+	var in_gear: float = (sp - float(_gear - 1) * gear_top) / maxf(1.0, gear_top)
+	var target_rpm := clampf(0.18 + in_gear * 0.82, 0.0, 1.0)
+	if sp < 1.0:
+		target_rpm = 0.15 + absf(engine_force) * 0.0004
+	if target_rpm < _rpm - 0.3 and _shift_dip <= 0.0:
+		_shift_dip = 0.16                              # just shifted: brief torque gap
+		AudioDirector.sfx_at("gear_shift" if not bike else "gear_shift_bike", global_position, 0.25)
+	_rpm = move_toward(_rpm, target_rpm, delta * (6.0 if target_rpm > _rpm else 9.0))
+	_shift_dip = maxf(0.0, _shift_dip - delta)
+	var base: float = 0.85 if bike else 0.62
+	_engine_pitch = base + _rpm * (0.9 if bike else 0.75)
+	if _shift_dip > 0.0:
+		_engine_pitch *= 1.0 - _shift_dip * 1.2
 	_engine_player.pitch_scale = _engine_pitch
-	_engine_player.volume_db = linear_to_db(0.5 if driver else 0.22)
+	_engine_player.volume_db = linear_to_db((0.42 + _rpm * 0.22) if driver else 0.22)
 	var lights_on := WorldState.is_night() or WorldState.weather == WorldState.Weather.RAIN
+	if _tail_mi and _tail_mi.material_override:
+		var tm: StandardMaterial3D = _tail_mi.material_override
+		if _reversing:
+			tm.emission = Color(0.95, 0.95, 0.9)
+			tm.emission_energy_multiplier = 2.0
+		else:
+			tm.emission = Color(1.0, 0.1, 0.08)
+			tm.emission_energy_multiplier = 1.6 if brake_active() else (1.2 if lights_on else 0.3)
 	for c in get_children():
 		if c is MeshInstance3D and c != _tail_mi and c != _light_bar and c.material_override and c.material_override.emission == Color(1.0, 0.95, 0.8):
 			c.material_override.emission_energy_multiplier = 2.5 if lights_on else 0.0

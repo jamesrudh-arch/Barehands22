@@ -240,6 +240,12 @@ func _process(_delta: float) -> bool:
 				_check(WorldGen.route_length(path) > (b - a).length() * 0.9, "route length plausible")
 			else:
 				_check(false, "lanes exist for GPS")
+		54:
+			# drive animation wiring
+			var ad := FileAccess.get_file_as_string("res://scripts/player/anim_driver.gd")
+			_check("veh_lean" in ad and "steer * 38.0" in ad, "anim driver has steering/bike-lean poses")
+			var pl := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			_check("anim.mode = \"ride\"" in pl, "player rides visibly on bikes")
 		48:
 			# gunfire hitscan
 			if _player:
