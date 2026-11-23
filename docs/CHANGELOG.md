@@ -1,5 +1,17 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 17: theft is a crime
+
+- **Hot-wiring is now a felony**: entering any vehicle you don't own
+  fires a `theft` crime — sev 2 for parked cars, sev 3 for carjacking
+  live traffic (with a CARJACKED! sting). District heat, faction
+  ripples, witnesses and dispatch all answer through the existing
+  crime pipeline; `stats.thefts` counts your grand-total career.
+- **Owned rides are clean**: mission vehicles, shop purchases and
+  garage summons carry `is_player_owned` — the job's car isn't a
+  felony, and neither is your own wheels.
+- Harness **93 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — CRITICAL FIX: on-foot vehicle entry was dead code
 
 - The `vehicle_enter` (F) handler had been stranded AFTER a `return`
