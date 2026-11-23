@@ -718,8 +718,49 @@ func _blocker_is_player() -> bool:
 	return (Vector3(p.global_position.x, 0, p.global_position.z) - Vector3(ahead.x, 0, ahead.z)).length() < 4.5
 
 
+var _runover_cd := 0.0
+var _scatter_t := 0.0
+
+
 func _physics_process(delta: float) -> void:
 	_crash_cd -= delta
+	_runover_cd -= delta
+	# RUN-OVERS: 2 tonnes at speed is a weapon. Non-lethal crawl, lethal
+	# above ~25 km/h; player-driven hits are crimes, traffic hits are
+	# tragedies the block reacts to.
+	var spd_ms: float = linear_velocity.length()
+	if _runover_cd <= 0.0 and spd_ms > 4.0 and not _wrecked:
+		for n in get_tree().get_nodes_in_group("humanoid"):
+			if not is_instance_valid(n) or n == driver:
+				continue
+			if (n.global_position - global_position).length() > 1.9:
+				continue
+			var cc = n.get("combat")
+			if cc == null or cc.dead:
+				continue
+			var dmg := spd_ms * 3.4
+			cc.take_hit(dmg, linear_velocity.normalized(), "vehicle", self)
+			Effects.burst(n.global_position + Vector3(0, 1.0, 0), "blood", linear_velocity.normalized())
+			AudioDirector.sfx_at("imp_concrete", n.global_position, 0.5)
+			_runover_cd = 0.45
+			if driver != null and driver.is_in_group("player"):
+				if cc.dead:
+					Bus.crime_committed.emit("homicide", 5, global_position)
+				else:
+					Bus.crime_committed.emit("assault", 3, global_position)
+			break
+	# SCATTER: speeding metal makes pedestrians dive — throttled shout-out
+	_scatter_t -= delta
+	if _scatter_t <= 0.0 and spd_ms > 9.0:
+		_scatter_t = 0.6
+		var fwd2: Vector3 = linear_velocity.normalized()
+		for n in get_tree().get_nodes_in_group("humanoid"):
+			if not is_instance_valid(n) or n == driver:
+				continue
+			var to: Vector3 = n.global_position - global_position
+			if to.length() < 13.0 and to.normalized().dot(fwd2) > 0.55:
+				if n.has_method("react"):
+					n.react("scramble", global_position)
 	if _burn_t > 0.0:
 		_burn_t -= delta
 		if _fire_light != null:

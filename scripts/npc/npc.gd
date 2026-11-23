@@ -785,6 +785,13 @@ func react(event: String, from: Vector3) -> void:
 				state = State.GAWK
 				_flee_from = from
 				_gawk_t = 4.0
+		"scramble":
+			# a car is coming: not a show, a threat — get off the road
+			if state in [State.ROUTINE, State.GAWK]:
+				state = State.FLEE
+				_flee_from = from
+				if randf() < 0.25:
+					_bark("fear")
 
 
 func _react_crime(player: Node) -> void:
