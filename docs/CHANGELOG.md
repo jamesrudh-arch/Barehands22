@@ -1,5 +1,54 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 9: consequences, rooftops, wrecks
+
+Second block of the deepening mandate (docs/LEVERAGE_VISION.md):
+
+- **District heat**: crimes leave lingering per-district notoriety
+  (0–100, cools ~0.35/s). Heat ×0.6 faster guard suspicion; milestones
+  (35/70) file news stories on the phone feed (`PhoneUI.push_news`);
+  bodies found spike heat +22. Persisted in saves.
+- **Faction consequences**: violence on crew turf (docks/slagworks/neon)
+  sours the Syndicate and quietly amuses Halcyon, and vice versa in the
+  Furnace/Heights. Rep below −35 on a faction's turf sends **collector
+  ambushes** (scale with Difficulty, survivor cools the grudge +4).
+  Below −25 shopkeepers mark you up 25% and turn surly; below −60 they
+  refuse service outright.
+- **Stealth missions upgraded**: mission stealth stages now read the
+  guards' real suspicion meters (cones/disguises/crouch apply) instead of
+  a proximity cone; finishing unseen pays a **GHOST RUN** XP bonus
+  (tracked in stats.ghost_runs).
+- **Body hiding**: interact near a corpse to stash it (shrink-away anim,
+  out of the corpse group — never discovered). New side jobs use it:
+  **Ghost Work** (silent dock infiltration, hide the evidence) and
+  **High Road** (Nia's courier run + level gate) — mission checker learns
+  a `level` expression.
+- **Fire escapes + climbing**: ~40% of taller buildings get zig-zag
+  ladders/landings and register climb points; jump near one to climb
+  hand-over-hand to the roof (or back down). Rooftops = escape routes
+  above the police LOS math.
+- **Vehicle wrecks explode**: hp 0 → blast (AOE damage + stagger to
+  humanoids within 5.5 m, driver thrown out hurt), scorch shell, lingering
+  fire light, `explosion` crime (severity 3). Wrecked flag prevents
+  double-detonation.
+- **Neon-noir identity**: each district tints the night air from a new
+  `night_tint` palette (Mile = magenta haze, Docks = cold blue, Slag =
+  ember) — fog light, sun rim and glow lean into it after dark; glow
+  lifts at night. FOCUS gets a cold-blue screen vignette + HUD bar.
+- **Coach**: 6 new contextual hints (parry-counter, mastery, focus,
+  cover, stealth takedown, climb/vault) fired via `Bus.tutorial_hint`
+  relay — tutorial stays a scene node, not an autoload.
+- **Phone dossier**: new STATS app — level/XP, all five mastery ranks with
+  unlocked moves, faction rep moods (allied → HUNTING YOU), district heat
+  percentages, career numbers (KOs, ghost runs, bodies hidden).
+- tools/build_engine.sh: canonical engine rebuild recipe checked in
+  (pkgconf-lite needs SYSTEM_LIBDIR/SYSTEM_INCLUDEDIR/PKG_DEFAULT_PATH).
+- Save version bumped to 4 (progression, district heat, attachments).
+- Harness 64 → **76 checks, 0 fails, 0 script errors** (heat accrual +
+  faction rep drop on docks crime, climb points reach roofs, wreck/
+  explosion code, ghost runs, grudge ambushes, shop markup, dossier).
+
+
 ## 2026-11-23 — DEPTH WAVE 8: escalation + progression + stealth/gunplay depth
 
 Per the user mandate (difficulty must escalate; nothing capped by earlier

@@ -120,6 +120,7 @@ func _show_home() -> void:
 		["MAP", "i_map", _show_map], ["JOBS", "i_objective", _show_jobs], ["RADIO", "i_radio", _show_radio],
 		["CALLS", "i_call", _show_contacts], ["BAG", "i_gun", _show_inventory], ["MSGS", "i_msg", _show_msgs],
 		["SAVE", "i_phone", _show_save], ["SETUP", "i_armor", _show_settings], ["NEWS", "i_star", _show_news],
+		["STATS", "i_star", _show_stats],
 	]
 	for a in apps:
 		var b := Button.new()
@@ -682,6 +683,60 @@ func _slider(key: String, label: String, mn: float, mx: float, step: float) -> C
 
 
 # ------------------------------------------------------------------- news ---
+func _show_stats() -> void:
+	_clear()
+	_app = "stats"
+	_header("ELI — DOSSIER")
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_top = 50
+	_screen.add_child(scroll)
+	var vb := VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 8)
+	scroll.add_child(vb)
+	# level + xp
+	vb.add_child(_stat_line("LEVEL %d" % Progression.level, "XP %d / %d to next" % [Progression.xp, Progression.xp_for_next()]))
+	# style mastery ladder
+	for sid in ["brawler", "kickboxing", "grappling", "drunken", "weapon"]:
+		var rank: int = Progression.style_rank(sid)
+		var moves: Array = Progression.unlocked_moves(sid)
+		var mtxt: String = ", ".join(moves) if not moves.is_empty() else "no unlocks yet"
+		vb.add_child(_stat_line("%s — MASTERY %d/5" % [Db.style(sid).get("label", sid), rank], mtxt))
+	# factions
+	for fac in ["family", "crew", "corp"]:
+		var rep: float = WorldState.factions.get(fac, 0.0)
+		var mood := "allied" if rep > 50 else ("friendly" if rep > 15 else ("neutral" if rep > -25 else ("cold" if rep > -60 else "HUNTING YOU")))
+		vb.add_child(_stat_line(fac.to_upper(), "%+d rep — %s" % [int(rep), mood]))
+	# district heat
+	var hot := []
+	for did in WorldState.district_heat:
+		if WorldState.district_heat[did] > 12.0:
+			hot.append("%s %d%%" % [Db.district(did).get("name", did), int(WorldState.district_heat[did])])
+	vb.add_child(_stat_line("STREET HEAT", ", ".join(hot) if not hot.is_empty() else "quiet everywhere"))
+	# career numbers
+	var st: Dictionary = WorldState.stats
+	vb.add_child(_stat_line("CAREER", "KOs %d · jobs %d · ghost runs %d · bodies hidden %d · fights won %d" % [
+		int(st.get("kos", 0)), int(st.get("jobs_done", 0)), int(st.get("ghost_runs", 0)),
+		int(st.get("bodies_hidden", 0)), int(st.get("fights_won", 0))]))
+
+
+func _stat_line(title: String, sub: String) -> VBoxContainer:
+	var v := VBoxContainer.new()
+	var l1 := Label.new()
+	l1.text = title
+	l1.add_theme_font_size_override("font_size", 15)
+	l1.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
+	v.add_child(l1)
+	var l2 := Label.new()
+	l2.text = sub
+	l2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l2.add_theme_font_size_override("font_size", 13)
+	l2.add_theme_color_override("font_color", Color(0.8, 0.78, 0.7))
+	v.add_child(l2)
+	return v
+
+
 func _show_news() -> void:
 	_clear()
 	_app = "news"
@@ -717,8 +772,15 @@ func _news_label(text: String) -> Label:
 
 
 func _on_news(text: String) -> void:
+	push_news(text)
+
+
+## Public: systems (heat milestones, missions) file stories into the feed.
+func push_news(text: String) -> void:
 	if not WorldState.news_queue.has(text):
 		WorldState.news_queue.append(text)
+		if WorldState.news_queue.size() > 24:
+			WorldState.news_queue.pop_front()
 
 
 func _input(event: InputEvent) -> void:

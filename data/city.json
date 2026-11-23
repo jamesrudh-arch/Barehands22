@@ -150,6 +150,11 @@
     "interior": "int_apartment",
     "kind": "safehouse"
    }
+  ],
+  "night_tint": [
+   0.42,
+   0.3,
+   0.26
   ]
  },
  "ashfall_docks": {
@@ -266,6 +271,11 @@
     "interior": "int_berth7",
     "kind": "safehouse"
    }
+  ],
+  "night_tint": [
+   0.26,
+   0.32,
+   0.4
   ]
  },
  "the_furnace": {
@@ -383,6 +393,11 @@
     "interior": "int_apartment",
     "kind": "safehouse"
    }
+  ],
+  "night_tint": [
+   0.34,
+   0.34,
+   0.42
   ]
  },
  "neon_mile": {
@@ -482,6 +497,11 @@
      "item": "lockpick"
     }
    }
+  ],
+  "night_tint": [
+   0.42,
+   0.24,
+   0.44
   ]
  },
  "slagworks": {
@@ -601,6 +621,11 @@
      "item": "armor_light"
     }
    }
+  ],
+  "night_tint": [
+   0.4,
+   0.3,
+   0.2
   ]
  },
  "crown_heights": {
@@ -694,6 +719,11 @@
      "money": 900
     }
    }
+  ],
+  "night_tint": [
+   0.3,
+   0.34,
+   0.46
   ]
  }
 }

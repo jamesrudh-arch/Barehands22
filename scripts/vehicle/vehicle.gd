@@ -581,14 +581,67 @@ func puncture_tires() -> void:
 			w.wheel_roll_friction = 0.9
 
 
+var _wrecked := false
+
+
 func damage(amount: float) -> void:
+	if _wrecked:
+		return
 	hp -= amount
 	Bus.vehicle_health_changed.emit(hp)
 	if hp < 40.0:
 		Effects.burst(global_position + Vector3(0, 1.0, 0), "smoke")
 	if hp <= 0.0:
-		Effects.burst(global_position + Vector3(0, 1.1, 0), "smoke")
-		AudioDirector.sfx_at("fire_crackle", global_position)
+		_explode()
+
+
+func _explode() -> void:
+	## Wrecks don't just smoke — they go up. Blast damages whatever is
+	## near, throws the driver out hurt, and the hulk stays burning as
+	## cover/obstacle. Crime: a car bomb in the street is a big deal.
+	_wrecked = true
+	Effects.burst(global_position + Vector3(0, 1.1, 0), "smoke")
+	Effects.burst(global_position + Vector3(0, 1.0, 0), "muzzle")
+	AudioDirector.sfx_at("veh_crash_heavy", global_position, 1.0, 0.02)
+	AudioDirector.sfx_at("fire_crackle", global_position)
+	Effects.add_shake(0.9)
+	Bus.crime_committed.emit("explosion", 3, global_position)
+	# scorch the shell
+	if _body_mi and _body_mi.material_override:
+		var m: StandardMaterial3D = _body_mi.material_override.duplicate()
+		m.albedo_color = Color(0.08, 0.07, 0.07)
+		m.metallic = 0.3
+		m.roughness = 0.9
+		_body_mi.material_override = m
+	engine_force = 0.0
+	# blast radius: hurt nearby humanoids, flip nearby traffic
+	for n in get_tree().get_nodes_in_group("humanoid"):
+		if not is_instance_valid(n):
+			continue
+		var d: float = (n.global_position - global_position).length()
+		if d < 5.5 and n.combat and not n.combat.dead:
+			var away: Vector3 = (n.global_position - global_position).normalized()
+			n.combat.take_hit(70.0 * (1.0 - d / 5.5), away, "explosion", self)
+			n.combat.apply_stagger(60.0, away)
+	# driver thrown clear, hurt
+	if driver != null and is_instance_valid(driver):
+		var p: Node = driver
+		player_exit()
+		if p.get("in_vehicle") == self:
+			p.in_vehicle = null
+			p.top_level = false
+			p.visible = true
+			p.anim.mode = "locomote"
+		if p.combat:
+			p.combat.take_hit(35.0, -global_transform.basis.z, "explosion", self)
+		p.global_position = global_position + Vector3(2.4, 0.4, 0)
+	# lingering fire light
+	var fire := OmniLight3D.new()
+	fire.light_color = Color(1.0, 0.55, 0.2)
+	fire.light_energy = 2.4
+	fire.omni_range = 7.0
+	fire.position = Vector3(0, 1.2, 0)
+	add_child(fire)
 
 
 var _prev_vel := Vector3.ZERO

@@ -194,6 +194,20 @@ func _day_night() -> void:
 	env.fog_enabled = WorldState.weather == WorldState.Weather.FOG or WorldState.is_night() or WorldState.weather == WorldState.Weather.RAIN
 	env.fog_density = 0.004 if WorldState.weather == WorldState.Weather.FOG else (0.0022 if WorldState.weather == WorldState.Weather.RAIN else (0.0016 if WorldState.is_night() else 0.0008))
 	env.fog_light_color = Color(0.28, 0.3, 0.36) if WorldState.is_night() else Color(0.55, 0.5, 0.45)
+	# neon-noir identity: each district tints the night air (Mile = magenta
+	# haze, Docks = cold blue, Slag = ember orange...) and the grade leans in
+	var tint: Array = Db.district(Game.current_district).get("night_tint", [])
+	if tint.size() == 3:
+		var tc := Color(tint[0], tint[1], tint[2])
+		if WorldState.is_night():
+			env.fog_light_color = env.fog_light_color.lerp(tc, 0.55)
+			sun.light_color = sun.light_color.lerp(tc, 0.35)
+			env.glow_intensity = 0.40
+			env.glow_bloom = 0.035
+		else:
+			env.fog_light_color = env.fog_light_color.lerp(tc, 0.15)
+			env.glow_intensity = 0.32
+			env.glow_bloom = 0.02
 	# wet roads: asphalt darkens + turns reflective as wetness climbs
 	var wet: float = WorldState.wetness
 	var road: StandardMaterial3D = WorldGen.mat("asphalt")

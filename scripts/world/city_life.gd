@@ -73,6 +73,8 @@ func _process(delta: float) -> void:
 	# police
 	_police_tick(delta, player)
 	_spike_check(player)
+	# faction grudges
+	_grudge_tick(delta, player)
 	# radio
 	_radio_tick(player)
 	# adaptive music (explore -> tension -> combat -> chase)
@@ -269,6 +271,38 @@ func give_player_vehicle(def_id: String, pos: Vector3) -> Node:
 func _on_crime(crime: String, severity: int, pos: Vector3) -> void:
 	_last_crime_pos = pos
 	_last_crime_t = 0.0
+	# the neighborhood remembers: crimes leave lingering district heat
+	var did := WorldGen.district_at(pos)
+	var heat := float(severity) * 4.0
+	if crime == "body_found":
+		heat = 22.0
+	var before: float = WorldState.district_heat01(did)
+	WorldState.add_district_heat(did, heat)
+	# FACTION CONSEQUENCES: every district belongs to someone. Bleed on
+	# crew turf and the Syndicate sour on you; torch cars in the Furnace
+	# and Halcyon marks your file. Heat at home is rep abroad — rival
+	# factions quietly respect chaos aimed at their enemies.
+	if crime in ["gunfire", "explosion", "homicide", "body_found"] and severity >= 2:
+		match did:
+			"ashfall_docks", "slagworks":
+				WorldState.add_faction_rep("crew", -1.5)
+				WorldState.add_faction_rep("corp", -0.5)
+			"the_furnace", "crown_heights":
+				WorldState.add_faction_rep("corp", -1.5)
+				WorldState.add_faction_rep("crew", 0.5)
+			"neon_mile":
+				WorldState.add_faction_rep("crew", -0.5)
+				WorldState.add_faction_rep("corp", -0.5)
+		WorldState.add_faction_rep("family", -0.5 if crime == "homicide" else 0.0)
+	var after: float = WorldState.district_heat01(did)
+	# heat milestones make the papers — consequences you can read about
+	var dname: String = Db.district(did).get("name", "the district")
+	if before < 0.35 and after >= 0.35:
+		PhoneUI.push_news("Crime wave rattles %s; CCDP promises 'visible presence.'" % dname)
+	elif before < 0.7 and after >= 0.7:
+		PhoneUI.push_news("%s on edge: shops close early as violence climbs." % dname)
+	if crime == "body_found" and after > 0.5:
+		PhoneUI.push_news("Body discovered in %s. Police tight-lipped; residents aren't." % dname)
 	if severity >= 2:
 		_dispatch(pos, severity)
 
@@ -797,6 +831,49 @@ func _on_district(did: String) -> void:
 		AudioDirector.play_music(d.get("music", "music_explore_kiln"), 2.5)
 	AudioDirector.ambient("traffic", "res://assets/audio/sfx/traffic_loop.wav", 0.25 * d.get("traffic_density", 0.6))
 	AudioDirector.ambient("crowd", "res://assets/audio/sfx/crowd_loop.wav", 0.2 * d.get("ped_density", 0.6))
+
+
+var _grudge_cd := 0.0
+const TURF := {
+	"ashfall_docks": "crew", "slagworks": "crew",
+	"the_furnace": "corp", "crown_heights": "corp",
+	"neon_mile": "crew",
+}
+## enemy faction_tag per turf faction (setup_enemy tags: mission/corp/crew)
+const TURF_TAG := {"crew": "crew", "corp": "corp"}
+
+
+## Faction grudges: walk onto the turf of a faction you've burned (rep deep
+## negative) and they send collectors. Scales with Difficulty — late game
+## the collections arrive heavier.
+func _grudge_tick(delta: float, player: Node) -> void:
+	_grudge_cd -= delta
+	if _grudge_cd > 0.0 or WorldState.wanted > 0 or Game.state != Game.State.PLAYING:
+		return
+	var did: String = Game.current_district
+	var fac: String = TURF.get(did, "")
+	if fac == "":
+		return
+	var rep: float = WorldState.factions.get(fac, 0.0)
+	if rep > -35.0:
+		return
+	_grudge_cd = randf_range(100.0, 160.0)
+	var count: int = Difficulty.scale_count(2)
+	var ppos: Vector3 = player.global_position
+	Bus.notification.emit("%s collectors are here to talk. Bring bandages." % ("Syndicate" if fac == "crew" else "Halcyon"), "warn")
+	AudioDirector.sfx("shout_alert", 0.2)
+	for i in count:
+		var a := randf() * TAU
+		var pos := ppos + Vector3(cos(a), 0, sin(a)) * randf_range(14.0, 20.0)
+		pos.y = 0.02
+		var n := CharacterBody3D.new()
+		n.set_script(load(PED_SCENE))
+		get_parent().add_child(n)
+		var kind: String = ["thug_light", "thug_grappler", "thug_heavy"][randi() % 3] if fac == "crew" else "halcyon_guard"
+		n.setup_enemy(kind, pos, TURF_TAG.get(fac, fac))
+		n.display_name = "Syndicate Collector" if fac == "crew" else "Halcyon Recovery"
+	# rep floor: surviving a collection cools the grudge slightly
+	WorldState.add_faction_rep(fac, 4.0)
 
 
 func traffic_green_at(pos: Vector3) -> bool:

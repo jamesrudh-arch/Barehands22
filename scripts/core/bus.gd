@@ -26,6 +26,7 @@ signal player_respawned(where: String)
 signal interaction_available(label: String)
 signal interaction_cleared()
 signal prompt_hint(text: String)
+signal tutorial_hint(hint_id: String)
 
 # --- crime / police ---
 signal crime_committed(crime: String, severity: int, pos: Vector3)

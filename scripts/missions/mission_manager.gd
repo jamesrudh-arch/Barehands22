@@ -77,7 +77,7 @@ func _refresh_offers() -> void:
 		var giver: String = Db.mission(mid).get("giver", Db.mission(mid).get("contact", "marcus"))
 		CallManager.schedule_call(giver, "offer", mid, 6.0)
 		break
-	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors"]:
+	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops"]:
 		var m := Db.mission(sid)
 		if not m.get("repeatable", false) and completed.has(sid):
 			continue
@@ -221,16 +221,29 @@ func _tick_stage(delta: float, player: Node) -> void:
 					_setup_stage()
 					Bus.notification.emit("SPOTTED! Fight through.", "warn")
 					return
+				if t == "stealth" and not _stealth_alarm:
+					# GHOST RUN: never seen, never sounded — earn it
+					Progression.add_xp(int(stage.get("xp", 80)), "silent approach")
+					Bus.notification.emit("GHOST RUN — +%d XP" % int(stage.get("xp", 80)), "mission")
+					WorldState.stats["ghost_runs"] = WorldState.stats.get("ghost_runs", 0) + 1
 				_advance_stage()
 			elif t == "stealth":
-				# guard proximity alarm
+				# alarm now reads the guards' real suspicion meters (vision
+				# cones, disguises, crouching all apply) instead of a crude
+				# proximity cone
 				for g in actors:
-					if is_instance_valid(g) and (g.global_position - player.global_position).length() < 7.0:
-						var to: Vector3 = (player.global_position - g.global_position).normalized()
-						if to.dot(-g.global_transform.basis.z) > 0.5:
-							_stealth_alarm = true
-							Bus.notification.emit("A guard saw you!", "warn")
-							AudioDirector.sfx("alarm_loop", 0.3)
+					if not is_instance_valid(g):
+						continue
+					var susp: float = g.get("suspicion") if g.get("suspicion") != null else 0.0
+					if susp >= 45.0 and not rt.get("warned", false):
+						rt["warned"] = true
+						Bus.notification.emit("A guard is getting suspicious...", "warn")
+					elif susp < 30.0:
+						rt["warned"] = false
+					if susp >= 100.0 and not _stealth_alarm:
+						_stealth_alarm = true
+						Bus.notification.emit("A guard saw you!", "warn")
+						AudioDirector.sfx("alarm_loop", 0.3)
 		"talk":
 			var n = rt.get("npc")
 			if n != null and is_instance_valid(n) and not rt.get("done", false):
@@ -767,6 +780,7 @@ func _check(expr: String) -> bool:
 				"wanted": v = WorldState.wanted
 				"hour": v = WorldState.game_hour
 				"hp": v = _player().combat.hp if _player() else 0.0
+				"level": v = float(Progression.level)
 				_:
 					if lhs.begins_with("item:"):
 						v = WorldState.inventory.get(lhs.trim_prefix("item:"), 0)
