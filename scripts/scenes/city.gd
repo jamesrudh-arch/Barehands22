@@ -253,7 +253,7 @@ func _on_gamble(opt: Dictionary) -> void:
 
 
 func _start_fightclub() -> void:
-	var purse: int = 150 + int(WorldState.stats.get("fights_won", 0)) * 25
+	var purse: int = Difficulty.fight_purse(150 + int(WorldState.stats.get("fights_won", 0)) * 25)
 	var opts := [
 		{"label": "Step into the ring (%d cr purse)" % purse, "fight": true},
 		{"label": "Not tonight", "fight": false},
@@ -270,6 +270,8 @@ func _on_fightclub(opt: Dictionary, purse: int) -> void:
 	AudioDirector.sfx("crowd_loop", 0.4)
 	var kinds := ["thug_light", "thug_grappler", "thug_heavy"]
 	var kind: String = kinds[mini(WorldState.stats.get("fights_won", 0), 2)]
+	if WorldState.stats.get("fights_won", 0) >= 3:
+		kind = "thug_heavy"  # the yard stops sending soft challengers
 	var n := CharacterBody3D.new()
 	n.set_script(load("res://scripts/npc/npc.gd"))
 	add_child(n)

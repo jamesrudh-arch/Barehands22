@@ -95,6 +95,8 @@ func continue_game(slot: int) -> void:
 
 
 func _after_city_boot_new() -> void:
+	Progression.reset()
+	Difficulty.reset()
 	player = _find_player()
 	if player:
 		player.start_story_intro()
@@ -106,6 +108,9 @@ func _after_city_boot_load(d: Dictionary) -> void:
 		player.apply_save(d["player"])
 	if d.has("missions") and mission_manager:
 		mission_manager.apply_save(d["missions"])
+	if d.has("progression"):
+		Progression.apply_save(d["progression"])
+		Progression.refresh()
 
 
 func _find_player() -> Node:

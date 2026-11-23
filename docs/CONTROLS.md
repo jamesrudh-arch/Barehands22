@@ -76,8 +76,12 @@ A = KICK, B = DODGE — and B doubles as contextual INTERACT outside combat.
   pickups, vehicle-enter fallback) → dodge-roll.
 - **CAR** appears only when a vehicle is within 3.2 m or while driving
   (then it exits); **BRK/HORN/RADIO** only while driving; **AIM/FIRE/RLD**
-  only with a gun equipped on foot; **X/Y/A/BLK/LOCK/STY/RUN/CRCH** hidden
-  while driving (pad declutters).
+  only with a gun equipped on foot (incl. **FOCUS** — hold while aiming to
+  slow the world, Max Payne-style; keyboard Q, touch FOCUS button);
+  **X/Y/A/BLK/LOCK/STY/RUN/CRCH** hidden while driving (pad declutters).
+  **Jump at a waist-high ledge vaults it**; crouch-dodge behind an unaware
+  NPC is a stealth takedown; heavy attack near a staggered enemy + wall is
+  an environmental slam.
 - Dialogue/shop/phone/cutscene suppress gameplay input (`Game.cutscene_active`,
   `DialogueUI.is_open()`, `PhoneUI.open`, `ShopUI.open`); tap-to-advance
   drives dialogue; ESC/ui_cancel closes phone.

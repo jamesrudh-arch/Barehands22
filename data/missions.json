@@ -1,215 +1,987 @@
 {
-  "m01_last_call": {
-    "title": "Last Call", "act": 0, "giver": "ruth", "district": "kiln_row",
-    "summary": "Marcus comes home bleeding. The city starts keeping score.",
-    "stages": [
-      {"id": "go_ruths", "type": "goto", "text": "Get to Mama Ruth's before closing.", "poi": "poi_ruths"},
-      {"id": "talk_marcus", "type": "talk", "text": "Hear Marcus out.", "char": "marcus", "dialogue": "dlg_m01_marcus"},
-      {"id": "choice_money", "type": "choice", "text": "Marcus needs 400 by Friday.", "dialogue": "dlg_m01_choice",
-       "options": [
-         {"id": "give", "label": "Give him the money", "effects": {"money": -400, "rel": ["marcus", 15], "faction": ["family", 5], "flag": "gave_marcus_money"}},
-         {"id": "refuse", "label": "Refuse. He has to face it.", "effects": {"rel": ["marcus", -10], "flag": "refused_marcus"}}
-       ]},
-      {"id": "alley", "type": "goto", "text": "Something's wrong out back. Move.", "poi": "poi_ruths_alley"},
-      {"id": "cin_kidnap", "type": "cutscene", "cutscene": "cs_kidnap"},
-      {"id": "talk_ruth", "type": "talk", "text": "Ruth saw who took him.", "char": "ruth", "dialogue": "dlg_m01_ruth"}
-    ],
-    "rewards": {"money": 0, "flags": ["story_act1"]},
-    "tutorial": ["move", "camera", "interact"]
+ "m01_last_call": {
+  "title": "Last Call",
+  "act": 0,
+  "giver": "ruth",
+  "district": "kiln_row",
+  "summary": "Marcus comes home bleeding. The city starts keeping score.",
+  "stages": [
+   {
+    "id": "go_ruths",
+    "type": "goto",
+    "text": "Get to Mama Ruth's before closing.",
+    "poi": "poi_ruths"
+   },
+   {
+    "id": "talk_marcus",
+    "type": "talk",
+    "text": "Hear Marcus out.",
+    "char": "marcus",
+    "dialogue": "dlg_m01_marcus"
+   },
+   {
+    "id": "choice_money",
+    "type": "choice",
+    "text": "Marcus needs 400 by Friday.",
+    "dialogue": "dlg_m01_choice",
+    "options": [
+     {
+      "id": "give",
+      "label": "Give him the money",
+      "effects": {
+       "money": -400,
+       "rel": [
+        "marcus",
+        15
+       ],
+       "faction": [
+        "family",
+        5
+       ],
+       "flag": "gave_marcus_money"
+      }
+     },
+     {
+      "id": "refuse",
+      "label": "Refuse. He has to face it.",
+      "effects": {
+       "rel": [
+        "marcus",
+        -10
+       ],
+       "flag": "refused_marcus"
+      }
+     }
+    ]
+   },
+   {
+    "id": "alley",
+    "type": "goto",
+    "text": "Something's wrong out back. Move.",
+    "poi": "poi_ruths_alley"
+   },
+   {
+    "id": "cin_kidnap",
+    "type": "cutscene",
+    "cutscene": "cs_kidnap"
+   },
+   {
+    "id": "talk_ruth",
+    "type": "talk",
+    "text": "Ruth saw who took him.",
+    "char": "ruth",
+    "dialogue": "dlg_m01_ruth"
+   }
+  ],
+  "rewards": {
+   "money": 0,
+   "flags": [
+    "story_act1"
+   ],
+   "xp": 260
   },
-  "m02_the_book": {
-    "title": "The Book", "act": 1, "giver": "ruth", "district": "kiln_row",
-    "summary": "Crowe's ledger is the only language he respects. Find what Marcus owes — and to whom.",
-    "stages": [
-      {"id": "talk_mags", "type": "talk", "text": "Mags hears everything. Ask about the ledger.", "char": "mags", "dialogue": "dlg_m02_mags"},
-      {"id": "choice_route", "type": "choice", "text": "How do you get 3,000 by Friday?", "dialogue": "dlg_m02_route",
-       "options": [
-         {"id": "crew", "label": "Ask Roz for work (Ashfall Syndicate)", "effects": {"flag": "route_crew", "faction": ["crew", 5]}},
-         {"id": "jobs", "label": "Work it off legit. Jobs and jobs.", "effects": {"flag": "route_jobs"}},
-         {"id": "shake", "label": "Shake down Julian's collectors", "effects": {"flag": "route_shake", "wanted": 1}}
-       ]},
-      {"id": "earn", "type": "objective", "text": "Raise 1,500 credits (any way you can).", "check": "money>=1500"},
-      {"id": "talk_crowe_clerk", "type": "talk", "text": "Buy Marcus's note location from the Crowe clerk.", "char": "clerk", "dialogue": "dlg_m02_clerk", "poi": "poi_crowe_office"}
-    ],
-    "rewards": {"flags": ["knows_halcyon_shell"], "money": 0}
-  },
-  "m03_berth7": {
-    "title": "Berth 7", "act": 1, "giver": "roz", "district": "ashfall_docks",
-    "requires_flag": "route_crew",
-    "summary": "Roz pays for quiet hands and a fast back. Tonight the docks are not quiet.",
-    "stages": [
-      {"id": "talk_roz", "type": "talk", "text": "Take Roz's job.", "char": "roz", "dialogue": "dlg_m03_roz", "poi": "poi_berth7"},
-      {"id": "drive_cargo", "type": "drive", "text": "Move the crate van to Yard 4. Don't stop for anyone.", "from": "poi_berth7", "to": "poi_yard4"},
-      {"id": "event_sweep", "type": "event", "text": "Police sweep ahead. Decide fast.", "event": "police_sweep"},
-      {"id": "choice_sweep", "type": "choice", "text": "Blue lights in the mirror.", "dialogue": "dlg_m03_sweep",
-       "options": [
-         {"id": "dump", "label": "Dump the cargo, keep the license", "effects": {"faction": ["crew", -15], "flag": "dumped_cargo"}},
-         {"id": "run", "label": "Run the blockade", "effects": {"faction": ["crew", 15], "wanted": 2, "flag": "ran_blockade"}}
-       ]},
-      {"id": "deliver", "type": "goto", "text": "Finish the run.", "poi": "poi_yard4"}
-    ],
-    "rewards": {"money": 1200, "faction": ["crew", 5]}
-  },
-  "m04_crowe_credit": {
-    "title": "Crowe Credit Co.", "act": 1, "giver": "crane", "district": "the_furnace",
-    "summary": "Silas Crowe never raises his voice. He doesn't need to.",
-    "stages": [
-      {"id": "go_crowe", "type": "goto", "text": "The office. Third floor. Mind the carpet.", "poi": "poi_crowe_office"},
-      {"id": "talk_crane", "type": "talk", "text": "Sit down with Silas.", "char": "crane", "dialogue": "dlg_m04_crane"},
-      {"id": "choice_crane", "type": "choice", "text": "He offers terms.", "dialogue": "dlg_m04_choice",
-       "options": [
-         {"id": "pay", "label": "Pay Marcus's note (1,500)", "effects": {"money": -1500, "faction": ["family", 5], "flag": "paid_note"}},
-         {"id": "time", "label": "Beg a week", "effects": {"rel": ["crane", -5], "flag": "owe_week"}},
-         {"id": "threaten", "label": "Put a hand on his desk and threaten him", "effects": {"wanted": 1, "rel": ["crane", -25], "flag": "threatened_crane"}}
-       ]},
-      {"id": "reveal", "type": "talk", "text": "Whoever bought the note wants a word.", "char": "crane", "dialogue": "dlg_m04_reveal"}
-    ],
-    "rewards": {"flags": ["story_act2"], "money": 0}
-  },
-  "m05_static": {
-    "title": "Static", "act": 2, "giver": "tess", "district": "neon_mile",
-    "summary": "An old voice on a new phone. Tess Marlowe doesn't call by accident.",
-    "stages": [
-      {"id": "phone_tess", "type": "phone", "text": "Answer the unknown number.", "call": "call_tess_1"},
-      {"id": "go_lounge", "type": "goto", "text": "Noir Lounge. Back booth.", "poi": "poi_noir_lounge"},
-      {"id": "talk_tess", "type": "talk", "text": "Let her talk. Then decide how much you believe.", "char": "tess", "dialogue": "dlg_m05_tess"},
-      {"id": "choice_tess", "type": "choice", "text": "She wants the drive Marcus stole.", "dialogue": "dlg_m05_choice",
-       "options": [
-         {"id": "ally", "label": "Work with Tess", "effects": {"flag": "tess_ally", "faction": ["corp", 5], "rel": ["tess", 20]}},
-         {"id": "refuse", "label": "Refuse. Halcyon gets nothing.", "effects": {"flag": "tess_refused", "rel": ["tess", -10]}}
-       ]}
-    ],
-    "rewards": {"flags": ["knows_drive"]}
-  },
-  "m06_the_shelter": {
-    "title": "The Shelter", "act": 2, "giver": "bishop", "district": "slagworks",
-    "summary": "Bishop Achebe hides people the way the refinery hides smoke: badly, and for money.",
-    "stages": [
-      {"id": "go_shelter", "type": "goto", "text": "Bishop's shelter, Slagworks.", "poi": "poi_shelter"},
-      {"id": "talk_bishop", "type": "talk", "text": "He's hiding someone who saw the grab.", "char": "bishop", "dialogue": "dlg_m06_bishop"},
-      {"id": "event_sweep2", "type": "event", "text": "Okoro's sweep hits the block.", "event": "police_sweep"},
-      {"id": "choice_witness", "type": "choice", "text": "The witness is in your hands.", "dialogue": "dlg_m06_choice",
-       "options": [
-         {"id": "law", "label": "Give Okoro the witness (clean, on record)", "effects": {"faction": ["law_want", 0], "flag": "witness_law", "rel": ["okoro", 25], "faction_rep": ["corp", -10]}},
-         {"id": "spirit", "label": "Spirit them out through the slag tunnels", "effects": {"flag": "witness_spirit", "faction": ["crew", 10], "rel": ["bishop", 20], "rel2": ["okoro", -15]}}
-       ]},
-      {"id": "find_drive", "type": "search", "text": "Marcus stashed the drive in the chapel organ.", "poi": "poi_shelter"}
-    ],
-    "rewards": {"items": ["halcyon_drive"], "flags": ["has_drive"]}
-  },
-  "m07_yard4": {
-    "title": "Yard 4", "act": 2, "giver": "gunnar", "district": "slagworks",
-    "summary": "Eight men, one purse, no referees. Gunnar calls it 'budget planning'.",
-    "stages": [
-      {"id": "go_yard", "type": "goto", "text": "Fight night at Yard 4.", "poi": "poi_yard4"},
-      {"id": "fight1", "type": "combat", "text": "Bout 1: the Dockhand.", "enemy": "thug_light", "style_hint": "brawler"},
-      {"id": "fight2", "type": "combat", "text": "Bout 2: 'Hinge' Malloy.", "enemy": "thug_grappler", "style_hint": "grappling"},
-      {"id": "fight3", "type": "combat", "text": "Bout 3: whoever Julian paid.", "enemy": "thug_heavy", "style_hint": "any"},
-      {"id": "talk_julian", "type": "talk", "text": "Julian Crowe crashes the purse.", "char": "crowe_jr", "dialogue": "dlg_m07_julian"}
-    ],
-    "rewards": {"money": 900, "stats": ["fights_won", 3], "flags": ["yard4_champ"]}
-  },
-  "m08_halcyon_tower": {
-    "title": "Halcyon Tower", "act": 2, "giver": "tess", "district": "the_furnace",
-    "summary": "Forty floors of glass and arithmetic. ARGUS counts footsteps.",
-    "stages": [
-      {"id": "plan", "type": "talk", "text": "Plan the lift with your contact.", "char": "tess", "dialogue": "dlg_m08_plan", "alt_char": "dex"},
-      {"id": "infiltrate", "type": "stealth", "text": "Get to floor 31 without tripping ARGUS.", "poi": "poi_halcyon_tower"},
-      {"id": "retrieve", "type": "search", "text": "Copy the shell-company filings.", "poi": "poi_halcyon_tower"},
-      {"id": "choice_copy", "type": "choice", "text": "ARGUS knows. Tess says leave the original.", "dialogue": "dlg_m08_choice",
-       "options": [
-         {"id": "steal", "label": "Take the original anyway", "effects": {"faction": ["corp", -25], "flag": "has_original", "rel": ["tess", -15]}},
-         {"id": "copy", "label": "Leave it. The copy is enough.", "effects": {"rel": ["tess", 15], "flag": "has_copy"}}
-       ]},
-      {"id": "escape", "type": "combat", "text": "Security escort. Be polite. Be fast.", "enemy": "halcyon_guard", "count": 3}
-    ],
-    "rewards": {"flags": ["story_act3"], "money": 0}
-  },
-  "m09_the_exchange": {
-    "title": "The Exchange", "act": 2, "giver": "crane", "district": "slagworks",
-    "summary": "A brother for a drive, at the refinery gate. Everyone brings extra friends.",
-    "stages": [
-      {"id": "go_refinery", "type": "goto", "text": "Refinery gate. Midnight.", "poi": "poi_refinery_gate"},
-      {"id": "cin_exchange", "type": "cutscene", "cutscene": "cs_exchange"},
-      {"id": "fight_out", "type": "combat", "text": "Julian didn't come to trade.", "enemy": "crowe_gunman", "count": 4},
-      {"id": "talk_marcus", "type": "talk", "text": "Get the truth out of your brother.", "char": "marcus", "dialogue": "dlg_m09_marcus"}
-    ],
-    "rewards": {"flags": ["marcus_safe", "truth_known"]}
-  },
-  "m10_smoke_line": {
-    "title": "Smoke Line", "act": 3, "giver": "ruth", "district": "kiln_row",
-    "summary": "Halcyon's bulldozers idle at the Kiln Row line. The city holds its breath.",
-    "stages": [
-      {"id": "rally_family", "type": "talk", "text": "Gunnar and the haulage crews.", "char": "gunnar", "dialogue": "dlg_m10_gunnar"},
-      {"id": "rally_crew", "type": "talk", "text": "Roz's people, if they'll stand.", "char": "roz", "dialogue": "dlg_m10_roz"},
-      {"id": "rally_law", "type": "talk", "text": "Okoro, if the badge still fits.", "char": "okoro", "dialogue": "dlg_m10_okoro"},
-      {"id": "choice_plan", "type": "choice", "text": "How does this end?", "dialogue": "dlg_m10_plan",
-       "options": [
-         {"id": "expose", "label": "Expose Halcyon at the plaza hearing", "requires_flag": "has_copy|has_original", "effects": {"flag": "end_expose"}},
-         {"id": "burn", "label": "Burn Crowe's ledger and own the underworld", "requires_flag": "ledger_half", "effects": {"flag": "end_burn"}},
-         {"id": "deal", "label": "Take Vivian's deal. Save the row, sell the rest.", "effects": {"flag": "end_deal"}}
-       ]}
-    ],
-    "rewards": {"flags": ["finale_set"]}
-  },
-  "m11_the_leverage": {
-    "title": "The Leverage", "act": 3, "giver": "none", "district": "the_furnace",
-    "summary": "Founders Plaza. Every debt in one room.",
-    "stages": [
-      {"id": "go_plaza", "type": "goto", "text": "Founders Plaza, noon.", "poi": "poi_plaza"},
-      {"id": "cin_finale", "type": "cutscene", "cutscene": "cs_finale"},
-      {"id": "final_fight", "type": "combat", "text": "Whatever's left of Julian's people.", "enemy": "crowe_gunman", "count": 5},
-      {"id": "choice_final", "type": "choice", "text": "Vivian offers you the pen.", "dialogue": "dlg_m11_vivian",
-       "options": [
-         {"id": "sign", "label": "Sign", "effects": {"flag": "signed"}},
-         {"id": "tear", "label": "Tear it up", "effects": {"flag": "torn"}}
-       ]}
-    ],
-    "rewards": {"flags": ["finale_done"]}
-  },
-  "m12_everyone": {
-    "title": "Everyone Has Leverage", "act": 3, "giver": "none", "district": "crown_heights",
-    "summary": "After. The smoke line from above, with your brother beside you.",
-    "stages": [
-      {"id": "go_overlook", "type": "goto", "text": "Smoke Line Overlook. One last walk.", "poi": "poi_overlook"},
-      {"id": "cin_ending", "type": "cutscene", "cutscene": "cs_ending"}
-    ],
-    "rewards": {"flags": ["game_complete"]}
-  },
-  "side_courier": {"title": "Hot Lane", "act": 9, "giver": "dex", "repeatable": true, "district": "ashfall_docks",
-    "summary": "Dex needs a driver who doesn't ask.",
-    "stages": [
-      {"id": "talk", "type": "talk", "text": "Take Dex's run.", "char": "dex", "dialogue": "dlg_side_courier"},
-      {"id": "drive", "type": "drive_timed", "text": "Deliver in under 90 seconds.", "from": "poi_garage", "to": "poi_noodle_row", "time": 90}
-    ], "rewards": {"money": 350}},
-  "side_race1": {"title": "Quay Sprint", "act": 9, "giver": "dex", "district": "ashfall_docks",
-    "summary": "Four checkpoints along the quay. Pride is the purse.",
-    "stages": [{"id": "race", "type": "race", "text": "Win the Quay Sprint.", "track": "race_quay"}],
-    "rewards": {"money": 800, "stats": ["races_won", 1]}},
-  "side_race2": {"title": "Furnace Loop", "act": 9, "giver": "dex", "district": "the_furnace",
-    "summary": "Through the towers, against traffic, allegedly legal.",
-    "stages": [{"id": "race", "type": "race", "text": "Win the Furnace Loop.", "track": "race_furnace"}],
-    "rewards": {"money": 1200, "stats": ["races_won", 1]}},
-  "side_nightshift": {"title": "Night Shift", "act": 9, "giver": "nia", "repeatable": true, "district": "kiln_row",
-    "summary": "Walk the clinic's patients home. The city objects.",
-    "stages": [
-      {"id": "talk", "type": "talk", "text": "Take the shift.", "char": "nia", "dialogue": "dlg_side_nia"},
-      {"id": "escort", "type": "escort", "text": "Get two patients home safely.", "count": 2}
-    ], "rewards": {"money": 250, "faction": ["family", 3]}},
-  "side_dockwork": {"title": "Crate Count", "act": 9, "giver": "gunnar", "repeatable": true, "district": "ashfall_docks",
-    "summary": "Move eight crates before the manifest deadline.",
-    "stages": [{"id": "crates", "type": "carry", "text": "Move 8 crates to the manifest line.", "count": 8}],
-    "rewards": {"money": 300}},
-  "side_fightclub": {"title": "Open Ring", "act": 9, "giver": "gunnar", "repeatable": true, "district": "slagworks",
-    "summary": "Yard 4 takes bets on anyone with hands.",
-    "stages": [{"id": "fight", "type": "combat", "text": "Win an open-ring bout.", "enemy": "thug_random"}],
-    "rewards": {"money": 400}},
-  "side_ledger": {"title": "Torn Pages", "act": 9, "giver": "mags", "repeatable": true, "district": "slagworks",
-    "summary": "Crowe's ledger pages surface all over. Mags buys silence.",
-    "stages": [{"id": "collect", "type": "collect", "text": "Recover ledger pages (0/12).", "item": "ledger_page", "count": 12}],
-    "rewards": {"money": 1000, "flags": ["ledger_half"]}},
-  "side_favors": {"title": "Favor Economy", "act": 9, "giver": "ruth", "repeatable": true, "district": "kiln_row",
-    "summary": "Twenty tokens of goodwill keep a neighborhood breathing.",
-    "stages": [{"id": "collect", "type": "collect", "text": "Collect favor tokens (0/20).", "item": "favor_token", "count": 20}],
-    "rewards": {"money": 600, "faction": ["family", 10]}}
+  "tutorial": [
+   "move",
+   "camera",
+   "interact"
+  ]
+ },
+ "m02_the_book": {
+  "title": "The Book",
+  "act": 1,
+  "giver": "ruth",
+  "district": "kiln_row",
+  "summary": "Crowe's ledger is the only language he respects. Find what Marcus owes \u2014 and to whom.",
+  "stages": [
+   {
+    "id": "talk_mags",
+    "type": "talk",
+    "text": "Mags hears everything. Ask about the ledger.",
+    "char": "mags",
+    "dialogue": "dlg_m02_mags"
+   },
+   {
+    "id": "choice_route",
+    "type": "choice",
+    "text": "How do you get 3,000 by Friday?",
+    "dialogue": "dlg_m02_route",
+    "options": [
+     {
+      "id": "crew",
+      "label": "Ask Roz for work (Ashfall Syndicate)",
+      "effects": {
+       "flag": "route_crew",
+       "faction": [
+        "crew",
+        5
+       ]
+      }
+     },
+     {
+      "id": "jobs",
+      "label": "Work it off legit. Jobs and jobs.",
+      "effects": {
+       "flag": "route_jobs"
+      }
+     },
+     {
+      "id": "shake",
+      "label": "Shake down Julian's collectors",
+      "effects": {
+       "flag": "route_shake",
+       "wanted": 1
+      }
+     }
+    ]
+   },
+   {
+    "id": "earn",
+    "type": "objective",
+    "text": "Raise 1,500 credits (any way you can).",
+    "check": "money>=1500"
+   },
+   {
+    "id": "talk_crowe_clerk",
+    "type": "talk",
+    "text": "Buy Marcus's note location from the Crowe clerk.",
+    "char": "clerk",
+    "dialogue": "dlg_m02_clerk",
+    "poi": "poi_crowe_office"
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "knows_halcyon_shell"
+   ],
+   "money": 0,
+   "xp": 300
+  }
+ },
+ "m03_berth7": {
+  "title": "Berth 7",
+  "act": 1,
+  "giver": "roz",
+  "district": "ashfall_docks",
+  "requires_flag": "route_crew",
+  "summary": "Roz pays for quiet hands and a fast back. Tonight the docks are not quiet.",
+  "stages": [
+   {
+    "id": "talk_roz",
+    "type": "talk",
+    "text": "Take Roz's job.",
+    "char": "roz",
+    "dialogue": "dlg_m03_roz",
+    "poi": "poi_berth7"
+   },
+   {
+    "id": "drive_cargo",
+    "type": "drive",
+    "text": "Move the crate van to Yard 4. Don't stop for anyone.",
+    "from": "poi_berth7",
+    "to": "poi_yard4"
+   },
+   {
+    "id": "event_sweep",
+    "type": "event",
+    "text": "Police sweep ahead. Decide fast.",
+    "event": "police_sweep"
+   },
+   {
+    "id": "choice_sweep",
+    "type": "choice",
+    "text": "Blue lights in the mirror.",
+    "dialogue": "dlg_m03_sweep",
+    "options": [
+     {
+      "id": "dump",
+      "label": "Dump the cargo, keep the license",
+      "effects": {
+       "faction": [
+        "crew",
+        -15
+       ],
+       "flag": "dumped_cargo"
+      }
+     },
+     {
+      "id": "run",
+      "label": "Run the blockade",
+      "effects": {
+       "faction": [
+        "crew",
+        15
+       ],
+       "wanted": 2,
+       "flag": "ran_blockade"
+      }
+     }
+    ]
+   },
+   {
+    "id": "deliver",
+    "type": "goto",
+    "text": "Finish the run.",
+    "poi": "poi_yard4"
+   }
+  ],
+  "rewards": {
+   "money": 1200,
+   "faction": [
+    "crew",
+    5
+   ],
+   "xp": 340
+  }
+ },
+ "m04_crowe_credit": {
+  "title": "Crowe Credit Co.",
+  "act": 1,
+  "giver": "crane",
+  "district": "the_furnace",
+  "summary": "Silas Crowe never raises his voice. He doesn't need to.",
+  "stages": [
+   {
+    "id": "go_crowe",
+    "type": "goto",
+    "text": "The office. Third floor. Mind the carpet.",
+    "poi": "poi_crowe_office"
+   },
+   {
+    "id": "talk_crane",
+    "type": "talk",
+    "text": "Sit down with Silas.",
+    "char": "crane",
+    "dialogue": "dlg_m04_crane"
+   },
+   {
+    "id": "choice_crane",
+    "type": "choice",
+    "text": "He offers terms.",
+    "dialogue": "dlg_m04_choice",
+    "options": [
+     {
+      "id": "pay",
+      "label": "Pay Marcus's note (1,500)",
+      "effects": {
+       "money": -1500,
+       "faction": [
+        "family",
+        5
+       ],
+       "flag": "paid_note"
+      }
+     },
+     {
+      "id": "time",
+      "label": "Beg a week",
+      "effects": {
+       "rel": [
+        "crane",
+        -5
+       ],
+       "flag": "owe_week"
+      }
+     },
+     {
+      "id": "threaten",
+      "label": "Put a hand on his desk and threaten him",
+      "effects": {
+       "wanted": 1,
+       "rel": [
+        "crane",
+        -25
+       ],
+       "flag": "threatened_crane"
+      }
+     }
+    ]
+   },
+   {
+    "id": "reveal",
+    "type": "talk",
+    "text": "Whoever bought the note wants a word.",
+    "char": "crane",
+    "dialogue": "dlg_m04_reveal"
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "story_act2"
+   ],
+   "money": 0,
+   "xp": 380
+  }
+ },
+ "m05_static": {
+  "title": "Static",
+  "act": 2,
+  "giver": "tess",
+  "district": "neon_mile",
+  "summary": "An old voice on a new phone. Tess Marlowe doesn't call by accident.",
+  "stages": [
+   {
+    "id": "phone_tess",
+    "type": "phone",
+    "text": "Answer the unknown number.",
+    "call": "call_tess_1"
+   },
+   {
+    "id": "go_lounge",
+    "type": "goto",
+    "text": "Noir Lounge. Back booth.",
+    "poi": "poi_noir_lounge"
+   },
+   {
+    "id": "talk_tess",
+    "type": "talk",
+    "text": "Let her talk. Then decide how much you believe.",
+    "char": "tess",
+    "dialogue": "dlg_m05_tess"
+   },
+   {
+    "id": "choice_tess",
+    "type": "choice",
+    "text": "She wants the drive Marcus stole.",
+    "dialogue": "dlg_m05_choice",
+    "options": [
+     {
+      "id": "ally",
+      "label": "Work with Tess",
+      "effects": {
+       "flag": "tess_ally",
+       "faction": [
+        "corp",
+        5
+       ],
+       "rel": [
+        "tess",
+        20
+       ]
+      }
+     },
+     {
+      "id": "refuse",
+      "label": "Refuse. Halcyon gets nothing.",
+      "effects": {
+       "flag": "tess_refused",
+       "rel": [
+        "tess",
+        -10
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "knows_drive"
+   ],
+   "xp": 420
+  }
+ },
+ "m06_the_shelter": {
+  "title": "The Shelter",
+  "act": 2,
+  "giver": "bishop",
+  "district": "slagworks",
+  "summary": "Bishop Achebe hides people the way the refinery hides smoke: badly, and for money.",
+  "stages": [
+   {
+    "id": "go_shelter",
+    "type": "goto",
+    "text": "Bishop's shelter, Slagworks.",
+    "poi": "poi_shelter"
+   },
+   {
+    "id": "talk_bishop",
+    "type": "talk",
+    "text": "He's hiding someone who saw the grab.",
+    "char": "bishop",
+    "dialogue": "dlg_m06_bishop"
+   },
+   {
+    "id": "event_sweep2",
+    "type": "event",
+    "text": "Okoro's sweep hits the block.",
+    "event": "police_sweep"
+   },
+   {
+    "id": "choice_witness",
+    "type": "choice",
+    "text": "The witness is in your hands.",
+    "dialogue": "dlg_m06_choice",
+    "options": [
+     {
+      "id": "law",
+      "label": "Give Okoro the witness (clean, on record)",
+      "effects": {
+       "faction": [
+        "law_want",
+        0
+       ],
+       "flag": "witness_law",
+       "rel": [
+        "okoro",
+        25
+       ],
+       "faction_rep": [
+        "corp",
+        -10
+       ]
+      }
+     },
+     {
+      "id": "spirit",
+      "label": "Spirit them out through the slag tunnels",
+      "effects": {
+       "flag": "witness_spirit",
+       "faction": [
+        "crew",
+        10
+       ],
+       "rel": [
+        "bishop",
+        20
+       ],
+       "rel2": [
+        "okoro",
+        -15
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "id": "find_drive",
+    "type": "search",
+    "text": "Marcus stashed the drive in the chapel organ.",
+    "poi": "poi_shelter"
+   }
+  ],
+  "rewards": {
+   "items": [
+    "halcyon_drive"
+   ],
+   "flags": [
+    "has_drive"
+   ],
+   "xp": 460
+  }
+ },
+ "m07_yard4": {
+  "title": "Yard 4",
+  "act": 2,
+  "giver": "gunnar",
+  "district": "slagworks",
+  "summary": "Eight men, one purse, no referees. Gunnar calls it 'budget planning'.",
+  "stages": [
+   {
+    "id": "go_yard",
+    "type": "goto",
+    "text": "Fight night at Yard 4.",
+    "poi": "poi_yard4"
+   },
+   {
+    "id": "fight1",
+    "type": "combat",
+    "text": "Bout 1: the Dockhand.",
+    "enemy": "thug_light",
+    "style_hint": "brawler"
+   },
+   {
+    "id": "fight2",
+    "type": "combat",
+    "text": "Bout 2: 'Hinge' Malloy.",
+    "enemy": "thug_grappler",
+    "style_hint": "grappling"
+   },
+   {
+    "id": "fight3",
+    "type": "combat",
+    "text": "Bout 3: whoever Julian paid.",
+    "enemy": "thug_heavy",
+    "style_hint": "any"
+   },
+   {
+    "id": "talk_julian",
+    "type": "talk",
+    "text": "Julian Crowe crashes the purse.",
+    "char": "crowe_jr",
+    "dialogue": "dlg_m07_julian"
+   }
+  ],
+  "rewards": {
+   "money": 900,
+   "stats": [
+    "fights_won",
+    3
+   ],
+   "flags": [
+    "yard4_champ"
+   ],
+   "xp": 500
+  }
+ },
+ "m08_halcyon_tower": {
+  "title": "Halcyon Tower",
+  "act": 2,
+  "giver": "tess",
+  "district": "the_furnace",
+  "summary": "Forty floors of glass and arithmetic. ARGUS counts footsteps.",
+  "stages": [
+   {
+    "id": "plan",
+    "type": "talk",
+    "text": "Plan the lift with your contact.",
+    "char": "tess",
+    "dialogue": "dlg_m08_plan",
+    "alt_char": "dex"
+   },
+   {
+    "id": "infiltrate",
+    "type": "stealth",
+    "text": "Get to floor 31 without tripping ARGUS.",
+    "poi": "poi_halcyon_tower"
+   },
+   {
+    "id": "retrieve",
+    "type": "search",
+    "text": "Copy the shell-company filings.",
+    "poi": "poi_halcyon_tower"
+   },
+   {
+    "id": "choice_copy",
+    "type": "choice",
+    "text": "ARGUS knows. Tess says leave the original.",
+    "dialogue": "dlg_m08_choice",
+    "options": [
+     {
+      "id": "steal",
+      "label": "Take the original anyway",
+      "effects": {
+       "faction": [
+        "corp",
+        -25
+       ],
+       "flag": "has_original",
+       "rel": [
+        "tess",
+        -15
+       ]
+      }
+     },
+     {
+      "id": "copy",
+      "label": "Leave it. The copy is enough.",
+      "effects": {
+       "rel": [
+        "tess",
+        15
+       ],
+       "flag": "has_copy"
+      }
+     }
+    ]
+   },
+   {
+    "id": "escape",
+    "type": "combat",
+    "text": "Security escort. Be polite. Be fast.",
+    "enemy": "halcyon_guard",
+    "count": 3
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "story_act3"
+   ],
+   "money": 0,
+   "xp": 540
+  }
+ },
+ "m09_the_exchange": {
+  "title": "The Exchange",
+  "act": 2,
+  "giver": "crane",
+  "district": "slagworks",
+  "summary": "A brother for a drive, at the refinery gate. Everyone brings extra friends.",
+  "stages": [
+   {
+    "id": "go_refinery",
+    "type": "goto",
+    "text": "Refinery gate. Midnight.",
+    "poi": "poi_refinery_gate"
+   },
+   {
+    "id": "cin_exchange",
+    "type": "cutscene",
+    "cutscene": "cs_exchange"
+   },
+   {
+    "id": "fight_out",
+    "type": "combat",
+    "text": "Julian didn't come to trade.",
+    "enemy": "crowe_gunman",
+    "count": 4
+   },
+   {
+    "id": "talk_marcus",
+    "type": "talk",
+    "text": "Get the truth out of your brother.",
+    "char": "marcus",
+    "dialogue": "dlg_m09_marcus"
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "marcus_safe",
+    "truth_known"
+   ],
+   "xp": 580
+  }
+ },
+ "m10_smoke_line": {
+  "title": "Smoke Line",
+  "act": 3,
+  "giver": "ruth",
+  "district": "kiln_row",
+  "summary": "Halcyon's bulldozers idle at the Kiln Row line. The city holds its breath.",
+  "stages": [
+   {
+    "id": "rally_family",
+    "type": "talk",
+    "text": "Gunnar and the haulage crews.",
+    "char": "gunnar",
+    "dialogue": "dlg_m10_gunnar"
+   },
+   {
+    "id": "rally_crew",
+    "type": "talk",
+    "text": "Roz's people, if they'll stand.",
+    "char": "roz",
+    "dialogue": "dlg_m10_roz"
+   },
+   {
+    "id": "rally_law",
+    "type": "talk",
+    "text": "Okoro, if the badge still fits.",
+    "char": "okoro",
+    "dialogue": "dlg_m10_okoro"
+   },
+   {
+    "id": "choice_plan",
+    "type": "choice",
+    "text": "How does this end?",
+    "dialogue": "dlg_m10_plan",
+    "options": [
+     {
+      "id": "expose",
+      "label": "Expose Halcyon at the plaza hearing",
+      "requires_flag": "has_copy|has_original",
+      "effects": {
+       "flag": "end_expose"
+      }
+     },
+     {
+      "id": "burn",
+      "label": "Burn Crowe's ledger and own the underworld",
+      "requires_flag": "ledger_half",
+      "effects": {
+       "flag": "end_burn"
+      }
+     },
+     {
+      "id": "deal",
+      "label": "Take Vivian's deal. Save the row, sell the rest.",
+      "effects": {
+       "flag": "end_deal"
+      }
+     }
+    ]
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "finale_set"
+   ],
+   "xp": 620
+  }
+ },
+ "m11_the_leverage": {
+  "title": "The Leverage",
+  "act": 3,
+  "giver": "none",
+  "district": "the_furnace",
+  "summary": "Founders Plaza. Every debt in one room.",
+  "stages": [
+   {
+    "id": "go_plaza",
+    "type": "goto",
+    "text": "Founders Plaza, noon.",
+    "poi": "poi_plaza"
+   },
+   {
+    "id": "cin_finale",
+    "type": "cutscene",
+    "cutscene": "cs_finale"
+   },
+   {
+    "id": "final_fight",
+    "type": "combat",
+    "text": "Whatever's left of Julian's people.",
+    "enemy": "crowe_gunman",
+    "count": 5
+   },
+   {
+    "id": "choice_final",
+    "type": "choice",
+    "text": "Vivian offers you the pen.",
+    "dialogue": "dlg_m11_vivian",
+    "options": [
+     {
+      "id": "sign",
+      "label": "Sign",
+      "effects": {
+       "flag": "signed"
+      }
+     },
+     {
+      "id": "tear",
+      "label": "Tear it up",
+      "effects": {
+       "flag": "torn"
+      }
+     }
+    ]
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "finale_done"
+   ],
+   "xp": 660
+  }
+ },
+ "m12_everyone": {
+  "title": "Everyone Has Leverage",
+  "act": 3,
+  "giver": "none",
+  "district": "crown_heights",
+  "summary": "After. The smoke line from above, with your brother beside you.",
+  "stages": [
+   {
+    "id": "go_overlook",
+    "type": "goto",
+    "text": "Smoke Line Overlook. One last walk.",
+    "poi": "poi_overlook"
+   },
+   {
+    "id": "cin_ending",
+    "type": "cutscene",
+    "cutscene": "cs_ending"
+   }
+  ],
+  "rewards": {
+   "flags": [
+    "game_complete"
+   ],
+   "xp": 700
+  }
+ },
+ "side_courier": {
+  "title": "Hot Lane",
+  "act": 9,
+  "giver": "dex",
+  "repeatable": true,
+  "district": "ashfall_docks",
+  "summary": "Dex needs a driver who doesn't ask.",
+  "stages": [
+   {
+    "id": "talk",
+    "type": "talk",
+    "text": "Take Dex's run.",
+    "char": "dex",
+    "dialogue": "dlg_side_courier"
+   },
+   {
+    "id": "drive",
+    "type": "drive_timed",
+    "text": "Deliver in under 90 seconds.",
+    "from": "poi_garage",
+    "to": "poi_noodle_row",
+    "time": 90
+   }
+  ],
+  "rewards": {
+   "money": 350,
+   "xp": 120
+  }
+ },
+ "side_race1": {
+  "title": "Quay Sprint",
+  "act": 9,
+  "giver": "dex",
+  "district": "ashfall_docks",
+  "summary": "Four checkpoints along the quay. Pride is the purse.",
+  "stages": [
+   {
+    "id": "race",
+    "type": "race",
+    "text": "Win the Quay Sprint.",
+    "track": "race_quay"
+   }
+  ],
+  "rewards": {
+   "money": 800,
+   "stats": [
+    "races_won",
+    1
+   ],
+   "xp": 120
+  }
+ },
+ "side_race2": {
+  "title": "Furnace Loop",
+  "act": 9,
+  "giver": "dex",
+  "district": "the_furnace",
+  "summary": "Through the towers, against traffic, allegedly legal.",
+  "stages": [
+   {
+    "id": "race",
+    "type": "race",
+    "text": "Win the Furnace Loop.",
+    "track": "race_furnace"
+   }
+  ],
+  "rewards": {
+   "money": 1200,
+   "stats": [
+    "races_won",
+    1
+   ],
+   "xp": 120
+  }
+ },
+ "side_nightshift": {
+  "title": "Night Shift",
+  "act": 9,
+  "giver": "nia",
+  "repeatable": true,
+  "district": "kiln_row",
+  "summary": "Walk the clinic's patients home. The city objects.",
+  "stages": [
+   {
+    "id": "talk",
+    "type": "talk",
+    "text": "Take the shift.",
+    "char": "nia",
+    "dialogue": "dlg_side_nia"
+   },
+   {
+    "id": "escort",
+    "type": "escort",
+    "text": "Get two patients home safely.",
+    "count": 2
+   }
+  ],
+  "rewards": {
+   "money": 250,
+   "faction": [
+    "family",
+    3
+   ],
+   "xp": 120
+  }
+ },
+ "side_dockwork": {
+  "title": "Crate Count",
+  "act": 9,
+  "giver": "gunnar",
+  "repeatable": true,
+  "district": "ashfall_docks",
+  "summary": "Move eight crates before the manifest deadline.",
+  "stages": [
+   {
+    "id": "crates",
+    "type": "carry",
+    "text": "Move 8 crates to the manifest line.",
+    "count": 8
+   }
+  ],
+  "rewards": {
+   "money": 300,
+   "xp": 120
+  }
+ },
+ "side_fightclub": {
+  "title": "Open Ring",
+  "act": 9,
+  "giver": "gunnar",
+  "repeatable": true,
+  "district": "slagworks",
+  "summary": "Yard 4 takes bets on anyone with hands.",
+  "stages": [
+   {
+    "id": "fight",
+    "type": "combat",
+    "text": "Win an open-ring bout.",
+    "enemy": "thug_random"
+   }
+  ],
+  "rewards": {
+   "money": 400,
+   "xp": 120
+  }
+ },
+ "side_ledger": {
+  "title": "Torn Pages",
+  "act": 9,
+  "giver": "mags",
+  "repeatable": true,
+  "district": "slagworks",
+  "summary": "Crowe's ledger pages surface all over. Mags buys silence.",
+  "stages": [
+   {
+    "id": "collect",
+    "type": "collect",
+    "text": "Recover ledger pages (0/12).",
+    "item": "ledger_page",
+    "count": 12
+   }
+  ],
+  "rewards": {
+   "money": 1000,
+   "flags": [
+    "ledger_half"
+   ],
+   "xp": 120
+  }
+ },
+ "side_favors": {
+  "title": "Favor Economy",
+  "act": 9,
+  "giver": "ruth",
+  "repeatable": true,
+  "district": "kiln_row",
+  "summary": "Twenty tokens of goodwill keep a neighborhood breathing.",
+  "stages": [
+   {
+    "id": "collect",
+    "type": "collect",
+    "text": "Collect favor tokens (0/20).",
+    "item": "favor_token",
+    "count": 20
+   }
+  ],
+  "rewards": {
+   "money": 600,
+   "faction": [
+    "family",
+    10
+   ],
+   "xp": 120
+  }
+ }
 }

@@ -568,6 +568,19 @@ func set_siren(on: bool) -> void:
 		AudioDirector.ambient_off("siren")
 
 
+var tires_flat := false
+
+
+func puncture_tires() -> void:
+	## Spike-strip aftermath: shredded rubber. The car still crawls —
+	## limping to a garage is a choice, not a cutscene.
+	tires_flat = true
+	for w in get_children():
+		if w is VehicleWheel3D:
+			w.wheel_friction_slip = 0.45
+			w.wheel_roll_friction = 0.9
+
+
 func damage(amount: float) -> void:
 	hp -= amount
 	Bus.vehicle_health_changed.emit(hp)

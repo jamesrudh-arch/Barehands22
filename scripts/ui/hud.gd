@@ -20,6 +20,9 @@ var _cam_last := Vector2.ZERO
 var _held: Dictionary = {}           # action -> true
 var _buttons: Dictionary = {}        # name -> Button
 var _hp_bar: ProgressBar
+var _xp_bar: ProgressBar
+var _focus_bar: ProgressBar
+var _lvl_lbl: Label
 var _st_bar: ProgressBar
 var _ar_bar: ProgressBar
 var _money_lbl: Label
@@ -249,6 +252,16 @@ func _build_bars() -> void:
 	vb.add_child(_ar_bar)
 	_st_bar = _bar(Color(0.85, 0.75, 0.3), 190.0)
 	vb.add_child(_st_bar)
+	_xp_bar = _bar(Color(0.23, 0.91, 0.69), 190.0)
+	vb.add_child(_xp_bar)
+	_focus_bar = _bar(Color(0.45, 0.75, 1.0), 190.0)
+	_focus_bar.visible = false
+	vb.add_child(_focus_bar)
+	_lvl_lbl = Label.new()
+	_lvl_lbl.add_theme_font_size_override("font_size", 12)
+	_lvl_lbl.add_theme_color_override("font_color", Color(0.23, 0.91, 0.69))
+	_lvl_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(_lvl_lbl)
 
 
 func _build_minimap() -> void:
@@ -356,6 +369,7 @@ func _build_touch() -> void:
 	_buttons["aim"] = _touch_btn("aim", "AIM", Vector2(vp.x - 390, vp.y - 150), Color(0.1, 0.12, 0.16, 0.75), 62.0)
 	_buttons["fire"] = _touch_btn("fire", "FIRE", Vector2(vp.x - 390, vp.y - 230), Color(0.18, 0.1, 0.08, 0.8), 70.0)
 	_buttons["reload"] = _touch_btn("reload", "RLD", Vector2(vp.x - 320, vp.y - 320), Color(0.12, 0.12, 0.12, 0.7), 52.0)
+	_buttons["focus"] = _touch_btn("focus", "FOCUS", Vector2(vp.x - 390, vp.y - 320), Color(0.1, 0.14, 0.18, 0.75), 56.0)
 	# top-right system buttons
 	_buttons["phone"] = _sys_btn("phone", "PHONE", Vector2(vp.x - 130, 70), func(): Bus.phone_opened.emit() if not PhoneUI.open else PhoneUI.close_phone())
 	_buttons["map"] = _sys_btn("map", "MAP", Vector2(vp.x - 130, 128), func():
@@ -519,6 +533,20 @@ func _process(delta: float) -> void:
 		_hp_bar.value = player.combat.hp / player.combat.max_hp * 100.0
 		_st_bar.value = player.combat.stamina / player.combat.max_stamina * 100.0
 		_ar_bar.value = clampf(player.combat.armor_prot * 100.0, 0.0, 100.0)
+	# focus meter (visible while a gun is out)
+	if _focus_bar != null:
+		var gun_out: bool = player.weapons != null and player.weapons.is_gun()
+		_focus_bar.visible = gun_out
+		if gun_out:
+			_focus_bar.value = player.focus
+			_focus_bar.modulate = Color(1, 1, 1) if not player.focus_active else Color(1.4, 1.5, 2.0)
+	# progression
+	if _xp_bar != null:
+		_xp_bar.value = float(Progression.xp) / float(Progression.xp_for_next()) * 100.0
+		var sid: String = player.combat.style_id if player.combat else "brawler"
+		_lvl_lbl.text = "LV %d   XP %d/%d   %s MASTERY %d" % [
+			Progression.level, Progression.xp, Progression.xp_for_next(),
+			str(Db.style(sid).get("label", sid)).capitalize(), Progression.style_rank(sid)]
 	# phone badge pulse while ringing; periodic refresh for unread counts
 	_phone_t += delta
 	if CallManager.state == 1:
@@ -551,7 +579,7 @@ func _process(delta: float) -> void:
 	# gun UI
 	var has_gun: bool = player.weapons != null and bool(player.weapons.is_gun())
 	_ammo_lbl.visible = has_gun
-	for bn in ["aim", "fire", "reload"]:
+	for bn in ["aim", "fire", "reload", "focus"]:
 		_buttons[bn].visible = has_gun and not player.in_vehicle
 	_crosshair.visible = has_gun and player.weapons.aim
 	# toasts

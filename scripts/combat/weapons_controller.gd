@@ -16,6 +16,9 @@ var reloading: bool = false
 var reload_t: float = 0.0
 var fire_cooldown: float = 0.0
 var recoil: float = 0.0
+var _shots_fired: int = 0
+var _pattern_pitch: float = 0.0
+var _pattern_yaw: float = 0.0
 var aim: bool = false
 var owned: Array = []             # weapon ids owned
 
@@ -64,7 +67,38 @@ func cycle(dirn: int) -> void:
 
 
 func def() -> Dictionary:
-	return Db.weapon(weapon_id)
+	## Base stats + fitted attachments (Ghost Recon-lite modding):
+	## suppressor quiets & trims, ext-mag fattens, grip tames climb...
+	var w: Dictionary = Db.weapon(weapon_id)
+	var att: Dictionary = WorldState.weapon_attachments.get(weapon_id, {})
+	if att.is_empty():
+		return w
+	w = w.duplicate()
+	for slot in att:
+		var a: Dictionary = Db.weapon(str(att[slot]))
+		var mods: Dictionary = a.get("mods", {})
+		if mods.has("dmg_mult"):
+			w["dmg"] = float(w.get("dmg", 10)) * float(mods["dmg_mult"])
+		if mods.has("spread_mult"):
+			w["spread"] = float(w.get("spread", 1.5)) * float(mods["spread_mult"])
+		if mods.has("recoil_mult"):
+			w["recoil"] = float(w.get("recoil", 1.0)) * float(mods["recoil_mult"])
+			var pat: Array = w.get("recoil_pattern", [])
+			if not pat.is_empty():
+				var np2: Array = []
+				for v in pat:
+					np2.append(float(v) * float(mods["recoil_mult"]))
+				w["recoil_pattern"] = np2
+		if mods.has("rpm_mult"):
+			w["rpm"] = float(w.get("rpm", 300)) * float(mods["rpm_mult"])
+		if mods.has("mag_add"):
+			w["mag"] = int(w.get("mag", 12)) + int(mods["mag_add"])
+			w["reload"] = float(w.get("reload", 1.6)) * 1.12
+		if mods.has("sound"):
+			w["sound"] = mods["sound"]
+		if mods.has("crime_sev"):
+			w["crime_sev"] = int(mods["crime_sev"])
+	return w
 
 
 func is_gun() -> bool:
@@ -77,6 +111,8 @@ func can_fire() -> bool:
 
 func try_fire(auto: bool, delta: float, from: Vector3, direction: Vector3, shooter_is_player: bool) -> bool:
 	fire_cooldown -= delta
+	if fire_cooldown > 0.18:
+		_shots_fired = 0        # pattern resets when the trigger rests
 	if not can_fire():
 		if mag <= 0 and not reloading and fire_cooldown <= 0.0:
 			AudioDirector.sfx("dry_fire", 0.02)
@@ -87,6 +123,17 @@ func try_fire(auto: bool, delta: float, from: Vector3, direction: Vector3, shoot
 	fire_cooldown = 60.0 / float(w.get("rpm", 300))
 	mag -= 1
 	recoil = minf(recoil + w.get("recoil", 1.0), 6.0)
+	# patterned climb: each gun kicks differently shot-to-shot
+	var pat: Array = w.get("recoil_pattern", [])
+	var lat: Array = w.get("recoil_lateral", [])
+	if not pat.is_empty():
+		var i: int = _shots_fired % pat.size()
+		_pattern_pitch = float(pat[i])
+		_pattern_yaw = float(lat[i]) if i < lat.size() else 0.0
+		_shots_fired += 1
+	else:
+		_pattern_pitch = float(w.get("recoil", 1.0)) * 1.2
+		_pattern_yaw = 0.0
 	# sfx + fx
 	var muz := from + direction * 0.6
 	AudioDirector.sfx_at(w.get("sound", "shot_pistol"), muz, 1.0, 0.05)
@@ -98,6 +145,9 @@ func try_fire(auto: bool, delta: float, from: Vector3, direction: Vector3, shoot
 	var pellets: int = int(w.get("pellets", 1))
 	for p in pellets:
 		var spread: float = deg_to_rad(float(w.get("spread", 1.5))) * (0.45 if aim else 1.0)
+		if shooter_is_player:
+			spread *= 0.55 if owner_node.get("focus_active") else 1.0   # focus steadies the gun
+			spread /= Progression.reload_speed_mult("weapon")     # weapon mastery = steadier hands
 		var d := direction
 		d = d.rotated(Vector3.UP, randf_range(-spread, spread))
 		d = d.rotated(d.cross(Vector3.UP).normalized(), randf_range(-spread, spread))
@@ -106,7 +156,9 @@ func try_fire(auto: bool, delta: float, from: Vector3, direction: Vector3, shoot
 	shot_fired.emit(muz, from + direction * 40.0)
 	# crime + awareness
 	if shooter_is_player:
-		Bus.crime_committed.emit("gunfire", 2, owner_node.global_position)
+		var sev: int = int(w.get("crime_sev", 2))
+		if sev > 0:
+			Bus.crime_committed.emit("gunfire", sev, owner_node.global_position)
 	return true
 
 
@@ -169,6 +221,8 @@ func tick(delta: float) -> void:
 		reload_t += delta
 		var w := def()
 		var total: float = float(w.get("reload", 1.6))
+		if owner_node.is_in_group("player"):
+			total /= Progression.reload_speed_mult("weapon")
 		if reload_t > total * 0.45 and reload_t - delta <= total * 0.45:
 			AudioDirector.sfx("reload_magin", 0.04)
 		if reload_t >= total:

@@ -178,9 +178,20 @@ func _land_pose(pose: Dictionary, t: float) -> void:
 func _attack_pose(pose: Dictionary) -> void:
 	var t := attack_t
 	var st := attack_style
-	match attack_kind:
+	# mastery-unlock moves reuse and intensify base poses
+	var k := attack_kind
+	match k:
+		"haymaker": k = "heavy"
+		"kick_high": k = "kick_r"
+		"axe_kick": k = "kick_r"
+		"suplex": k = "throw"
+		"ground_pound": k = "heavy"
+		"sway_strike": k = "hook"
+		"flurry": k = "jab"
+		"executioner": k = "swing_v"
+	match k:
 		"jab", "cross":
-			var side := "l" if attack_kind == "jab" else "r"
+			var side := "l" if k == "jab" else "r"
 			var o := "r" if side == "l" else "l"
 			var ext := _curve(t, [[0, 0], [0.3, 1], [0.55, 1], [1, 0]])
 			var wind := _curve(t, [[0, 0], [0.15, 1], [0.3, 0]])
@@ -207,7 +218,7 @@ func _attack_pose(pose: Dictionary) -> void:
 			_p(pose, "hips", -8.0 * ext, 0, 0)
 			_p(pose, "spine", -10.0 * ext, 0, 0)
 		"kick_r", "kick_l":
-			var side := attack_kind.right(1)
+			var side := k.right(1)
 			var o := "l" if side == "r" else "r"
 			var raise := _curve(t, [[0, 0], [0.35, 1], [0.6, 1], [1, 0]])
 			var snap := _curve(t, [[0, 0], [0.3, 0.2], [0.5, 1], [0.75, 0.4], [1, 0]])

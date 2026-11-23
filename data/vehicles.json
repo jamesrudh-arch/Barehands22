@@ -1,10 +1,297 @@
 {
-  "sedan": {"name": "Ashfall Sedan", "type": "car", "mass": 1350, "power": 95, "top": 165, "grip": 1.0, "accel": 8.5, "brake": 14, "seats": 4, "engine": "veh_engine_sedan", "colors": [[70, 74, 82], [96, 32, 30], [40, 52, 66], [120, 116, 108]], "price": 0},
-  "muscle": {"name": "Ember GT", "type": "car", "mass": 1650, "power": 190, "top": 210, "grip": 0.92, "accel": 12, "brake": 13, "seats": 2, "engine": "veh_engine_muscle", "colors": [[180, 84, 30], [24, 22, 26], [120, 20, 26]], "price": 14000},
-  "van": {"name": "Hauler Panel Van", "type": "car", "mass": 2200, "power": 110, "top": 140, "grip": 0.85, "accel": 6.5, "brake": 11, "seats": 2, "engine": "veh_engine_van", "colors": [[150, 148, 140], [60, 70, 80], [90, 60, 40]], "price": 6000},
-  "sports": {"name": "Vesper S", "type": "car", "mass": 1200, "power": 220, "top": 235, "grip": 1.15, "accel": 14, "brake": 17, "seats": 2, "engine": "veh_engine_sedan", "colors": [[200, 190, 60], [30, 30, 34], [40, 120, 130]], "price": 26000},
-  "bike": {"name": "Kiln Runner 600", "type": "bike", "mass": 220, "power": 85, "top": 195, "grip": 1.25, "accel": 15, "brake": 16, "seats": 1, "engine": "veh_engine_bike", "colors": [[160, 40, 40], [30, 30, 34], [60, 90, 60]], "price": 5200},
-  "taxi": {"name": "Cinder Cab", "type": "car", "mass": 1400, "power": 100, "top": 160, "grip": 1.0, "accel": 8, "brake": 13, "seats": 4, "engine": "veh_engine_sedan", "colors": [[210, 170, 40]], "price": 0},
-  "police": {"name": "CCPD Cruiser", "type": "car", "mass": 1550, "power": 160, "top": 200, "grip": 1.05, "accel": 11, "brake": 15, "seats": 4, "engine": "veh_engine_sedan", "colors": [[24, 26, 32]], "price": 0},
-  "truck": {"name": "Voss Flatbed", "type": "car", "mass": 3400, "power": 150, "top": 120, "grip": 0.8, "accel": 5, "brake": 10, "seats": 2, "engine": "veh_engine_van", "colors": [[96, 60, 30], [60, 64, 70]], "price": 9000}
+ "sedan": {
+  "name": "Ashfall Sedan",
+  "type": "car",
+  "mass": 1350,
+  "power": 95,
+  "top": 165,
+  "grip": 1.0,
+  "accel": 8.5,
+  "brake": 14,
+  "seats": 4,
+  "engine": "veh_engine_sedan",
+  "colors": [
+   [
+    70,
+    74,
+    82
+   ],
+   [
+    96,
+    32,
+    30
+   ],
+   [
+    40,
+    52,
+    66
+   ],
+   [
+    120,
+    116,
+    108
+   ]
+  ],
+  "price": 0
+ },
+ "muscle": {
+  "name": "Ember GT",
+  "type": "car",
+  "mass": 1650,
+  "power": 190,
+  "top": 210,
+  "grip": 0.92,
+  "accel": 12,
+  "brake": 13,
+  "seats": 2,
+  "engine": "veh_engine_muscle",
+  "colors": [
+   [
+    180,
+    84,
+    30
+   ],
+   [
+    24,
+    22,
+    26
+   ],
+   [
+    120,
+    20,
+    26
+   ]
+  ],
+  "price": 14000
+ },
+ "van": {
+  "name": "Hauler Panel Van",
+  "type": "car",
+  "mass": 2200,
+  "power": 110,
+  "top": 140,
+  "grip": 0.85,
+  "accel": 6.5,
+  "brake": 11,
+  "seats": 2,
+  "engine": "veh_engine_van",
+  "colors": [
+   [
+    150,
+    148,
+    140
+   ],
+   [
+    60,
+    70,
+    80
+   ],
+   [
+    90,
+    60,
+    40
+   ]
+  ],
+  "price": 6000
+ },
+ "sports": {
+  "name": "Vesper S",
+  "type": "car",
+  "mass": 1200,
+  "power": 220,
+  "top": 235,
+  "grip": 1.15,
+  "accel": 14,
+  "brake": 17,
+  "seats": 2,
+  "engine": "veh_engine_sedan",
+  "colors": [
+   [
+    200,
+    190,
+    60
+   ],
+   [
+    30,
+    30,
+    34
+   ],
+   [
+    40,
+    120,
+    130
+   ]
+  ],
+  "price": 26000
+ },
+ "bike": {
+  "name": "Kiln Runner 600",
+  "type": "bike",
+  "mass": 220,
+  "power": 85,
+  "top": 195,
+  "grip": 1.25,
+  "accel": 15,
+  "brake": 16,
+  "seats": 1,
+  "engine": "veh_engine_bike",
+  "colors": [
+   [
+    160,
+    40,
+    40
+   ],
+   [
+    30,
+    30,
+    34
+   ],
+   [
+    60,
+    90,
+    60
+   ]
+  ],
+  "price": 5200
+ },
+ "taxi": {
+  "name": "Cinder Cab",
+  "type": "car",
+  "mass": 1400,
+  "power": 100,
+  "top": 160,
+  "grip": 1.0,
+  "accel": 8,
+  "brake": 13,
+  "seats": 4,
+  "engine": "veh_engine_sedan",
+  "colors": [
+   [
+    210,
+    170,
+    40
+   ]
+  ],
+  "price": 0
+ },
+ "police": {
+  "name": "CCPD Cruiser",
+  "type": "car",
+  "mass": 1550,
+  "power": 160,
+  "top": 200,
+  "grip": 1.05,
+  "accel": 11,
+  "brake": 15,
+  "seats": 4,
+  "engine": "veh_engine_sedan",
+  "colors": [
+   [
+    24,
+    26,
+    32
+   ]
+  ],
+  "price": 0
+ },
+ "truck": {
+  "name": "Voss Flatbed",
+  "type": "car",
+  "mass": 3400,
+  "power": 150,
+  "top": 120,
+  "grip": 0.8,
+  "accel": 5,
+  "brake": 10,
+  "seats": 2,
+  "engine": "veh_engine_van",
+  "colors": [
+   [
+    96,
+    60,
+    30
+   ],
+   [
+    60,
+    64,
+    70
+   ]
+  ],
+  "price": 9000
+ },
+ "bus": {
+  "name": "CCPD Transit Bus",
+  "type": "car",
+  "mass": 6200,
+  "power": 170,
+  "top": 95,
+  "grip": 0.7,
+  "accel": 4,
+  "brake": 9,
+  "seats": 8,
+  "engine": "veh_engine_van",
+  "colors": [
+   [
+    190,
+    170,
+    60
+   ],
+   [
+    70,
+    74,
+    80
+   ]
+  ],
+  "price": 0
+ },
+ "ambulance": {
+  "name": "St. Voss Ambulance",
+  "type": "car",
+  "mass": 2600,
+  "power": 140,
+  "top": 150,
+  "grip": 0.9,
+  "accel": 7,
+  "brake": 13,
+  "seats": 4,
+  "engine": "veh_engine_van",
+  "colors": [
+   [
+    225,
+    225,
+    228
+   ]
+  ],
+  "price": 0
+ },
+ "pickup": {
+  "name": "Kiln Row Pickup",
+  "type": "car",
+  "mass": 2100,
+  "power": 130,
+  "top": 150,
+  "grip": 0.9,
+  "accel": 7.5,
+  "brake": 12,
+  "seats": 4,
+  "engine": "veh_engine_sedan",
+  "colors": [
+   [
+    90,
+    60,
+    40
+   ],
+   [
+    50,
+    60,
+    70
+   ],
+   [
+    140,
+    130,
+    110
+   ]
+  ],
+  "price": 4200
+ }
 }

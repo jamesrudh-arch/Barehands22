@@ -272,6 +272,73 @@ func _process(_delta: float) -> bool:
 				_player.weapons.reserves["gun_pistol"] = 60
 				_player.weapons.try_fire(false, 0.016, _player.global_position + Vector3(0, 1.4, 0), -_player.global_transform.basis.z, true)
 				_check(true, "gunfire executed")
+		56:
+			# progression: xp -> level, style mastery -> unlocks
+			var pg = root.get_node("Progression")
+			pg.reset()
+			var hp_before: float = _player.combat.max_hp if _player else 100.0
+			pg.add_xp(pg.xp_for_next() + 10)
+			_check(pg.level == 2, "level up at xp threshold")
+			if _player:
+				_check(_player.combat.max_hp > hp_before, "level raises max hp")
+			pg.add_style_xp("brawler", 120.0)
+			_check(pg.style_rank("brawler") >= 2, "style rank grows with use")
+			_check("haymaker" in pg.unlocked_moves("brawler"), "rank 2 brawler unlocks haymaker")
+			_check(pg.dmg_mult("brawler") > 1.0, "level grants damage bonus")
+		57:
+			# difficulty director: threat scales with story progress
+			var df = root.get_node("Difficulty")
+			df.reset()
+			var t0: float = df.threat()
+			var mm2 = root.get_node("MissionManager")
+			var had: Dictionary = mm2.completed.duplicate()
+			for i in range(1, 7):
+				mm2.completed["m%02d" % i] = true
+			var t1: float = df.threat()
+			mm2.completed = had
+			_check(t1 > t0 + 0.2, "threat rises with story (%.2f -> %.2f)" % [t0, t1])
+			_check(df.scale_count(3) >= 3, "scaled counts never below authored base")
+			_check(df.police_cap() >= 4, "police cap present")
+		58:
+			# gunplay: recoil patterns + focus meter + soft cover hooks
+			var wc = _player.weapons if _player else null
+			if wc:
+				wc.equip("gun_smg")
+				wc.reserves["gun_smg"] = 90
+				wc.mag = 30
+				var pats: Array = wc.def().get("recoil_pattern", [])
+				_check(pats.size() >= 8, "smg has a recoil climb pattern")
+				wc.try_fire(true, 2.0, _player.global_position + Vector3(0, 1.4, 0), -_player.global_transform.basis.z, true)
+				_check(wc._pattern_pitch > 0.0, "shot applied pattern pitch kick")
+			if _player:
+				_player.focus = 80.0
+				_check(_player.focus <= 100.0, "focus meter present")
+				var pl2 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+				_check("_tick_cover" in pl2 and "_try_stealth_takedown" in pl2, "soft cover + stealth takedown wired")
+		60:
+			# attachments + day-part schedules + pursuit escalation
+			var ws4 = root.get_node("WorldState")
+			ws4.weapon_attachments["gun_rifle"] = {"optic": "att_scope", "muzzle": "att_suppressor"}
+			if _player:
+				_player.weapons.give("gun_rifle", true)
+				_player.weapons.equip("gun_rifle")
+				var wd: Dictionary = _player.weapons.def()
+				_check(wd.get("sound", "") == "shot_suppressed", "suppressor changes report")
+				_check(float(wd.get("spread", 9.9)) < 0.4, "scope tightens spread")
+				ws4.weapon_attachments.clear()
+				_player.weapons.equip("gun_pistol")
+			var np2 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("_day_part" in np2 and "_body_scan" in np2, "npc day schedules + body discovery")
+			var cl := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
+			_check("_pit_tick" in cl and "_drop_spike_strips" in cl and "_hour_crowd_mult" in cl, "PIT/spikes/crowd rhythm wired")
+			var pl3 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			_check("_try_vault" in pl3 and "_env_takedown" in pl3, "vault + environmental takedown wired")
+		59:
+			# stealth: guard suspicion brain + new move timelines
+			var np := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("suspicion" in np and "_los_clear" in np, "guard suspicion/vision cone present")
+			var cc := FileAccess.get_file_as_string("scripts/combat/combat_controller.gd")
+			_check("haymaker" in cc and "ground_pound" in cc and "counter_t" in cc, "unlock moves + counter window in combat controller")
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()

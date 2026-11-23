@@ -39,6 +39,7 @@ var stats: Dictionary = {
 # --- inventory ---
 var inventory: Dictionary = {}       # item_id -> qty
 var owned_weapons: Array = []        # weapon ids
+var weapon_attachments: Dictionary = {}  # weapon_id -> {slot -> attachment_id}
 var equipped_weapon: String = ""     # "" = fists
 var equipped_armor: String = ""
 var equipped_outfit: String = "outfit_default"
@@ -260,6 +261,7 @@ func serialize() -> Dictionary:
 		"stats": stats.duplicate(),
 		"inventory": inventory.duplicate(),
 		"owned_weapons": owned_weapons.duplicate(),
+		"weapon_attachments": weapon_attachments.duplicate(true),
 		"equipped_weapon": equipped_weapon,
 		"equipped_armor": equipped_armor,
 		"equipped_outfit": equipped_outfit,
@@ -296,6 +298,7 @@ func deserialize(d: Dictionary) -> void:
 	stats = d.get("stats", stats)
 	inventory = d.get("inventory", {})
 	owned_weapons = d.get("owned_weapons", [])
+	weapon_attachments = d.get("weapon_attachments", {})
 	equipped_weapon = d.get("equipped_weapon", "")
 	equipped_armor = d.get("equipped_armor", "")
 	equipped_outfit = d.get("equipped_outfit", "outfit_default")

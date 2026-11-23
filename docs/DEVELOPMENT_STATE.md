@@ -135,6 +135,9 @@ Waves 1–7 committed on arena/94fd4268-barehands22:
 ## Exact next action
 1. ~~Engine rebuild~~ DONE 2026-11-23: 4.7.2 built, headless import clean,
    **harness checks=45 fails=0** — checks 50–55 runtime-TESTED.
+   Wave 8 (depth: escalation/progression/stealth/gunplay) raised the suite
+   to **checks=64 fails=0, 0 script errors** — see docs/LEVERAGE_VISION.md
+   and CHANGELOG 2026-11-23 DEPTH WAVE 8.
 2. ~~Open PR~~ DONE: PR #3 (arena/94fd4268-barehands22 → main).
 3. Device pass per docs/VERIFICATION_GUIDE.md §B–§E when an iPhone/XOGOT
    environment is available; flip DEVICE-ONLY rows with evidence (W8).
