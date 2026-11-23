@@ -21,6 +21,8 @@ var _stagger_t := 0.0
 var _retreat_t := 0.0
 var _call_cd := 8.0
 var _backoff_t := 0.0
+var _mag := 12
+var _reload_t := 0.0
 var faction_tag: String = ""
 
 var _target: Vector3 = Vector3.ZERO
@@ -151,6 +153,9 @@ func setup_enemy(kind: String, pos: Vector3, faction: String) -> void:
 			combat.armor_prot = 0.20
 		_:
 			_style_id = ["brawler", "kickboxing", "drunken"][randi() % 3]
+	if _weapon_id != "":
+		var wd := Db.weapon(_weapon_id)
+		_mag = int(wd.get("mag", 12))
 	combat.set_style(_style_id)
 	state = State.COMBAT
 	add_to_group("enemy")
@@ -411,7 +416,13 @@ func _combat_state(dt: float, player: Node) -> void:
 		if gun and frac < 0.3 and _retreat_t > 0.0:
 			_flank_side = 0.0
 	if gun:
-		if dist < 45.0 and _attack_cd <= 0.0 and _stagger_t <= 0.0:
+		if _reload_t > 0.0:
+			_reload_t -= dt
+			anim.aiming = false
+			if _reload_t <= 0.0:
+				_mag = int(Db.weapon(_weapon_id).get("mag", 12))
+				AudioDirector.sfx_at("reload_slide", global_position + Vector3(0, 1.2, 0), 0.5)
+		if dist < 45.0 and _attack_cd <= 0.0 and _stagger_t <= 0.0 and _reload_t <= 0.0:
 			# shoot with lead + spread
 			var dir := to_p.normalized() + Vector3(0, 1.2 / dist, 0)
 			dir += Vector3(randf_range(-0.03, 0.03), 0, randf_range(-0.03, 0.03))
@@ -425,6 +436,12 @@ func _combat_state(dt: float, player: Node) -> void:
 				player.combat.take_hit(float(w.get("dmg", 18)), -dir, "bullet", self)
 			_attack_cd = 60.0 / float(w.get("rpm", 300)) * randf_range(2.5, 4.5)
 			anim.aiming = true
+			_mag -= 1
+			if _mag <= 0:
+				# dry: tactical reload under fire
+				_reload_t = randf_range(1.8, 2.6)
+				AudioDirector.sfx_at("reload_magout", global_position + Vector3(0, 1.2, 0), 0.5)
+				_stagger_t = maxf(_stagger_t, 0.5)   # vulnerable window: fair to rush
 		else:
 			anim.aiming = dist < 45.0
 		# tactical movement: spacing + lateral flank + retreat when hurt
