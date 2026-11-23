@@ -1,5 +1,15 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 19: drive-bys
+
+- **Lean out and work the trigger**: guns fire from cars (not bikes —
+  bikes need both hands) with muzzle flash from the window, camera
+  kick, and the usual crime pipeline (suppressors still keep it quiet).
+- Speed makes the gun honest: 2° wobble parked up to 11° at 90 km/h —
+  drive-bys are for suppression and statements, not sniping.
+- Reload (R) and weapon cycling (Page Up/Down) work behind the wheel.
+- Harness **95 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 18: lockpicks earn their keep
 
 - **Locked cars**: 60% of parked civilian cars (35% of bikes) now spawn

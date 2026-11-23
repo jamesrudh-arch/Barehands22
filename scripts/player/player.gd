@@ -605,6 +605,28 @@ func _handle_combat_input(delta: float) -> void:
 		pass
 
 
+func _try_driveby(delta: float) -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null or in_vehicle == null:
+		return
+	var from := cam.global_position
+	var dir := -cam.global_transform.basis.z
+	if lock_target and is_instance_valid(lock_target):
+		dir = (lock_target.global_position + Vector3(0, 1.2, 0) - from).normalized()
+	# speed wobble: the road steers the gun too
+	var spd01: float = clampf(in_vehicle.speed_kmh() / 90.0, 0.0, 1.0)
+	var wobble := deg_to_rad(2.0 + spd01 * 9.0)
+	dir = dir.rotated(Vector3.UP, randf_range(-wobble, wobble))
+	dir = dir.rotated(dir.cross(Vector3.UP).normalized(), randf_range(-wobble * 0.6, wobble * 0.6))
+	var side: Vector3 = in_vehicle.global_transform.basis.x * (1.0 if dir.dot(-in_vehicle.global_transform.basis.z) < 0.3 else -1.0)
+	var muz: Vector3 = in_vehicle.global_position + Vector3(0, 0.9, 0) + side * 0.9
+	weapons.aim = false
+	var before: int = weapons.mag
+	weapons.try_fire(true, delta, muz, dir, true)
+	if weapons.mag < before and cam_rig:
+		cam_rig.pitch = clampf(cam_rig.pitch + weapons._pattern_pitch * 0.2, cam_rig.PITCH_MIN, cam_rig.PITCH_MAX)
+
+
 func _try_shoot(delta: float) -> void:
 	var cam: Camera3D = get_viewport().get_camera_3d()
 	var from := cam.global_position
@@ -817,6 +839,18 @@ func _in_vehicle_tick(delta: float) -> void:
 	in_vehicle.player_drive(delta, Input.get_vector("move_left", "move_right", "move_forward", "move_back"),
 		Input.is_action_pressed("vehicle_brake"), Input.is_action_pressed("vehicle_handbrake"),
 		Input.is_action_just_pressed("horn"))
+	# DRIVE-BY: lean out and work the trigger (cars only — bikes need both
+	# hands). Speed makes the gun honest about physics: fast = wild.
+	weapons.tick(delta)
+	if weapons.is_gun() and in_vehicle.vehicle_type != "bike":
+		if Input.is_action_pressed("fire"):
+			_try_driveby(delta)
+		if Input.is_action_just_pressed("reload"):
+			weapons.start_reload()
+	if Input.is_action_just_pressed("weapon_next"):
+		weapons.cycle(1)
+	if Input.is_action_just_pressed("weapon_prev"):
+		weapons.cycle(-1)
 	# rider posture on bikes: sit on the seat, lean with the machine
 	if visible:
 		var vb: Basis = in_vehicle.global_transform.basis
