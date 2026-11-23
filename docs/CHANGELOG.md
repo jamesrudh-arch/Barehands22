@@ -12,6 +12,22 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 42: prove the burn, kill the dupe
+
+- **Real bug found + fixed**: the `fire_barrel` world event carried TWO
+  full burn implementations (a wave-29 heredoc applied twice) — every
+  barrel spawned two burning nodes, one on a 90 s `create_timer` and
+  one on the 120 s `_fires` tick. The orphaned twin is gone; one
+  barrel, one fire, managed by `_fire_tick`. Regression guard in the
+  harness counts `add_to_group("burning")` in the event block.
+- **Live burn-expiry test**: wreck a sedan, fast-forward `_burn_t`,
+  assert the hulk leaves the `burning` group and its fire light is
+  freed when the fuel runs out.
+- **Live fire-ambience test**: plant a burning node 4 m from the
+  player, run `_fire_tick`, assert the "fire" ambient channel opens
+  (vol > 0.2); move it 60 m away, assert the channel goes silent.
+- Harness **163 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 41: work for the new verbs
 
 - **Two new side jobs** that spend the systems recent waves built:

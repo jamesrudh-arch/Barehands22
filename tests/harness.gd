@@ -467,6 +467,36 @@ func _process(_delta: float) -> bool:
 				_sc_ped = null
 				_sc_v.queue_free()
 				_sc_v = null
+		73:
+			# LIVE BURN EXPIRY: a wreck's fire burns down and the light is freed
+			if _player:
+				var cl15 = _city.get_node_or_null("CityLife")
+				var vw: Node = cl15.give_player_vehicle("sedan", _player.global_position + Vector3(20, 0, 0))
+				vw.damage(9999.0)
+				_check(vw.is_in_group("burning") and vw.get("_fire_light") != null, "burn: wreck alight with fire light")
+				vw.set("_burn_t", 0.5)
+				for i in range(80):
+					if float(vw.get("_burn_t")) > 0.0:
+						vw._physics_process(0.05)
+				_check(not vw.is_in_group("burning"), "burn: wreck leaves burning group when fuel is gone")
+				_check(vw.get("_fire_light") == null, "burn: fire light freed after burn-out")
+				vw.queue_free()
+		74:
+			# LIVE FIRE AMBIENCE: crackle channel follows the nearest burning thing
+			if _player:
+				var cl16 = _city.get_node_or_null("CityLife")
+				var ad16 = root.get_node("AudioDirector")
+				var fake := Node3D.new()
+				_city.add_child(fake)
+				fake.global_position = _player.global_position + Vector3(4, 0, 0)
+				fake.add_to_group("burning")
+				cl16._fire_tick(0.016, _player)
+				_check(float(ad16.ambient_target.get("fire", 0.0)) > 0.2, "ambience: fire crackles near a burning thing (vol=%.2f)" % float(ad16.ambient_target.get("fire", 0.0)))
+				fake.global_position = _player.global_position + Vector3(60, 0, 0)
+				cl16._fire_tick(0.016, _player)
+				_check(float(ad16.ambient_target.get("fire", 1.0)) == 0.0, "ambience: fire channel silent when nothing burns nearby")
+				fake.remove_from_group("burning")
+				fake.queue_free()
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):
@@ -672,6 +702,9 @@ func _process(_delta: float) -> bool:
 			_check('"wrecks"' in vsrc6, "wrecks tracked as a stat")
 			var shsrc5 := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
 			_check('"resprays"' in shsrc5, "resprays tracked as a stat")
+			var clsrc5 := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
+			var fbseg: String = clsrc5.substr(clsrc5.find('"fire_barrel":'), clsrc5.find('"crowd_gathering":') - clsrc5.find('"fire_barrel":'))
+			_check(fbseg.count("add_to_group(\"burning\")") == 1 and "create_timer(90.0)" not in fbseg, "fire_barrel spawns exactly one burning barrel (no dupe)")
 			# behavioral: statd counts from stage start, not from all time
 			var mm7 = root.get_node("MissionManager")
 			var ws13 = root.get_node("WorldState")

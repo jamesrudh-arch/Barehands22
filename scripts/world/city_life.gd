@@ -702,19 +702,7 @@ func _spawn_event(pp: Vector3) -> void:
 			AudioDirector.sfx_at("fire_crackle", pos)
 			Effects.burst(pos + Vector3(0, 0.6, 0), "smoke")
 			# a barrel fire that actually burns: flickering light, crackle
-			# ambience for passersby, gone in 90 seconds
-			var barrel := Node3D.new()
-			barrel.global_position = pos
-			var bl := OmniLight3D.new()
-			bl.light_color = Color(1.0, 0.5, 0.18)
-			bl.light_energy = 1.6
-			bl.omni_range = 5.5
-			bl.position = Vector3(0, 0.7, 0)
-			barrel.add_child(bl)
-			get_parent().add_child(barrel)
-			barrel.add_to_group("burning")
-			get_tree().create_timer(90.0).timeout.connect(barrel.queue_free)
-			# a barrel fire that actually burns: light + crackle for 2 minutes
+			# ambience for passersby, gone in 2 minutes (via _fire_tick)
 			var fb := Node3D.new()
 			fb.global_position = pos
 			var fl := OmniLight3D.new()
