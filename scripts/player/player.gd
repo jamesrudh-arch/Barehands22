@@ -785,6 +785,11 @@ func _hotwire_tick(delta: float) -> void:
 	if _hotwire_t <= 0.0:
 		_hotwire_target = null
 		v.locked = false
+		# the pick is spent: one clean job per set. Tension in wire
+		# keeps picking a choice, not a free pass.
+		WorldState.remove_item("lockpick", 1)
+		if WorldState.inventory.get("lockpick", 0) == 0:
+			Bus.notification.emit("Last lockpick used. Shops sell more — 60 cr.", "warn")
 		AudioDirector.sfx("veh_door_open", 0.4)
 		enter_vehicle(v)
 

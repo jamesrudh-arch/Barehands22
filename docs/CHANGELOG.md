@@ -12,6 +12,21 @@
   stand to anything burning (fades out past 22 m).
 - Harness **117 checks, 0 fails, 0 script errors**.
 
+## 2026-11-23 — DEPTH WAVE 37: one pick per job
+
+- **Lockpicks are consumables now**: a completed 2.2 s pick spends one
+  Lockpick Set from the bag. Ran out? The window-smash is always
+  there — loud, noticed, free. Shops sell picks for 60 cr, so quiet
+  car theft becomes a resource decision, not a toggle.
+- Warning notification when your last pick is used.
+- **Live lockpick behavioral test**: harness parks a locked sedan next
+  to the player, starts the pick, deterministically ticks it to
+  completion, and asserts the car opens AND the pick count drops.
+  Uncovered two real freeze conditions along the way — a dead player
+  and an active mission cutscene both (correctly) halt interaction
+  processing; the test now revives and skips cinematics.
+- Harness **137 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 36: prove the drive-by
 
 - **Live-fire behavioral test**: the harness now physically performs a
