@@ -891,6 +891,16 @@ func use_item(iid: String) -> void:
 		return
 	var it := Db.item(iid)
 	match it.get("kind", ""):
+		"ammo":
+			# loose ammo feeds the gun it was bought for
+			var wid: String = str(it.get("for", ""))
+			if weapons != null and wid in weapons.owned:
+				WorldState.remove_item(iid, 1)
+				weapons.add_ammo(wid, int(it.get("amount", 12)))
+				AudioDirector.sfx("reload_magout", 0.35)
+				Bus.notification.emit("+%s rounds → %s." % [it.get("amount", 12), Db.weapon(wid).get("name", wid)], "info")
+			else:
+				Bus.notification.emit("You don't carry a %s." % Db.weapon(wid).get("name", "gun that takes these"), "warn")
 		"consumable":
 			WorldState.remove_item(iid, 1)
 			if it.has("heal"):

@@ -48,7 +48,8 @@
    "gun_pistol",
    "ammo_9mm",
    "armor_jacket",
-   "outfit_suit"
+   "outfit_suit",
+   "gun_machine_pistol"
   ],
   "buys": true
  },
@@ -76,7 +77,10 @@
    "att_grip",
    "att_scope",
    "att_laser",
-   "att_hotload"
+   "att_hotload",
+   "gun_magnum",
+   "gun_machine_pistol",
+   "ammo_357"
   ],
   "buys": true
  },

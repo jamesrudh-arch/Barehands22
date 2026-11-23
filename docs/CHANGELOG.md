@@ -1,5 +1,17 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 16: hand cannons & loose rounds
+
+- **Two new guns**: the Judge .357 (58 dmg, 6 shots, brutal recoil,
+  1100 cr at Mags) and the Wasp Auto-9 (full-auto 1000 rpm machine
+  pistol, 10 dmg, 780 cr — pawn shop too). New .357 Speedloader ammo.
+- **Ammo items are finally usable**: loose boxes from the BAG feed the
+  gun they were bought for (loot drops included); carrying rounds for a
+  gun you don't own tells you so.
+- NPC loot tables know the new guns (magnum drops .357, the Wasp drops
+  9mm).
+- Harness **91 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 15: sleep it off
 
 - **Safehouse rest** now skips EIGHT HOURS (new `WorldState.advance_hours`,

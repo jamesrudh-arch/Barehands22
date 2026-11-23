@@ -396,6 +396,11 @@ func _process(_delta: float) -> bool:
 			_check(absf(ws7.game_hour - fmod(h0 + 8.0, 24.0)) < 0.001, "advance_hours wraps the clock")
 			ws7.game_hour = h0
 			ws7.day = d0
+			var db7 = root.get_node("Db")
+			_check(db7.weapons.has("gun_magnum") and db7.weapons.has("gun_machine_pistol"), "new hand cannons registered")
+			_check(db7.items.has("ammo_357") and str(db7.items["ammo_357"].get("for","")) == "gun_magnum", "magnum ammo mapped")
+			var plsrc2 := FileAccess.get_file_as_string("res://scripts/player/player.gd")
+			_check('"ammo":' in plsrc2 and "add_ammo" in plsrc2, "ammo items usable from the BAG")
 			var npcsrc := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
 			_check("_find_rival" in npcsrc and "_drop_loot" in npcsrc, "rival targeting + loot drops wired")
 			var vsrc2 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
