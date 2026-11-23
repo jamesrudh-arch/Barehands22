@@ -311,17 +311,25 @@ func _watch_fight(n: Node, reward: int) -> void:
 
 
 func _enter_safehouse(pid: String, data: Dictionary) -> void:
-	# rest: save the game, heal, clear minor heat
+	# rest: save the game, heal, SLEEP OFF THE CLOCK, cool the heat
 	Bus.poi_discovered.emit(pid)
 	if player:
 		player.combat.heal(player.combat.max_hp)
 	Game.request_autosave()
 	Game.save_to_slot(1)
+	# sleep eight hours: night jobs end at sunrise, day jobs reset
+	WorldState.advance_hours(8.0)
+	# the neighborhood forgets overnight; so does the precinct (mostly)
+	for did in WorldState.district_heat.keys():
+		WorldState.district_heat[did] = maxf(0.0, WorldState.district_heat[did] * 0.35)
 	AudioDirector.sfx("shop_bell", 0.3)
-	Bus.notification.emit("SAFEHOUSE — %s. Saved. Wounds patched." % data.get("name", "rest stop"), "info")
-	if WorldState.wanted == 1:
-		WorldState.set_wanted(0)
-		Bus.notification.emit("You lay low. Heat cooled.", "info")
+	Bus.notification.emit("SAFEHOUSE — %s. Saved. Wounds patched. Eight hours gone." % data.get("name", "rest stop"), "info")
+	if WorldState.wanted <= 2:
+		if WorldState.wanted > 0:
+			WorldState.set_wanted(0)
+			Bus.notification.emit("You lay low. Heat cooled.", "info")
+	else:
+		Bus.notification.emit("Too hot to sleep easy — they'll still be looking.", "warn")
 
 
 func _open_stash(pid: String, data: Dictionary) -> void:

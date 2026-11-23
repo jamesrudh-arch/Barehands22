@@ -1,5 +1,15 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 15: sleep it off
+
+- **Safehouse rest** now skips EIGHT HOURS (new `WorldState.advance_hours`,
+  day rollover handled) — night jobs end at sunrise, schedules and crowd
+  densities follow the clock honestly.
+- Overnight cooldown: district heat drops to 35% across the city; wanted
+  1–2 clears entirely; 3+ stars survive the night ("too hot to sleep
+  easy").
+- Harness **88 checks, 0 fails, 0 script errors**.
+
 ## 2026-11-23 — DEPTH WAVE 14: the garage
 
 - **GARAGE phone app**: any ride you're sitting in can be filed as yours
