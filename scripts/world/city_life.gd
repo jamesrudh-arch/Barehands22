@@ -27,6 +27,9 @@ const PED_SCENE := "res://scripts/npc/npc.gd"
 const VEH_SCENE := "res://scripts/vehicle/vehicle.gd"
 
 
+var _checkin_t := 0.0
+
+
 func _ready() -> void:
 	for i in 28:
 		var l := OmniLight3D.new()
@@ -42,6 +45,13 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_checkin_t += delta
+	if _checkin_t > 300.0:
+		_checkin_t = 0.0
+		if Game.state == Game.State.PLAYING and WorldState.wanted == 0 and randf() < 0.35:
+			var who: Array = ["marcus", "ruth", "padre", "sol"]
+			var kind := "warning" if WorldState.day >= 2 and randf() < 0.4 else "checkin"
+			CallManager.schedule_call(who[randi() % who.size()], kind)
 	var player := _player()
 	if player == null:
 		return

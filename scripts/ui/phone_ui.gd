@@ -339,6 +339,12 @@ func _show_contacts() -> void:
 		b.add_theme_font_size_override("font_size", 15)
 		b.pressed.connect(_call.bind(cid))
 		vb.add_child(b)
+	var sep := Label.new()
+	sep.text = "— RECENT CALLS —"
+	sep.add_theme_font_size_override("font_size", 12)
+	sep.add_theme_color_override("font_color", Color(0.6, 0.6, 0.58))
+	vb.add_child(sep)
+	_show_calls_log(vb)
 	# answer mission call if pending
 	var mm := get_node_or_null("/root/MissionManager")
 	if mm and mm.active_id != "" and mm.stage.get("type", "") == "phone" and mm.rt.get("rang", false):
@@ -354,6 +360,7 @@ func _show_contacts() -> void:
 
 func _call(cid: String) -> void:
 	close_phone()
+	CallManager.place_outgoing(cid)
 	var tree: String = "chat_" + str({"padre_sol": "padre", "crowe_jr": "julian"}.get(cid, cid))
 	if Db.dialogue.has(tree):
 		DialogueUI.start_tree(tree)
@@ -478,6 +485,7 @@ func _show_msgs() -> void:
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			l.add_theme_font_size_override("font_size", 14)
 			vb.add_child(l)
+	_show_threads(vb)
 	if vb.get_child_count() == 0:
 		var l := Label.new()
 		l.text = "No messages. The city is quiet — for now."
@@ -645,3 +653,83 @@ func _input(event: InputEvent) -> void:
 
 func _refit() -> void:
 	UiFit.refit_tree(self)
+
+
+func _show_calls_log(list: VBoxContainer) -> void:
+	var log: Array = WorldState.call_log.duplicate()
+	log.reverse()
+	for e in log:
+		var ch: Dictionary = Db.character(e.get("char", "eli"))
+		var row := HBoxContainer.new()
+		var ic := Label.new()
+		ic.text = "MISSED" if e.get("result") == "missed" else ("OUT" if e.get("result") == "out" else "IN")
+		ic.add_theme_color_override("font_color", Color(0.9, 0.3, 0.25) if e.get("result") == "missed" else Color(0.6, 0.8, 0.6))
+		ic.add_theme_font_size_override("font_size", 12)
+		row.add_child(ic)
+		var nm := Label.new()
+		nm.text = str(ch.get("name", e.get("char", "?")))
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nm.add_theme_font_size_override("font_size", 14)
+		row.add_child(nm)
+		var tm := Label.new()
+		tm.text = "%s %s" % [e.get("day", ""), e.get("hour", "")]
+		tm.add_theme_font_size_override("font_size", 11)
+		tm.add_theme_color_override("font_color", Color(0.6, 0.6, 0.58))
+		row.add_child(tm)
+		list.add_child(row)
+	if log.is_empty():
+		var empty := Label.new()
+		empty.text = "No recent calls."
+		empty.add_theme_font_size_override("font_size", 13)
+		list.add_child(empty)
+
+
+func _show_threads(list: VBoxContainer) -> void:
+	var threads: Dictionary = WorldState.msg_threads
+	if threads.is_empty():
+		var empty := Label.new()
+		empty.text = "No messages yet."
+		empty.add_theme_font_size_override("font_size", 13)
+		list.add_child(empty)
+	for tid in threads:
+		var ch: Dictionary = Db.character(tid)
+		var unread := 0
+		for m in threads[tid]:
+			if not m["read"]:
+				unread += 1
+		var b := Button.new()
+		var last: Dictionary = threads[tid][-1]
+		b.text = "%s%s — %s" % [str(ch.get("name", tid)), (" (%d new)" % unread) if unread > 0 else "", last.get("text", "")]
+		b.add_theme_font_size_override("font_size", 13)
+		b.custom_minimum_size = Vector2(0, 64)
+		var tidc := tid
+		b.pressed.connect(func(): _open_thread(tidc))
+		list.add_child(b)
+
+
+func _open_thread(tid: String) -> void:
+	CallManager.mark_thread_read(tid)
+	var scr := ScrollContainer.new()
+	scr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_screen.add_child(scr)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scr.add_child(list)
+	var head := Label.new()
+	var ch: Dictionary = Db.character(tid)
+	head.text = str(ch.get("name", tid))
+	head.add_theme_font_size_override("font_size", 18)
+	head.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
+	list.add_child(head)
+	for m in WorldState.msg_threads[tid]:
+		var row := Label.new()
+		row.text = "%s · %s: %s" % [m.get("hour", ""), "THEM" if m.get("from") == tid else "YOU", m.get("text", "")]
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_theme_font_size_override("font_size", 13)
+		list.add_child(row)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(func():
+		scr.queue_free()
+		_show_msgs())
+	list.add_child(back)

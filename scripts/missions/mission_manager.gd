@@ -74,6 +74,8 @@ func _refresh_offers() -> void:
 		if act >= 3 and not completed.has("m08_halcyon_tower"):
 			continue
 		story_offer = mid
+		var giver: String = Db.mission(mid).get("giver", Db.mission(mid).get("contact", "marcus"))
+		CallManager.schedule_call(giver, "offer", mid, 6.0)
 		break
 	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors"]:
 		var m := Db.mission(sid)

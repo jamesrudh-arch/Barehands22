@@ -211,6 +211,21 @@ func _process(_delta: float) -> bool:
 					vtris += va[Mesh.ARRAY_INDEX].size() / 3
 			_check(vtris >= 200 and vtris <= 9000, "vehicle v2 triangle budget (%d)" % vtris)
 			veh.queue_free()
+		51:
+			# living phone: ring -> decline -> missed log; message threads
+			var cm = root.get_node_or_null("CallManager")
+			_check(cm != null, "CallManager autoload present")
+			if cm:
+				_check(cm.state == 0, "call manager idle at boot")
+				cm.schedule_call("marcus", "checkin")
+				_check(cm.state == 1, "incoming call rings")
+				cm.decline_call()
+				var lg: Array = WorldState.call_log
+				_check(lg.size() > 0 and lg[-1].get("result") == "missed", "declined call logged as missed")
+				cm.send_message("ruth", "t1", "harness ping")
+				_check(cm.unread_count() >= 1, "unread message counted")
+				cm.mark_thread_read("ruth")
+				_check(cm.unread_count() == 0, "thread marks read")
 		48:
 			# gunfire hitscan
 			if _player:

@@ -51,6 +51,8 @@ var owned_vehicles: Array = []
 
 # --- phone ---
 var phone_station: String = ""
+var call_log: Array = []
+var msg_threads: Dictionary = {}
 var messages_read: Array = []
 var messages_pending: Array = []
 var calls_made: Array = []
@@ -254,6 +256,8 @@ func serialize() -> Dictionary:
 		"collected": collected.duplicate(),
 		"owned_vehicles": owned_vehicles.duplicate(),
 		"phone_station": phone_station,
+		"call_log": call_log,
+		"msg_threads": msg_threads,
 		"messages_read": messages_read.duplicate(),
 		"messages_pending": messages_pending.duplicate(),
 	}
@@ -284,5 +288,7 @@ func deserialize(d: Dictionary) -> void:
 	collected = d.get("collected", [])
 	owned_vehicles = d.get("owned_vehicles", [])
 	phone_station = d.get("phone_station", 0)
+	call_log = d.get("call_log", [])
+	msg_threads = d.get("msg_threads", {})
 	messages_read = d.get("messages_read", [])
 	messages_pending = d.get("messages_pending", [])
