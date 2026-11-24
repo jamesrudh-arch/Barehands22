@@ -183,10 +183,19 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 		anim.air_t += delta
+		_peak_fall_vy = minf(_peak_fall_vy, velocity.y)
 	else:
 		if anim.air_t > 0.25:
 			anim.land_t = 1.0
 			AudioDirector.sfx("land_thud", 0.1)
+			# landing weight: the harder you fell, the harder the camera
+			# lands with you (proportionality ladder, feet edition)
+			var fall_sp := absf(_peak_fall_vy)
+			if fall_sp > 6.0:
+				Effects.add_shake(clampf((fall_sp - 6.0) / 22.0, 0.05, 0.45))
+				if fall_sp > 15.0:
+					Cinematics.hitstop(0.04)
+		_peak_fall_vy = 0.0
 		anim.air_t = 0.0
 		if Input.is_action_just_pressed("jump") and not combat.knocked:
 			if _try_climb():
@@ -230,6 +239,7 @@ func _physics_process(delta: float) -> void:
 
 
 var _step_dist := 0.0
+var _peak_fall_vy := 0.0   # for landing weight (camera shake on hard falls)
 
 
 func _step_tick(delta: float) -> void:
@@ -711,7 +721,8 @@ func _handle_interact(delta: float) -> void:
 		return
 	interact_target = _find_interact()
 	if interact_target:
-		Bus.interaction_available.emit(str(interact_target.get("interact_label")) if interact_target.get("interact_label") != null else "Interact")
+		var lbl89 = interact_target.get("interact_label")
+		Bus.interaction_available.emit(str(lbl89) if lbl89 != null else "Interact")
 		if Input.is_action_just_pressed("interact") and not combat.in_combat:
 			interact_target.interact(self)
 	else:
@@ -757,7 +768,7 @@ func _request_enter(v: Node) -> void:
 	## Locked cars: pick it quiet (needs a lockpick, 2.2 s standing still)
 	## or smash the window (instant, LOUD, uglier crime). Owned rides and
 	## anything already open just... open.
-	if not bool(v.get("locked")):
+	if v.get("locked") != true:
 		enter_vehicle(v)
 		return
 	Bus.tutorial_hint.emit("lockpick")
@@ -804,8 +815,8 @@ func enter_vehicle(v: Node, loud: bool = false) -> void:
 		anim.mode = "ride"
 	set_physics_process(true)
 	# hot-wiring somebody else's ride is a crime — owned rides are clean
-	if not bool(v.get("is_player_owned")):
-		var sev := 3 if bool(v.get("is_traffic")) else 2
+	if v.get("is_player_owned") != true:
+		var sev := 3 if v.get("is_traffic") == true else 2
 		if loud:
 			sev = mini(5, sev + 1)   # smashed glass finds witnesses itself
 		Bus.crime_committed.emit("theft", sev, global_position)
@@ -886,10 +897,7 @@ func _push_anim(delta: float, mv: Vector2, spd: float) -> void:
 	if not combat.attacking:
 		anim.mode = "locomote"
 	anim.block = combat.blocking
-	if anim.hit_t >= 0:
-		anim.hit_t += delta * 4.0
-		if anim.hit_t > 1.0:
-			anim.hit_t = -1.0
+	# hit_t now advances inside AnimDriver.tick (npcs + player, one place)
 	anim.tick(delta, combat.style.get("stance", {}))
 
 

@@ -29,7 +29,7 @@ func _process(delta: float) -> void:
 
 func _focus_busy() -> bool:
 	var g := get_tree().get_nodes_in_group("player")
-	return not g.is_empty() and bool(g[0].get("focus_active"))
+	return not g.is_empty() and g[0].get("focus_active") == true
 
 
 ## Freeze-frame on a crushing blow (0.05–0.12 s reads best).

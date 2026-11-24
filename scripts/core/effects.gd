@@ -58,7 +58,9 @@ func _free_particles() -> GPUParticles3D:
 	return null
 
 
-func burst(at: Vector3, kind: String, dir: Vector3 = Vector3.UP) -> void:
+func burst(at: Vector3, kind: String, dir: Vector3 = Vector3.UP, scale: float = 1.0) -> void:
+	# scale = juice budget multiplier: >1 for heavies/kills (more particles,
+	# faster, bigger quads), <1 for trivial pings — proportionality ladder
 	var p := _free_particles()
 	if p == null:
 		return
@@ -67,8 +69,8 @@ func burst(at: Vector3, kind: String, dir: Vector3 = Vector3.UP) -> void:
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_POINT
 	mat.direction = dir.normalized()
 	mat.spread = 35.0
-	mat.initial_velocity_min = 1.5
-	mat.initial_velocity_max = 4.5
+	mat.initial_velocity_min = 1.5 * scale
+	mat.initial_velocity_max = 4.5 * scale
 	mat.gravity = Vector3(0, -9.8, 0)
 	mat.lifetime_randomness = 0.4
 	p.global_position = at
@@ -114,10 +116,12 @@ func burst(at: Vector3, kind: String, dir: Vector3 = Vector3.UP) -> void:
 			mat.gravity = Vector3(0, 1.5, 0)
 			p.amount = 10
 			p.lifetime = 1.2
+	p.amount = int(clampf(p.amount * scale, 4.0, 40.0))
 	p.process_material = mat
 	# textured billboard quad (ParticleProcessMaterial has no emission_texture)
 	var qm := QuadMesh.new()
-	qm.size = Vector2(0.16, 0.16)
+	var qs := 0.16 * sqrt(scale)
+	qm.size = Vector2(qs, qs)
 	var qmat := StandardMaterial3D.new()
 	qmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -168,10 +172,26 @@ func decal(at: Vector3, normal: Vector3, kind: String, scale: float = 0.6) -> vo
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED if kind == "scorch" else BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mi.material_override = m
-	mi.global_position = at + normal * 0.02
-	if normal.length_squared() > 0.01:
-		mi.look_at(at - normal, Vector3.UP)
 	get_tree().current_scene.add_child(mi)
+	# Orient AFTER entering the tree: look_at() refuses to run on a node
+	# outside it, so every decal used to silently keep its default pose.
+	# PlaneMesh faces +Y, so we build a basis whose Y axis IS the surface
+	# normal (the old code aligned +Z — a 90-degree error on walls).
+	var off := at + normal * 0.02
+	if normal.length_squared() > 0.01:
+		var n := normal.normalized()
+		if absf(n.dot(Vector3.UP)) < 0.98:
+			var tan := n.cross(Vector3.UP).normalized()
+			var bitan := n.cross(tan).normalized()
+			mi.global_transform = Transform3D(Basis(tan, n, bitan), off)
+		elif n.y < -0.5:
+			# ceiling: flip the default floor pose
+			mi.global_transform = Transform3D(
+				Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, -1)), off)
+		else:
+			mi.global_position = off
+	else:
+		mi.global_position = off
 	# decals fade out after a while to save overdraw
 	get_tree().create_timer(25.0).timeout.connect(func(): mi.queue_free())
 

@@ -119,6 +119,16 @@ func sfx_at(name: String, pos: Vector3, volume: float = 1.0, pitch_var: float = 
 	p.play()
 
 
+func sfx_echo(name: String, pos: Vector3, delay: float = 0.22, vol: float = 0.25) -> void:
+	## LAYERED GUNSHOT: the crack, then the city throwing it back —
+	## a quiet late tail off the same sample sells distance and walls.
+	var t := get_tree()
+	if t == null:
+		return
+	t.create_timer(delay).timeout.connect(func():
+		sfx_at(name, pos, vol, 0.03))
+
+
 func _free(pool: Array):
 	for p in pool:
 		if not p.playing:

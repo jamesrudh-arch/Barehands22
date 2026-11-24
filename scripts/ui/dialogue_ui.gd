@@ -171,10 +171,10 @@ func _build_choice_buttons(labels: Array) -> void:
 		b.add_theme_stylebox_override("normal", sb)
 		var sbh := StyleBoxTexture.new()
 		sbh.texture = load("res://assets/textures/ui/button9_hot.png")
-		sbh.margin_left = 12
-		sbh.margin_right = 12
-		sbh.margin_top = 12
-		sbh.margin_bottom = 12
+		sbh.texture_margin_left = 12
+		sbh.texture_margin_right = 12
+		sbh.texture_margin_top = 12
+		sbh.texture_margin_bottom = 12
 		b.add_theme_stylebox_override("hover", sbh)
 		b.add_theme_stylebox_override("pressed", sbh)
 		b.add_theme_font_size_override("font_size", 17)

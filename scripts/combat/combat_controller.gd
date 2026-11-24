@@ -278,8 +278,16 @@ func _resolve_hit() -> void:
 			AudioDirector.sfx_at(style_hit_sound(attack_kind), t.global_position + Vector3(0, 1.3, 0))
 			Effects.burst(t.global_position + Vector3(0, 1.3, 0) + fwd * 0.2, "blood", fwd)
 			Effects.add_shake(0.25 if is_player else 0.0)
-			if is_player and attack_kind in ["heavy", "haymaker", "axe_kick", "suplex", "ground_pound", "executioner", "swing_v", "env_slam", "kick_high"]:
-				Cinematics.hitstop(0.07)
+			# JUICE LADDER (Nijman proportionality): EVERY confirmed hit
+			# freezes the world a frame or two — lights feel sharp, heavies
+			# feel like car crashes. Before this, light hits had no stop.
+			if is_player:
+				if attack_kind in ["heavy", "haymaker", "axe_kick", "suplex", "ground_pound", "executioner", "swing_v", "env_slam", "kick_high"]:
+					Cinematics.hitstop(0.07)
+					Effects.add_shake(0.18)
+					Effects.burst(t.global_position + Vector3(0, 1.3, 0) + fwd * 0.3, "blood", fwd, 1.8)
+				else:
+					Cinematics.hitstop(0.025)
 		if is_player and cc.dead:
 			_last_kill_check(t)
 		if is_player:
@@ -388,6 +396,9 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 				AudioDirector.sfx_at("parry_clang", owner_node.global_position + Vector3(0, 1.4, 0), 0.7)
 				Effects.burst(owner_node.global_position + Vector3(0, 1.4, 0), "spark", dir)
 				Cinematics.hitstop(0.10)
+				Cinematics.slowmo(0.22, 0.45)
+				Effects.add_shake(0.35)
+				Cinematics.fov_punch(3.0)
 				apply_stagger(30.0, dir)
 				if is_player:
 					Bus.notification.emit("Your guard broke — you're wide open!", "warn")
@@ -417,6 +428,13 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 		Effects.burst(owner_node.global_position + Vector3(0, 1.3, 0), "blood", dir)
 		anim.hit_t = 0.0
 		anim.hit_dir = 1.0 if dir.dot(fwd) < 0 else -1.0
+		_set_reaction(dir, kind)
+		if is_player and dmg > 0.5:
+			# WHERE IT CAME FROM: HUD draws a directional damage arc and the
+			# pad rumbles — being hit must read even when the camera isn't
+			Bus.player_damaged.emit(dir, dmg)
+			if Input.get_connected_joypads().size() > 0:
+				Input.start_joy_vibration(0, clampf(dmg / 40.0, 0.15, 0.8), clampf(dmg / 70.0, 0.05, 0.6), 0.12)
 	hp -= dmg
 	hit_flash = 0.15
 	in_combat = true
@@ -427,6 +445,34 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 
 func _fem() -> bool:
 	return owner_node.get_meta("fem", false)
+
+
+## DIRECTIONAL HIT REACTIONS: map the shove direction + attack kind into
+## the victim's local space and pick a swing weight. The anim driver turns
+## this into one of five reaction families (front/back stagger, lateral
+## whip, high snap, low fold) with per-hit variation — no two hits alike.
+func _set_reaction(dir: Vector3, kind: String) -> void:
+	var local: Vector3 = owner_node.global_transform.basis.inverse() * dir.normalized()
+	if kind == "bullet":
+		local = -local   # bullet dir points back at the shooter; reactions want the shove
+	var power := 0.4
+	match kind:
+		"jab": power = 0.22
+		"cross": power = 0.35
+		"hook": power = 0.45; local.x += 0.4 * (1.0 if local.x >= 0 else -1.0)
+		"upper": power = 0.5; local.y += 0.7
+		"kick_r", "kick_l": power = 0.5
+		"kick_high", "axe_kick": power = 0.55; local.y += 0.65
+		"teep": power = 0.55
+		"heavy", "haymaker": power = 0.85
+		"suplex", "throw", "takedown", "grab": power = 0.9
+		"ground_pound", "executioner": power = 0.9; local.y -= 0.7
+		"swing_h", "swing_v", "stab": power = 0.6
+		"env_slam": power = 0.8
+		"bullet": power = 0.4 + randf_range(-0.08, 0.15); local.x += randf_range(-0.35, 0.35)
+	anim.hit_vec = local.normalized() if local.length_squared() > 0.01 else Vector3(0, 0, 1)
+	anim.hit_power = clampf(power + randf_range(-0.06, 0.06), 0.1, 1.0)
+	anim.hit_seed = randf()
 
 
 func apply_stagger(amount: float, dir: Vector3) -> void:
@@ -461,6 +507,10 @@ func _die(cause: String, _attacker: Node3D) -> void:
 	anim.mode = "dead"
 	attacking = false
 	blocking = false
+	# PERMANENCE (juice research: marks that stay): the street keeps the
+	# blood where they fell — the city is a ledger of what you did
+	if owner_node.is_inside_tree():
+		Effects.decal(owner_node.global_position + Vector3(0, 0.03, 0), Vector3.UP, "blood", 0.55 + randf_range(0.0, 0.35))
 	AudioDirector.sfx_at("grunt_m_down" if not _fem() else "grunt_f_hit", owner_node.global_position + Vector3(0, 1.2, 0))
 	AudioDirector.sfx_at("body_fall", owner_node.global_position)
 	died.emit(cause)

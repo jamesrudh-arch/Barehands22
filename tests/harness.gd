@@ -908,7 +908,7 @@ func _process(_delta: float) -> bool:
 				_check("_guard_t" in npcsrc46 and "set_block(true)" in npcsrc46, "trained enemies raise guard in rhythm")
 				var hudsrc46 := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
 				_check("_posture_bar" in hudsrc46, "guard-posture bar surfaced in HUD")
-				cc46.free()
+				# cc46 is RefCounted (frees itself) — calling .free() errors
 		81:
 			# WAVE 46 — BULLETS GET HITSTOP + IMPACT MATERIAL VARIETY (Max Payne 3)
 			var wcsrc46 := FileAccess.get_file_as_string("res://scripts/combat/weapons_controller.gd")
@@ -980,12 +980,207 @@ func _process(_delta: float) -> bool:
 			var ws48 = root.get_node("WorldState")
 			_check("street_deeds" in FileAccess.get_file_as_string("res://scripts/core/world_state.gd"), "street ledger persists in saves")
 			ws48.street_deeds.clear()
+		85:
+			# WAVE 47 — DIRECTIONAL HIT REACTIONS (Euphoria lesson: no two hits alike)
+			var adsrc47 := FileAccess.get_file_as_string("res://scripts/player/anim_driver.gd")
+			_check("hit_vec" in adsrc47 and "hit_power" in adsrc47 and "hit_seed" in adsrc47, "reaction inputs exist on AnimDriver")
+			_check("hit_t += delta * 4.0" in adsrc47, "AnimDriver advances its own hit reaction (NPC flinch was DEAD — fixed)")
+			var ccsrc47 := FileAccess.get_file_as_string("res://scripts/combat/combat_controller.gd")
+			_check("_set_reaction" in ccsrc47, "attack kind + shove direction mapped to reaction family")
+			if _player:
+				var ped47 = _spawn_ped46(_player.global_position + Vector3(2.5, 0, 0))
+				if ped47 != null:
+					var b47: Basis = ped47.global_transform.basis
+					# front shove (melee passes push dir): local +z
+					ped47.combat.take_hit(5.0, b47.z, "jab", null)
+					_check(ped47.anim.hit_t == 0.0 and ped47.anim.hit_power > 0.1, "jab triggers a light reaction (power=%.2f)" % ped47.anim.hit_power)
+					_check(ped47.anim.hit_vec.z > 0.5, "front hit reads as backward stagger (vec=%s)" % str(ped47.anim.hit_vec))
+					ped47.combat.take_hit(5.0, b47.z, "kick_high", null)
+					_check(ped47.anim.hit_vec.y > 0.3, "kick_high snaps the head back (y=%.2f)" % ped47.anim.hit_vec.y)
+					ped47.combat.take_hit(5.0, b47.z, "ground_pound", null)
+					_check(ped47.anim.hit_vec.y < -0.3, "ground pound folds the body low (y=%.2f)" % ped47.anim.hit_vec.y)
+					# bullets pass victim->shooter dir; reaction flips to the shove
+					ped47.combat.take_hit(5.0, -b47.z, "bullet", null)
+					_check(ped47.anim.hit_vec.z > 0.5, "bullet from the front shoves backward")
+					ped47.combat.take_hit(5.0, b47.x, "hook", null)
+					_check(absf(ped47.anim.hit_vec.x) > 0.3, "hook whips the torso laterally (x=%.2f)" % ped47.anim.hit_vec.x)
+					# driver tick advances the reaction to completion
+					ped47.anim.tick(0.3, {})
+					_check(ped47.anim.hit_t > 1.0 - 0.001 or ped47.anim.hit_t < 0.0 or ped47.anim.hit_t > 0.5, "reaction advances on tick (t=%.2f)" % ped47.anim.hit_t)
+					ped47.queue_free()
+		86:
+			# WAVE 47 — JUICE LADDER + PERMANENCE (Nijman proportionality)
+			var ccsrc48 := FileAccess.get_file_as_string("res://scripts/combat/combat_controller.gd")
+			_check("Cinematics.hitstop(0.025)" in ccsrc48, "every light melee hit gets a micro-hitstop")
+			_check('"blood", fwd, 1.8' in ccsrc48, "heavy hits throw a bigger blood burst")
+			_check('Effects.decal(owner_node.global_position' in ccsrc48 and '"blood"' in ccsrc48, "kills leave a permanent blood decal")
+			_check("Cinematics.slowmo(0.22" in ccsrc48, "guard break escalates to a short slow-mo")
+			var effsrc47 := FileAccess.get_file_as_string("res://scripts/core/effects.gd")
+			_check("scale: float = 1.0" in effsrc47 and "sqrt(scale)" in effsrc47, "Effects.burst takes a juice-budget scale")
+			# live: killing an NPC drops a blood decal into the scene
+			if _player:
+				var bloods0 := _count_decals47("decal_blood")
+				var ped48 = _spawn_ped46(_player.global_position + Vector3(2.5, 0, 1.0))
+				if ped48 != null:
+					ped48.combat.take_hit(9999.0, ped48.global_transform.basis.z, "heavy", null)
+					_check(ped48.combat.dead, "test ped killed")
+					_check(_count_decals47("decal_blood") > bloods0, "blood decal persists where they fell")
+					ped48.queue_free()
+		87:
+			# WAVE 47 — PLAYER DAMAGE READ: direction arcs, heartbeat, frame punch, rumble
+			var hudsrc48 := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
+			_check("_draw_dmg_ring" in hudsrc48 and "draw_arc" in hudsrc48, "directional damage arcs drawn at screen edge")
+			_check("_hurt_vignette" in hudsrc48 and "hpfrac < 0.3" in hudsrc48, "low-HP heartbeat vignette present")
+			_check("start_joy_vibration" in FileAccess.get_file_as_string("res://scripts/combat/combat_controller.gd"), "gamepad rumble on taking hits")
+			var crsrc47 := FileAccess.get_file_as_string("res://scripts/player/camera_rig.gd")
+			_check("kick_dir" in crsrc47 and "_frame_wide" in crsrc47, "camera punches toward the blow + widens when outnumbered")
+			if _player:
+				var got47: Array = []
+				var bus47 = root.get_node("Bus")
+				var sub47 := func(d, a): got47.append([d, a])
+				bus47.player_damaged.connect(sub47)
+				_player.combat.take_hit(10.0, Vector3(0, 0, 1), "jab", null)
+				_check(got47.size() == 1, "player_damaged signal fires with direction")
+				bus47.player_damaged.disconnect(sub47)
+				var hud47 = _city.get("hud")
+				if hud47 != null:
+					_check(hud47.get("_dmg_arcs") != null and (hud47.get("_dmg_arcs") as Array).size() >= 1, "HUD registered the damage arc")
+				if _player.cam_rig != null:
+					_check(float(_player.cam_rig.get("_punch_t")) > 0.0, "camera frame punched by the hit")
+		88:
+			# WAVE 47 — NEON-NOIR ATMOSPHERE: splash, puddles, flicker, sheen, echo
+			var citysrc47 := FileAccess.get_file_as_string("res://scripts/scenes/city.gd")
+			_check("_puddle_tick" in citysrc47 and '"puddle"' in citysrc47, "rain keeps laying fresh puddles near the player")
+			_check("_neon_flicker" in citysrc47 and "_neon_dip" in citysrc47, "neon signs breathe and drop out at night")
+			_check("emission_energy_multiplier = 0.06 * wet" in citysrc47, "wet asphalt throws back the district neon at night")
+			_check("WorldState.wetness" in citysrc47 and "rain_loop" in citysrc47, "rain ambience swells with wetness")
+			var adsrc48 := FileAccess.get_file_as_string("res://scripts/core/audio_director.gd")
+			_check("func sfx_echo" in adsrc48, "layered gunshot echo tail exists")
+			_check("sfx_echo" in FileAccess.get_file_as_string("res://scripts/combat/weapons_controller.gd") and "sfx_echo" in FileAccess.get_file_as_string("res://scripts/npc/npc.gd"), "player + nearby NPC gunfire get the echo layer")
+			# live: splash node exists; flicker modulates emission at night
+			var city47 = _city
+			var splash47 = city47.get_node_or_null("RainSplash")
+			_check(splash47 != null, "RainSplash particle system built")
+			var ws47 = root.get_node("WorldState")
+			var wg47 = root.get_node("WorldGen")
+			var had_h: float = ws47.game_hour
+			ws47.game_hour = 23.0
+			var neon47 = wg47.mat("neon_white")
+			neon47.emission_energy_multiplier = 3.0
+			city47._neon_flicker(0.016)
+			_check(neon47.emission_energy_multiplier != 3.0, "night neon flicker modulates emission (%.2f)" % neon47.emission_energy_multiplier)
+			ws47.game_hour = 12.0
+			city47._neon_flicker(0.016)
+			_check(neon47.emission_energy_multiplier == 3.0, "day neon restored to steady")
+			ws47.game_hour = had_h
+			city47.set("_puddle_cd", 0.0)
+			city47._puddle_tick(0.016)
+			_check(float(city47.get("_puddle_cd")) > 0.0, "puddle tick fires and re-arms its timer")
+		89:
+			# WAVE 47 — ENGINE-HYGIENE REGRESSION GUARDS. Four real defects
+			# that threw thousands of engine errors per run yet failed NO
+			# check, because nothing asserted on the broken output.
+			var fx89 = root.get_node("Effects")
+			var cl89 = _city.get_node_or_null("CityLife")
+			if _player == null or fx89 == null or cl89 == null:
+				_check(false, "step 89 prerequisites (player/Effects/CityLife)")
+				return false
+			# (1) decals must actually orient to their surface normal.
+			#     look_at() before add_child used to silently no-op, so wall
+			#     and ceiling decals lay flat on the floor.
+			var wall_n89 := Vector3(1, 0, 0)
+			var before89 := _city.get_child_count()
+			fx89.decal(_player.global_position + Vector3(2, 1, 0), wall_n89, "blood", 1.0)
+			var dec89: Node = null
+			for ci89 in range(before89, _city.get_child_count()):
+				var ch89 = _city.get_child(ci89)
+				if ch89 is MeshInstance3D:
+					dec89 = ch89
+			_check(dec89 != null, "wall decal spawned into the scene")
+			if dec89 != null:
+				var up89: Vector3 = dec89.global_transform.basis.y
+				_check(up89.dot(wall_n89) > 0.98, "wall decal Y axis aligned to surface normal (%.2f)" % up89.dot(wall_n89))
+				dec89.queue_free()
+			var ceil_n89 := Vector3(0, -1, 0)
+			var before289 := _city.get_child_count()
+			fx89.decal(_player.global_position + Vector3(2, 3, 0), ceil_n89, "scorch", 1.0)
+			var dec289: Node = null
+			for ci289 in range(before289, _city.get_child_count()):
+				var ch289 = _city.get_child(ci289)
+				if ch289 is MeshInstance3D:
+					dec289 = ch289
+			if dec289 != null:
+				var up289: Vector3 = dec289.global_transform.basis.y
+				_check(up289.dot(ceil_n89) > 0.98, "ceiling decal flipped to face down (%.2f)" % up289.dot(ceil_n89))
+				dec289.queue_free()
+			else:
+				_check(false, "ceiling decal spawned")
+			# (2) every vehicle surface must carry texture coordinates.
+			#     _quad/_cap added bare vertices, which latched the surface
+			#     format without TEX_UV and made all later set_uv calls fail.
+			var v89 = cl89.give_player_vehicle("sedan", _player.global_position + Vector3(4, 0, 0))
+			_check(v89 != null, "regression vehicle spawned")
+			if v89 != null:
+				var body89 = v89.get("_body_mi")
+				_check(body89 != null and body89.mesh != null, "vehicle body mesh built")
+				if body89 != null and body89.mesh != null:
+					var nouv89 := 0
+					for si89 in body89.mesh.get_surface_count():
+						if body89.mesh.surface_get_format(si89) & Mesh.ARRAY_TEX_UV == 0:
+							nouv89 += 1
+					_check(nouv89 == 0, "all body surfaces have UVs (%d without)" % nouv89)
+				v89.queue_free()
+			# (3) StyleBoxTexture has texture_margin_*, not margin_* — the bad
+			#     assignment aborted dialogue button styling mid-function.
+			var dui89 := FileAccess.get_file_as_string("res://scripts/ui/dialogue_ui.gd")
+			_check("sbh.texture_margin_left" in dui89, "dialogue hover stylebox uses texture_margin_*")
+			_check("sbh.margin_left" not in dui89.replace("texture_margin_left", ""), "no bare margin_* left on StyleBoxTexture")
+			# (4) bool() has no Variant constructor in Godot 4 — the witness
+			#     loop crashed, so protecting civilians never registered.
+			var npc89 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("bool(n.get(" not in npc89, "no bool() cast on a Variant get() in npc.gd")
+			_check('n.get("hostile") == true' in npc89, "witness loop tests hostility safely")
+			# project-wide guard: bool()/float() on a node .get() with no
+			# default returns null when the property is absent, and Godot 4
+			# has no null->bool constructor. Scan every script for the pattern.
+			var risky89: Array = []
+			var re89 := RegEx.new()
+			re89.compile("(bool|float|int|str)\\([A-Za-z_][A-Za-z_0-9]*\\.get\\(\"[^\"]+\"\\)\\)")
+			var stack89: Array = ["res://scripts"]
+			while not stack89.is_empty():
+				var d89: String = stack89.pop_back()
+				var da89 := DirAccess.open(d89)
+				if da89 == null:
+					continue
+				da89.list_dir_begin()
+				var fn89 := da89.get_next()
+				while fn89 != "":
+					if da89.current_is_dir():
+						stack89.append(d89.path_join(fn89))
+					elif fn89.ends_with(".gd"):
+						var src89 := FileAccess.get_file_as_string(d89.path_join(fn89))
+						# bool(x.get("k")) / float(x.get("k")) with no default arg
+						for m89 in re89.search_all(src89):
+							risky89.append(d89.path_join(fn89) + ": " + m89.get_string(0))
+					fn89 = da89.get_next()
+				da89.list_dir_end()
+			_check(risky89.is_empty(), "no unguarded bool()/float() cast on node.get() anywhere (%d found: %s)" % [risky89.size(), "; ".join(risky89.slice(0, 4))])
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()
 			quit(0 if _fails == 0 else 1)
 			return true
 	return false
+
+
+func _count_decals47(tex_name: String) -> int:
+	var n := 0
+	for c in _city.get_children():
+		if c is MeshInstance3D and c.material_override != null:
+			var m = c.material_override
+			if m is StandardMaterial3D and m.albedo_texture != null and tex_name in m.albedo_texture.resource_path:
+				n += 1
+	return n
 
 
 func _spawn_ped46(pos: Vector3) -> Node:

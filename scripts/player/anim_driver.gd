@@ -37,6 +37,12 @@ var down_t: float = -1.0        # 0..1 knocked down
 var getup_t: float = -1.0
 var hit_t: float = -1.0
 var hit_dir: float = 1.0
+# DIRECTIONAL REACTIONS (Euphoria lesson: no two hits look the same).
+# hit_vec = push direction in the VICTIM'S local space (fwd = -z),
+# hit_power = 0..1 swing weight, hit_seed = per-hit variation.
+var hit_vec: Vector3 = Vector3(0, 0, 1)
+var hit_power: float = 0.4
+var hit_seed: float = 0.0
 var carry: bool = false
 var lean: float = 0.0           # vehicle/bike lean deg
 var gesture_seed: int = 0
@@ -293,11 +299,73 @@ func _block_pose(pose: Dictionary) -> void:
 
 func _hit_pose(pose: Dictionary, t: float) -> void:
 	var k := sin(clampf(t, 0, 1) * PI)
-	_p(pose, "chest", 14.0 * k * hit_dir, 0, -6.0 * k)
-	_p(pose, "head", 18.0 * k * hit_dir, 0, 0)
-	_p(pose, "hips", -6.0 * k, 0, 0)
-	_p(pose, "upper_arm_l", -10.0 * k, 0, -18.0 * k)
-	_p(pose, "upper_arm_r", -10.0 * k, 0, 18.0 * k)
+	# per-hit variation: amplitude jitter + asymmetric arm flail
+	var v := fposmod(sin(hit_seed * 12.9898) * 43758.5453, 1.0)   # 0..1 hash
+	var amp := (0.75 + 0.5 * hit_power) * (0.88 + 0.24 * v)
+	var flail := (v - 0.5) * 2.0                            # -1..1 bias
+	var hv := hit_vec
+	var side := clampf(hv.x, -1.0, 1.0)
+	var vert := clampf(hv.y, -1.0, 1.0)
+	var back := clampf(hv.z, -1.0, 1.0)     # +z = shoved backward (hit from front)
+	if vert > 0.35:
+		# HIGH: uppercut/kick_high — head snaps back, spine extends, heels lift
+		_p(pose, "head", 30.0 * k * amp, 0, 8.0 * k * side)
+		_p(pose, "neck", 16.0 * k * amp, 0, 0)
+		_p(pose, "chest", 16.0 * k * amp, 0, -6.0 * k)
+		_p(pose, "spine", 10.0 * k * amp, 0, 0)
+		_p(pose, "hips", -8.0 * k, 0, 4.0 * k * side)
+		_p(pose, "upper_arm_l", -35.0 * k * amp, 0, -20.0 * k)
+		_p(pose, "upper_arm_r", -35.0 * k * amp, 0, 20.0 * k)
+		root_off.y += 0.05 * k * hit_power
+	elif vert < -0.35:
+		# LOW: gut/bomb — jackknife fold, knees buckle, head drops
+		_p(pose, "hips", 26.0 * k * amp, 0, 0)
+		_p(pose, "spine", 22.0 * k * amp, 0, 3.0 * k * side)
+		_p(pose, "chest", 16.0 * k * amp, 0, 0)
+		_p(pose, "head", -22.0 * k * amp, 0, 0)
+		_p(pose, "thigh_l", -18.0 * k, 0, 0)
+		_p(pose, "thigh_r", -14.0 * k, 0, 0)
+		_p(pose, "shin_l", 22.0 * k, 0, 0)
+		_p(pose, "shin_r", 18.0 * k, 0, 0)
+		_p(pose, "upper_arm_l", 10.0 * k, 0, -14.0 * k)
+		_p(pose, "upper_arm_r", 14.0 * k, 0, 10.0 * k)
+		root_off.y -= 0.16 * k * hit_power
+	elif absf(side) > 0.5:
+		# LATERAL WHIP: hooks/kicks — torso yaw, head roll, stumble step
+		var sg := signf(side)
+		_p(pose, "chest", 6.0 * k, 26.0 * k * amp * side, -8.0 * k * sg)
+		_p(pose, "head", 8.0 * k, 14.0 * k * side, -16.0 * k * amp * sg)
+		_p(pose, "neck", 0, 8.0 * k * side, -6.0 * k * sg)
+		_p(pose, "hips", -4.0 * k, 12.0 * k * side, 6.0 * k * sg)
+		_p(pose, "shoulder_l", 0, 0, -18.0 * k * sg * (1.0 + flail * 0.4))
+		_p(pose, "shoulder_r", 0, 0, -18.0 * k * sg * (1.0 - flail * 0.4))
+		_p(pose, "upper_arm_l", -12.0 * k, 0, (-26.0 - 14.0 * flail) * k * sg)
+		_p(pose, "upper_arm_r", -12.0 * k, 0, (26.0 - 14.0 * flail) * k * sg)
+		# stumble step across the body
+		_p(pose, "thigh_l", -20.0 * k * hit_power * maxf(0.0, sg), 0, 8.0 * k * sg)
+		_p(pose, "thigh_r", -20.0 * k * hit_power * maxf(0.0, -sg), 0, 8.0 * k * sg)
+		_p(pose, "shin_l", 16.0 * k * hit_power, 0, 0)
+	else:
+		# FRONT/BACK STAGGER: chest whips along the shove, head overshoots
+		var sg2 := signf(back) if absf(back) > 0.05 else 1.0
+		_p(pose, "chest", 16.0 * k * amp * sg2, 0, -6.0 * k)
+		_p(pose, "head", 24.0 * k * amp * sg2, 6.0 * k * flail, 0)
+		_p(pose, "neck", 10.0 * k * sg2, 0, 0)
+		_p(pose, "spine", 8.0 * k * sg2, 0, 0)
+		_p(pose, "hips", -8.0 * k * sg2, 0, 3.0 * k * flail)
+		_p(pose, "upper_arm_l", (-10.0 - 12.0 * flail) * k, 0, -18.0 * k * amp)
+		_p(pose, "upper_arm_r", (-10.0 + 12.0 * flail) * k, 0, 18.0 * k * amp)
+		if back < -0.5:
+			# shoved from behind: arms windmill forward, feet trip
+			_p(pose, "forearm_l", -40.0 * k, 0, 0)
+			_p(pose, "forearm_r", -40.0 * k, 0, 0)
+			_p(pose, "thigh_l", -24.0 * k * hit_power, 0, 0)
+	# heavy hits add a recovering stumble regardless of family
+	if hit_power > 0.65:
+		var sk2 := sin(clampf(t * 1.3, 0, 1) * PI)
+		_p(pose, "thigh_r", -26.0 * sk2 * (hit_power - 0.5), 0, 0)
+		_p(pose, "shin_r", 30.0 * sk2, 0, 0)
+		root_off.z += 0.1 * sk2 * back
 
 
 func _down_pose(pose: Dictionary, t: float) -> void:
@@ -311,8 +379,6 @@ func _down_pose(pose: Dictionary, t: float) -> void:
 	_setp(pose, "upper_arm_l", Vector3(-30.0 * k, 0, -40.0 * k))
 	_setp(pose, "upper_arm_r", Vector3(-30.0 * k, 0, 40.0 * k))
 	_setp(pose, "head", Vector3(20.0 * k, 0, 0))
-	root_off.y -= 0.0
-	root_off.z -= 0.0
 
 
 func _getup_pose(pose: Dictionary, t: float) -> void:
@@ -421,6 +487,13 @@ func tick(delta: float, style_stance: Dictionary) -> void:
 	idle_t += delta
 	if talk_t >= 0.0:
 		talk_t += delta
+	# hit reactions advance HERE (single source of truth): npc.gd never
+	# ticked hit_t, so every enemy flinch was silently dead — hits landed
+	# with zero body response. That flop ends now.
+	if hit_t >= 0.0:
+		hit_t += delta * 4.0
+		if hit_t > 1.0:
+			hit_t = -1.0
 	# gait phase locked to ground speed (stride ~ 0.78m walk .. 1.35 sprint)
 	var stride := lerpf(0.78, 1.35, clampf(speed / 6.0, 0, 1))
 	if speed > 0.05 and air_t <= 0.0:

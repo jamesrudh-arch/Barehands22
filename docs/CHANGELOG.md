@@ -1,5 +1,113 @@
 # LEVERAGE — Changelog
 
+## 2026-11-24 — DEPTH WAVE 47: felt, not seen (top-tier quality pass, part 2 — game feel)
+
+The anti-flop wave. Research spine: Nijman's "Art of Screenshake"
+proportionality ladder, Euphoria's "no two hits alike", the FPS-standard
+directional damage read, and layered gunshot audio. Also fixes one of the
+worst latent bugs in the repo.
+
+- **BUG FOUND & FIXED — every enemy flinch was dead**: `anim.hit_t` was set
+  on hit but only player.gd ever advanced it; npc.gd never ticked it, so
+  `_hit_pose` always sampled at t=0 (k=sin(0)=0 — zero pose). Enemies ate
+  punches with literally no body response. The reaction clock now lives in
+  `AnimDriver.tick` (one source of truth for player + NPCs); player.gd's
+  private advance removed (would double-speed).
+- **Directional hit reactions**: `hit_t/hit_dir(±1)` replaced by
+  `hit_vec` (shove in victim-local space) + `hit_power` (per attack kind,
+  jab 0.22 → suplex 0.9) + `hit_seed` (per-hit jitter + asymmetric arm
+  flail). Five reaction families: front/back stagger (from-behind hits
+  windmill the arms and trip the legs), lateral whip with a stumble step
+  (hooks/kicks), high snap (uppercut/kick_high — heels lift), low fold
+  (ground pound — jackknife, knees buckle, root drops). Heavy hits
+  (>0.65 power) always add a recovering stumble. Bullets flip their
+  victim→shooter dir into the shove. No two hits look the same.
+- **Juice ladder completed (Nijman proportionality)**: EVERY confirmed
+  melee hit now gets a 25 ms micro-hitstop (lights felt paper-thin
+  without one); heavies get the 70 ms stop + extra shake + a 1.8× blood
+  burst; finishers keep their 120 ms + FOV punch. `Effects.burst` takes a
+  juice-budget `scale` (amount, velocity, quad size).
+- **Permanence**: kills now leave a blood decal where the body fell
+  (0.55–0.9 m, random) — the street keeps the ledger visually too.
+- **Guard break escalated**: the shatter now punches into a 0.22 s
+  slow-mo (0.45 scale) + 0.35 shake + FOV kick — big events, big juice.
+- **Directional damage read**: `Bus.player_damaged(dir, amount)` → HUD
+  draws red arcs at the screen edge toward whoever hit you (up to 6
+  stacked, arc grows outward as it fades, thickness scales with damage),
+  and the camera FRAME gets shoved opposite the blow (damped spring
+  punch). Gamepad rumble scales with damage taken.
+- **Low-HP heartbeat**: under 30 % HP the screen edges throb red on a
+  4.2 rad/s rhythm with a muted `land_thud` heartbeat — intensity scales
+  as HP falls. Disabled in cutscenes.
+- **Dynamic combat framing**: the orbit camera counts live hostiles
+  within 14 m and pulls back (1 enemy +0.35 m, 2 +0.8, 3+ +1.5) so
+  threats stay readable — the fight cam "breathes" like good action games.
+- **Landing weight**: falls now track peak velocity; landings above 6 m/s
+  shake the camera proportionally (up to 0.45), above 15 m/s add a 40 ms
+  hitstop. Jumping off fire escapes feels like falling.
+- **Neon-noir rain atmosphere**: new `RainSplash` particle crown (90
+  splash jets in a 26 m box at the player's feet, rain only); puddles —
+  fresh `decal_puddle` quads raycast onto ground near the player every
+  1.4–3 s while raining (the texture shipped unused since wave 1);
+  wet asphalt at night now throws the district's neon tint back as a
+  faint emission (wet sheen); neon signs breathe on detuned sines and
+  randomly drop out for 60–160 ms (buzzing-sign noir); rain ambience
+  volume swells with wetness instead of a flat 0.35.
+- **Layered gunshots**: every player shot and every NPC shot within 45 m
+  gets an echo tail — the same sample replayed 180–340 ms later at ~20 %
+  volume with tight pitch. The city throws the crack back.
+
+### Engine hygiene: 16,141 errors per run → 3
+
+The harness had been reporting **0 fails while the engine printed sixteen
+thousand errors every single run**. Nothing asserted on the broken output,
+so four real defects — two of them visual — lived undetected:
+
+- **Decals never oriented to their surface.** `decal()` called `look_at()`
+  *before* `add_child()`, and Godot refuses `look_at` on a node outside the
+  tree — so the call silently did nothing and every blood/scorch/bullet
+  decal kept its default floor pose. Worse, the code aligned the node's
+  `+Z` to the surface normal while `PlaneMesh` faces `+Y`: a 90° error that
+  would have made wall decals edge-on even if `look_at` had run. Now the
+  decal is parented first and given a basis whose **Y axis is the surface
+  normal** (with an explicit flip for ceilings), so blood on a wall lies on
+  the wall.
+- **Vehicle surfaces had no texture coordinates.** `_quad`/`_cap`/`_cap4`
+  added bare vertices, latching the surface format *without* `TEX_UV`;
+  every later `set_uv` was then rejected (16,128 errors), so car bodies,
+  trim, glass and bumpers sampled UV (0,0) — flat albedo with zero texture
+  detail. All three helpers now emit proper UVs through a single `_uv()`
+  gate, and `_cap` planar-projects across the ring.
+- **Dialogue choice buttons were unstyled.** `StyleBoxTexture` has
+  `texture_margin_*`, not `margin_*`; the bad assignment threw mid-function
+  and aborted `_build_choice_buttons`, so the hover/pressed styleboxes and
+  the 17 px font override were never applied. Every branching conversation
+  in the game rendered with default buttons.
+- **A whole class of latent null-crashes.** Godot 4 has no `bool(null)`
+  constructor, and `Node.get("missing")` returns `null` — so
+  `bool(n.get("hostile"))` crashed whenever the property was absent. One
+  instance was live: the "stood up for a civilian" witness loop died before
+  recording the deed, so **protecting locals never raised street rep**.
+  All ten unguarded casts across `npc`, `city_life`, `player`, `camera_rig`,
+  `hud`, `shop_ui` and `cinematics` are hardened, and `str(n.get(...))` is
+  guarded too — unguarded it yields the literal text `"<null>"`, which
+  `npc.gd` would have read as a real faction tag and started friendly fire.
+  A **project-wide RegEx scan** now walks every script under `res://scripts`
+  and fails the harness if the pattern returns.
+- Also removed a redundant `set_normal` in `_sb` (all callers end with
+  `generate_normals()`) and dead no-op `root_off -= 0.0` lines.
+
+Harness: **266 checks, 0 fails, 0 script errors, 3 engine errors** (all
+benign shutdown RID notices) — **three consecutive headless runs** on the
+rebuilt Godot 4.7.2 binary. 45 checks new since wave 46: reaction families
+driven live through `take_hit` from five directions, decal permanence
+counted in the scene tree, damage-arc signal + HUD + camera punch live,
+neon flicker modulating emission at night and restoring by day, puddle tick
+re-arming, plus the ten engine-hygiene regression guards above (wall and
+ceiling decal basis, per-surface UV format on a spawned vehicle, stylebox
+property names, and the project-wide cast scan).
+
+
 ## 2026-11-24 — DEPTH WAVE 46: the world that remembers (top-tier quality pass, part 1)
 
 Grounded in real design research — RDR2's NPC memory/reputation, GTA V's
