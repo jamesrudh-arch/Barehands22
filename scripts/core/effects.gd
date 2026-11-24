@@ -29,6 +29,9 @@ func _tex(path: String) -> Texture2D:
 
 
 func add_shake(amount: float) -> void:
+	# honor the SETTINGS > camera shake toggle (motion-sickness friendly)
+	if not Game.settings.get("shake", true):
+		return
 	shake_amount = minf(shake_amount + amount, 1.2)
 
 

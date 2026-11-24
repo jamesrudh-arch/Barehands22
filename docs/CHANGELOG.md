@@ -1,5 +1,41 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 45: the block fights back + full-repo audit
+
+Four systems, then a line-by-line audit of everything (see docs/AUDIT.md).
+
+- **Fire investigation**: a burning wreck in the street is a crime scene
+  with a countdown. Every 25 s the CCPD rolls two non-hostile
+  "Investigators" up to work the ashes — GAWK-state officers who loiter
+  40–70 s and wander off. Arson now leaves badges standing in it.
+- **Occupied traffic**: every traffic car carries a visible driver
+  silhouette (shared low-poly capsule), and taxis fly a lit roof sign.
+  The streets read as full of people, not rolling empty boxes. Blocked
+  AI drivers honk (40 %).
+- **side_epilogue**: after `game_complete`, Mama Ruth offers one last
+  favor — a 110-second medicine run to the shelter, ending in a real
+  choice (hang it up for the block, or take one more ride for the
+  score). Gated by the new `requires_flag` mission field.
+- **Full audit — 9 real defects found and fixed** (evidence in
+  docs/AUDIT.md): the finale cutscene referenced a music file that
+  doesn't exist; 4 sting tracks and 5 SFX shipped but never played (now
+  wired: mission stings, reload brass, police radio chatter at 2+
+  stars, shop doors); FOUR dead settings — `shake`, `sensitivity`,
+  `invert_y`, `touch_scale` were persisted by the menus and consumed by
+  nothing (all now live, including HUD rebuild on touch-scale change);
+  two orphan `npc.react()` events (`siren` → civilians rubberneck
+  passing cruisers, `crime` → witnessed carjackings); two dialogue
+  speakers rendering as raw IDs (Solomon Pike + the noodle vendor now
+  have character entries); ~10 tracked stats never shown (new STREET
+  LEDGER dossier section); **and the big one: all 18 `talk` stages in
+  the campaign stalled forever** — closing the dialogue never advanced
+  the mission (fixed + regression-checked); PIT maneuvers never fired
+  because `_pit_tick` read `velocity` off a VehicleBody3D (it's
+  `linear_velocity`) — every chase shove in the game was dead code.
+- Harness **191 checks, 0 fails, 0 script errors** (×3 consecutive
+  runs): +9 live pursuit-stack/fire-investigation checks, +14 static
+  audit-regression guards.
+
 ## 2026-11-23 — DEPTH WAVE 29: fire you can hear and watch die
 
 - **Wrecks burn for 45 seconds**: flickering firelight (sine + noise),

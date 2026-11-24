@@ -147,6 +147,27 @@ func play_music(track: String, fade: float = 1.5) -> void:
 	current_music = track
 
 
+var _sting_player: AudioStreamPlayer = null
+
+
+func sting(track: String) -> void:
+	## One-shot musical punctuation (mission stings, BUSTED/WASTED cards).
+	## Ducks the bed briefly by design of the mix; never loops.
+	if _sting_player == null:
+		_sting_player = AudioStreamPlayer.new()
+		_sting_player.bus = "Music"
+		add_child(_sting_player)
+	var path := "res://assets/audio/music/%s.ogg" % track
+	var s := stream(path)
+	if s == null:
+		return
+	if s is AudioStreamOggVorbis:
+		s.loop = false
+	_sting_player.stream = s
+	_sting_player.volume_db = linear_to_db(settings.get("music", 0.7))
+	_sting_player.play()
+
+
 func stop_music(fade: float = 1.0) -> void:
 	if current_music == "":
 		return

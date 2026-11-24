@@ -73,6 +73,7 @@ func _ready() -> void:
 	_build_pause()
 	_fit_centers()
 	UiFit.watch(self, _on_vp_resized)
+	Bus.settings_changed.connect(_on_vp_resized)   # touch size slider rebuilds the pads
 	_root.visible = false
 	Bus.notification.connect(_notify)
 	Bus.interaction_available.connect(_prompt_show)
@@ -336,13 +337,14 @@ func _build_touch() -> void:
 	_stick_zone.gui_input.connect(_on_touch)
 	_root.add_child(_stick_zone)
 	_stick_base = Control.new()
-	_stick_base.size = Vector2(STICK_R * 2.6, STICK_R * 2.6)
+	var ts: float = float(Game.settings.get("touch_scale", 1.0))
+	_stick_base.size = Vector2(STICK_R * 2.6 * ts, STICK_R * 2.6 * ts)
 	_stick_base.visible = false
 	_stick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stick_base.draw.connect(_draw_stick_base)
 	_root.add_child(_stick_base)
 	_stick_knob = Control.new()
-	_stick_knob.size = Vector2(STICK_R, STICK_R)
+	_stick_knob.size = Vector2(STICK_R * ts, STICK_R * ts)
 	_stick_knob.visible = false
 	_stick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stick_knob.draw.connect(_draw_stick_knob)
@@ -390,6 +392,7 @@ func _build_touch() -> void:
 
 
 func _touch_btn(action: String, label: String, pos: Vector2, col: Color, size: float = BTN) -> Button:
+	size *= float(Game.settings.get("touch_scale", 1.0))
 	var b := Button.new()
 	b.text = label
 	b.position = pos - Vector2(size * 0.5, size * 0.5)

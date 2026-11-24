@@ -1277,5 +1277,80 @@
     4
    ]
   }
+ },
+ "side_epilogue": {
+  "title": "Last Call, Again",
+  "act": 9,
+  "giver": "ruth",
+  "repeatable": false,
+  "requires_flag": "game_complete",
+  "district": "ashfall_docks",
+  "summary": "The lever is pulled, the tower is quiet, and Marcus is home. Ruth puts a glass on the bar like it's any other night. It isn't. One last errand for the block that raised you \u2014 then the night is yours.",
+  "stages": [
+   {
+    "id": "ep1",
+    "type": "goto",
+    "text": "Back to Mama Ruth's. The door's open.",
+    "poi": "poi_ruths"
+   },
+   {
+    "id": "ep2",
+    "type": "talk",
+    "text": "Hear Ruth out.",
+    "char": "ruth",
+    "dialogue": "dlg_epilogue_ruth"
+   },
+   {
+    "id": "ep3",
+    "type": "drive_timed",
+    "text": "Run the block's last favor: medicine to the shelter before the bridges wake. 110 seconds.",
+    "from": "poi_ruths",
+    "to": "poi_shelter",
+    "time": 110,
+    "pursuit": 0
+   },
+   {
+    "id": "ep4",
+    "type": "choice",
+    "text": "The shelter door. Bishop takes the box. Behind you, the city. Ahead, a quiet stool at Ruth's. What kind of name do you want?",
+    "dialogue": "dlg_epilogue_choice",
+    "options": [
+     {
+      "id": "hang",
+      "label": "Hang it up \u2014 the block over the score",
+      "effects": {
+       "flag": "epilogue_quiet",
+       "rel": [
+        "ruth",
+        8
+       ],
+       "faction": [
+        "family",
+        6
+       ],
+       "money": 500
+      }
+     },
+     {
+      "id": "ride",
+      "label": "One more ride \u2014 the city still owes you",
+      "effects": {
+       "flag": "epilogue_rider",
+       "money": 2000,
+       "faction": [
+        "crew",
+        5
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "rewards": {
+   "xp": 600,
+   "flags": [
+    "epilogue_done"
+   ]
+  }
  }
 }

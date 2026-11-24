@@ -33,6 +33,14 @@ func _ready() -> void:
 	add_child(_cam)
 	Effects.register_camera(_cam)
 	add_to_group("cam_rig")
+	_apply_settings()
+	Bus.settings_changed.connect(_apply_settings)
+
+
+func _apply_settings() -> void:
+	## the SETTINGS app promises these; make it true
+	sensitivity = float(Game.settings.get("sensitivity", 1.0))
+	invert_y = bool(Game.settings.get("invert_y", false))
 
 
 func look(dx: float, dy: float) -> void:

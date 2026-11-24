@@ -318,7 +318,7 @@ func _script(id: String) -> Array:
 			return [
 				{"v": "fade", "to": 0.0, "dur": 0.6},
 				{"v": "bars", "on": true},
-				{"v": "music", "track": "music_finale"},
+				{"v": "music", "track": "music_ending"},
 				{"v": "card", "text": "THE LEVERAGE", "dur": 2.4},
 				{"v": "cam", "pos": [p.x + 8, 4.0, p.z + 10], "look": [p.x, 1.5, p.z], "dur": 3.0},
 				{"v": "line", "spk": "crane", "text": "Everyone has leverage on you, Eli. Tonight we find out what yours is worth.", "dur": 4.0},
