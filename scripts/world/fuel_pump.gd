@@ -206,7 +206,13 @@ func _process(delta: float) -> void:
 	if _veh_b(target, "fuel_dry") and _veh_f(target, "fuel", 1.0) > 0.02:
 		_veh_set(target, "fuel_dry", false)
 		_veh_set(target, "_dry_warned", false)
-		AudioDirector.sfx_at("engine_start", (target as Node3D).global_position, 0.8)
+		# was "engine_start" — no such file exists, and sfx_at() returns early on a
+		# null stream, so the moment a player has just PAID for and the toast
+		# announces ("she'll turn over now") landed in complete silence. veh_start
+		# is the sound the call always meant. Same class as the wave-45 missing
+		# music_finale and the wave-48 silent fuel pumps; step 98 now cross-references
+		# every literal audio name in the codebase so this cannot recur.
+		AudioDirector.sfx_at("veh_start", (target as Node3D).global_position, 0.8)
 		Bus.notification.emit("Fuel in the line — she'll turn over now.", "info")
 
 	if WorldState.money <= 0 and pay <= 0 and _veh_f(target, "fuel", 1.0) < 0.999:

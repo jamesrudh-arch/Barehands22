@@ -1,6 +1,367 @@
 # LEVERAGE — Changelog
 
-## 2026-11-23 — DEPTH WAVE 49: a river that cuts the city, verbs that do things, and the fonts that were never loaded
+## 2026-11-24 — WAVE 49 follow-up: XOGOT compliance pass against the *current* documentation
+
+The user asked for a check against XOGOT's **current** documentation, assets and
+all, for iPhone. `xibbon/XogotDocs` was re-cloned from scratch (`4a5a22c`,
+pushed **2026-11-16** — newer than every note in this repo that cited it) and
+read end to end, including the pages this project had never opened: `faq.md`,
+`Onscreen Controls.md`, `Embedded Game View.md`, `Remote Debugging.md`,
+`Importing Assets.md`, `Differences.md`, and the full `Releases/AppStore.md`
+history. That found **two live defects that would have broken the game on an
+iPhone**, one stale constraint the project had been obeying for 45 waves, and a
+dead audio reference.
+
+Harness: **556 → HARNESS_COUNT checks, 0 fails**. 0 `SCRIPT ERROR`.
+
+### 1. The runtime engine is Godot 4.7, not 4.5 — and the docs say so twice over
+
+`project.godot`'s own header instructed: *"API surface restricted to Godot
+4.5-stable-documented features for XOGOT compatibility."* `DECISION_LOG.md` D-02
+said the same. **Both were wrong**, and the error is instructive:
+
+- `Releases/AppStore.md`, release **1.7.2**: *"Xogot upgraded its internal
+  engine from Godot 4.6 to Godot 4.7."* Current release is **1.7.12**.
+- But the Godot manual **bundled with** XogotDocs is a **4.5-era snapshot**: its
+  `Manual/migrating/` folder stops at `upgrading_to_godot_4.5.md` with no 4.6 or
+  4.7 guide, and it ships no `classes/` reference at all.
+- `faq.md` is stale in the other direction, claiming *"At its core, it is still
+  a Godot 4.4-based system."*
+
+The old rule mistook the **manual's snapshot age** for the **engine's version**.
+Xogot's own docs are internally inconsistent about the version, so the release
+notes — which describe shipped behaviour — are the authority, not the FAQ and
+not the bundled manual. Concretely, the 4.5 restriction is what kept Godot 4.7's
+built-in `VirtualJoystick` off the table; `Onscreen Controls.md` documents it and
+links the **4.7** class reference, and `scene/gui/virtual_joystick.cpp` is in the
+4.7.2 tree.
+
+Header and D-02 rewritten; new **D-02a** records that the bundled manual is a
+guide to concepts and *not* an authority on API existence — engine facts get
+answered from `ClassDB` or the 4.7.2 source. **XOGOT version floor 1.7.2** now
+stated in `project.godot`, D-27 and `VERIFICATION_GUIDE.md` §B.
+
+### 2. K-17 — VRAM compression with no formats enabled would have broken every texture on device
+
+Wave 49's own texture fix (below) walked straight into this. Setting
+`compress/mode=2` is not sufficient. From the 4.7.2 source:
+
+- `rendering/textures/vram_compression/import_s3tc_bptc` and `import_etc2_astc`
+  both default to **`false`** (`servers/rendering/rendering_server.cpp:3659-3660`,
+  registered `GLOBAL_DEF_RST` — restart-required).
+- `ResourceImporterTextureSettings::should_import_etc2_astc()` returns true only
+  if the setting is on **or the host OS prefers that format** — and
+  `core/os/os.cpp:749` returns ETC2/ASTC *"by rule, ARM hardware uses ETC texture
+  compression"*, while x86 returns S3TC/BPTC.
+- `resource_importer_texture.cpp:888-900` populates `formats_imported` **only**
+  from those two flags. If neither is on for a given format, no data for it is
+  written.
+
+So with both flags off, **each machine imports only its own format**. A project
+imported on a desktop — or on Xogot for Mac — and then run on an iPhone contains
+no texture data the iPhone GPU can read. That is verbatim the failure Xogot's
+`faq.md` documents and prescribes a fix for:
+
+> `Texture (binding: 0, index 0) is not a valid texture.`
+> `Failed to create uniform set for batch.`
+> *"These indicate that you need to enable importing S3TC BPTC and ETC2 ASTC …
+> Then close and reopen the project so that these imports will run."*
+
+Xogot actively advertises the cross-device workflows that trigger it
+(*"Start a game on iPad and continue on your desktop"*; Remote Debugging edits on
+one device and runs on another).
+
+There is a second, independent reason this project needs both flags: **it is
+verified on x86 Linux**. With `import_etc2_astc` off, the sandbox import never
+produces the ASTC data the device actually uses, so any ASTC-only defect is
+invisible to the harness. Both are now `true` (**D-28**), and step 98 asserts
+both. Runtime cost is nil — Godot uploads only the format the GPU supports; the
+extra format lives in the gitignored, per-device `.godot/` cache.
+
+### 3. K-14 — 144 MB of uncompressed textures with no mipmaps
+
+Every one of the **149** textures imported as **Lossless RGBA8 with
+`mipmaps/generate=false`**: **144.1 MB** of VRAM, **112.8 MB** of it the 96 world
+textures. Two causes, both invisible on a desktop:
+
+1. `compress/mode=0` is Godot's **2D** default. Godot's own **3D import preset
+   defaults it to 2** (VRAM Compressed) — `resource_importer_texture.cpp:232`,
+   literally `p_preset == PRESET_3D ? 2 : 0`.
+2. The automatic `detect_3d` upgrade fires only when the **editor** sees a
+   texture used by a 3D material in a scene or resource. This project builds
+   **every material procedurally at runtime** via `load()` in
+   `world_gen.gd::mat()`, so **zero** `.tres`/`.tscn` files reference any texture
+   and detection can never run. Step 98 asserts that zero-reference invariant,
+   because it is exactly what makes the explicit params load-bearing.
+
+No mipmaps also means shimmering aliasing on every repeating asphalt and
+concrete surface, plus poor texture-cache locality on a mobile GPU.
+
+Fixed: all 96 world textures → `compress/mode=2`, `mipmaps/generate=true`,
+`detect_3d/compress_to=0`; the 23 `*_n.png` normal maps →
+`compress/normal_map=1` (**Enable**, not Detect — enum read from
+`resource_importer_texture.cpp:241`); the 18 `*_r.png` roughness maps →
+`roughness/mode=6` (**Gray**) with `roughness/src_normal` wired to their matching
+normal map, which activates the engine's roughness-from-mipmaps path. All 18 were
+verified genuinely grayscale by decoding the PNGs (max inter-channel difference
+**0**). **World texture VRAM 112.8 MB → 9.4 MB; overall 144.1 → 12.0 MB** (**D-25**).
+
+UI and face textures deliberately stay Lossless: they are 2D, they are largely
+smooth gradients where block compression bands, and they are not all resident at
+once.
+
+### 4. K-15 — XOGOT's Virtual Controller would have drawn a second control layer
+
+Xogot's iOS Virtual Controller emulates a hardware gamepad and draws its own
+onscreen controls. `Onscreen Controls.md` is explicit:
+
+> *"If you are replacing Xogot's iOS Virtual Controller with a complete in-scene
+> interface, turn off Project Settings > Input Devices > Virtual Controller >
+> Enable Controller **to avoid displaying both interfaces**."*
+
+This project ships exactly such an interface (`hud.gd`: virtual stick plus 14
+action buttons), but `project.godot` had **no** `input_devices/virtual_controller/*`
+key at all, leaving it to whatever the device default is. Now written as
+`enable=false` so the choice travels with the repo instead of depending on
+someone remembering to tap a toggle (**D-26**).
+
+Confirmed **Xogot-specific, not Godot**: zero occurrences of `virtual_controller`
+in Godot 4.7.2's `core/config/project_settings.cpp`, whose only native
+`input_devices/*` keys are the five `pointing/android/*` ones. Desktop Godot
+ignores the unknown key harmlessly. Step 98 also asserts all 14 touch buttons
+are bound to real Input Map actions — the same actions a gamepad or Xogot's
+emulated pad drives, which is why the two interfaces would have *both* been live.
+
+### 5. K-18 — Scale Mode left to Xogot's zooming "Auto" default
+
+`faq.md`: *"Recent Xogot updates introduce a new default Scale Mode called
+**Auto** … this can cause the game to appear zoomed in or stretched. To restore
+the expected appearance … set Display > Window > Scale Mode to **Fractional**."*
+`display/window/stretch/scale_mode` was unset. Godot's own default is already
+`"fractional"` (`project_settings.cpp:1790`), so this changes nothing on desktop
+— it is a refusal to inherit Xogot's override. Now stated explicitly (**D-29**).
+`stretch/mode="canvas_items"` is kept, which `faq.md` also names as the fix for a
+game showing more canvas than intended.
+
+### 6. K-19 — a dead audio reference, and the third of its kind
+
+`fuel_pump.gd:209` played `"engine_start"`. **No such file has ever existed.**
+`sfx_at()` returns early on a null stream, so the moment the player has just
+*paid* for — and that the toast announces, *"Fuel in the line — she'll turn over
+now"* — landed in complete silence. `veh_start.wav` is the sound the call always
+meant; renamed.
+
+This is the third instance of the class in this repo (the missing `music_finale`
+in the wave-45 audit, the silent fuel pumps in wave 48), so step 98 now
+**cross-references every literal audio name in the codebase** rather than fixing
+one call: all `sfx()`/`sfx_at()` names against `assets/audio/sfx/`, all
+`play_music()`/`sting()` names against `assets/audio/music/`, and every voiced
+character's bank against `speak()`'s `%s_0..2` cycle. The pattern requires the
+closing quote to be followed by `,` or `)`, so genuinely dynamic names like
+`sfx_at("imp_" + mat, …)` are not mistaken for literals — all four `imp_*`
+targets were checked by hand and do exist (**K-19**).
+
+### 7. K-20 — nothing saved when iOS takes the app away
+
+The engine's iOS lifecycle handling is thorough, and verifying that is what
+found this. `OS_AppleEmbedded::on_focus_out()` (`drivers/apple_embedded/`)
+sends `WINDOW_EVENT_FOCUS_OUT`, notifies the MainLoop, calls `stopRendering`
+and `audio_driver.stop()`. `stopRendering` **invalidates the `CADisplayLink`
+that drives `drawView`** — so the whole frame loop halts and no `_process` or
+`_physics_process` runs, meaning no mission timer ticks blind while the player
+cannot see or act. `SceneTree::_notification` also calls
+`Input::release_pressed_events()`, which walks `action_states` and releases
+anything `cache.pressed` — including the sticky state that `Input.action_press()`
+creates, which is exactly what this project's touch buttons use; and the view
+calls `clearTouches`. A pause handler would have been redundant cargo-cult, so
+none was added.
+
+What nothing in the engine does is protect the **save**. Every existing autosave
+trigger is a discrete achievement — mission complete, safehouse rest, hidden
+stash, property purchase, manual save. iOS terminates backgrounded apps
+routinely under memory pressure, so a player forty minutes into a mission who
+takes a phone call could have XOGOT killed with nothing written since the last
+job they finished.
+
+`on_enter_background()` sends `NOTIFICATION_APPLICATION_PAUSED` **before**
+calling `on_focus_out()`, so at that moment audio and rendering are still alive
+and a write can complete, and `SceneTree::_notification` propagates PAUSED to
+every node. `game.gd` now has a `_notification()` handler that calls the
+existing `request_autosave()` on PAUSED — which already no-ops when
+`player == null`, so it is safe from the menu, the boot scene and the game-over
+screen (**D-30**).
+
+Deliberately **not** FOCUS_OUT: that also fires for a transient interruption
+such as a notification banner or Control Center, where the app is not at risk,
+and saving on every banner is write churn for no benefit. Step 98 asserts both
+halves of that decision — it deletes slot 0, fires FOCUS_OUT and requires no
+save, then fires PAUSED and requires a real payload.
+
+### 8. D-05 corrected: the recorded texture rule misquoted the page it cited
+
+`DECISION_LOG.md` D-05 recorded *"Textures ≤1024², power-of-two"* and cited the
+manual's "3D rendering limitations". The page actually says:
+
+> *"Mobile GPUs are typically limited to 4096×4096 textures. Also, some mobile
+> GPUs don't support repeating non-power-of-two-sized textures. Therefore …
+> avoid using textures larger than 4096×4096 and use a power of two size **if
+> the texture needs to repeat**."*
+
+The recorded rule was **stricter than its own source**, which made the two 2048²
+atlases (`signs_atlas`, `posters_atlas`) look like violations. Full audit of all
+149 PNGs (IHDR parsed directly): all 96 world textures are power-of-two (512²,
+256², 1024², 2048²) and all of them repeat via `uv1_scale`; the 24 non-POT
+images are UI-only (96² icons, 1920×1080 `menu_bg`, 1600×900 splash, 1600×420
+logo, 1400×700 advisory, 1280×720 loading) and never repeat. **Compliant as
+shipped** — the record was what was wrong, and it is now quoted verbatim.
+
+### 9. K-21 — the harness was not deterministic, and two of its own new assertions were wrong
+
+Building 4.7.2-stable from source (52 min, `SCONS_EXIT=0`) made it possible to
+actually run all of this rather than reason about it, and running it found three
+things.
+
+**(a) The suite reported a different number of checks on each run.** A plain run
+said 584, the same code under `--verbose` said 583. Diffing the OK-lists located
+it immediately: `mission save includes stage idx` was present in one and absent
+from the other. Step 46 guarded it with `if mm.active_id != "":` and **no
+`else`** — so whenever the prologue job had already completed or failed by then,
+the assertion was silently skipped. That is the worst failure mode a test suite
+has: not red, not green, but *unfalsifiable*. A green run could not be trusted
+to have tested the same things as the previous green run.
+
+The obvious fix, `begin_prologue()`, is wrong twice over: it returns early after
+only refreshing offers when m01 is already complete, so it does not guarantee a
+live job, and it can spawn actors. `save_state()` turned out to read nothing but
+plain vars — no nodes, no signals — so the step now pins `active_id`/`active_stage_i`,
+forces a live job if there is none, asserts, and restores in the same frame.
+**585 checks / 0 fails**, identical across plain ×2 and verbose ×1; the verbose
+run exercised the forced path (stage 0) while the plain runs had a live prologue
+(stage 2), so both branches are now covered. VERIFICATION_GUIDE §A step 4
+requires the count to match across both modes from now on.
+
+**(b) `Texture2D.has_mipmaps()` cannot be used to verify this change at all.**
+The first version of the mip assertion failed while the artefacts were correct.
+The base `Texture2D::has_mipmaps()` (`scene/resources/texture.cpp:55`) only
+calls the `_has_mipmaps` *GDScript virtual* and returns its out-param, and
+`CompressedTexture2D` does **not** override it — only the `3D` and `Layered`
+variants do. So it returns `false` for a correctly-mipped VRAM texture. Step 98
+now opens the file the `[remap]` block points at and reads the header directly:
+magic `GST2`, uint32 version/width/height/data-format, where
+`FORMAT_BIT_HAS_MIPMAPS` is `1 << 23` and the low byte is the `DataFormat` enum
+(`0` = `DATA_FORMAT_IMAGE`, raw VRAM blocks; `1`/`2` = PNG/WEBP lossless). It
+asserts **both** `path.s3tc` and `path.etc2` — the ETC2 artefact is the one an
+iPhone actually uploads, and an x86-only import would never have produced it,
+which is the second reason D-28 enables both flags (**D-31**).
+
+Verified on the real artefacts after `--import`: **96 × 2 ctex files**, every one
+mipmapped and `DATA_FORMAT_IMAGE`, zero lossless. `asphalt.png` at 512² went
+**1,048,576 → 174,828 bytes** (4 bpp × 4/3 for the mip chain); `asphalt_n.png`
+is correctly 2× that at BC5 8 bpp. The 54 UI/face textures correctly carry no
+mipmaps, and step 98 now asserts that split too so it cannot drift.
+
+**(c) "`hud._buttons` keys are all input actions" is not true, and the check said
+it was.** The dict is keyed three different ways: `_touch_btn()` keys by the
+action itself (`sprint`, `fire`, …), the `PAD` cluster keys by *position*
+(`btn_x`/`btn_y`/`btn_a`/`btn_b`) and carries the real action in a separate slot
+of its `PAD` row, and `_sys_btn()` keys UI callbacks that legitimately have no
+action at all (`radio`, `phone`, `map`, `pause`). 5 of 21 keys are not action
+names (**D-32**). The invariant step 98 now asserts is the one that matters for
+K-15: 16 keys resolve to actions directly, the 4 pad keys are checked against
+the actions their `PAD` rows name, exactly 1 declared UI callback is exempt, and
+anything else is reported as a stray.
+
+**Import runs clean**: `--headless --import` after `rm -rf .godot/imported`
+finishes in ~10 s with **0 errors**, and the `[remap]` metadata reads
+`"imported_formats": ["s3tc_bptc", "etc2_astc"]` with `"vram_texture": true`.
+**Full parse gate**: all 44 scripts plus the harness pass `--check-only` grepping
+only `Parse Error`. One ordering caveat is now documented in §A step 3: on a
+fresh engine or cache the gate *fails* on `tests/harness.gd` with
+`Identifier "UiFit" not declared`, because `class_name` globals are registered by
+the project scan — run `--import` first.
+
+**Leak-line counts are not a regression detector, correcting K-05's own advice.**
+Identical code measured 15–18 resources still in use and 16–26
+`RendererSceneCull::Instance` RIDs across runs, so the numbers move with teardown
+ordering. The three *types* were stable across all six runs today and no new type
+appeared, which is the part that caught C1. K-05 and VERIFICATION_GUIDE now say
+to judge by type.
+
+### 10. Doc drift found while reconciling versions
+
+`TECHNICAL_ARCHITECTURE.md` still carried the K-16 false constraint in its header
+— *"API surface restricted to features documented in the Godot 4.5-era manual
+that XOGOT mirrors"* — which is the exact error §1 of this entry corrects, so the
+file now states the surface is full Godot 4.7 and explains what the bundled
+manual actually is. Its autoload tree listed **14 of the 19** (missing `Type`,
+`Difficulty`, `Progression`, `Cinematics`, `CallManager`) and carried stale
+counts: Bus 73 signals → **53**, Db 15 JSONs → **16**, saves serialize v3 →
+**v5**, 4 cutscenes → **5**, 20 missions/16 stage types → **29 missions, 125
+stages, 22 types**. Each was measured, not estimated. `ART_DIRECTION.md` claimed
+the world textures were "all forged at 512–1024²", wrong at both ends; the
+measured census (68×512², 18×256², 5×128², 2×1024², 2×2048², 1×64²) replaces it.
+Interiors at 19 and `city.json`'s structure were re-checked and were already
+correct.
+
+### Verified clean against the current docs (no change needed)
+
+- **GDScript-only constraint** (`Differences.md`, `faq.md`, `Getting Started.md`
+  §3): no `addons/` directory, no `.gdextension`, and no `.dll`/`.so`/`.dylib`/
+  `.a`/`.cs` anywhere. Asserted by step 98. `faq.md`'s single native exception
+  (bundled Terrain3D) is not used.
+- **Audio**: all **198 WAVs are mono** (185 @ 44.1 kHz, 13 @ 22.05 kHz) — correct
+  for the `AudioStreamPlayer3D` positional path in `sfx_at()` — and all import at
+  `compress/mode=2`, which the 4.7 WAV importer's enum makes **Quite OK Audio**,
+  not PCM (`resource_importer_wav.cpp:89`). 16 OGG music tracks loop via
+  `AudioStreamOggVorbis.loop` set in code, so `loop=false` in the import is
+  correct. All 20 vox banks have complete `_0/_1/_2` sets.
+- **iOS filesystem**: every write goes to `user://` (`settings.json`,
+  `save_slot_%d.json`, `save_meta.json`); every `res://` access is **read-only**.
+  No `DirAccess` write operations at all — `res://` is read-only inside an iOS app
+  container, so this is the classic port failure and it is absent.
+- **No threads, no `OS.execute`, no `WorkerThreadPool`, no networking** — nothing
+  that iOS sandboxes.
+- **No external 3D models**: zero `.gltf`/`.glb`/`.obj`/`.fbx`/`.blend`, so the
+  `Importing Assets.md` support-file rules (`.bin` beside `.gltf`, textures in a
+  `textures/` folder beside `.obj`) do not apply. Everything is procedural
+  `ArrayMesh`/`SurfaceTool`, which is also what makes the `detect_3d` gap in §3
+  possible.
+- **Asset references**: all 83 literal `res://` paths in scripts and scenes
+  resolve; all 27 const-prefix + literal loads resolve; 0 missing.
+- **Renderer**: `mobile` as `D-01` requires; `use_debanding=true`, which the
+  bundled manual recommends for the banding the Mobile renderer is prone to.
+
+### Docs updated
+
+`project.godot` header; `DECISION_LOG.md` (D-02 corrected, new D-02a, D-05
+corrected, D-21/D-22 refreshed, new D-25 → D-29); `VERIFICATION_GUIDE.md`
+(§A: 369 assets and **585** checks instead of 333 and 21, the import-before-gate
+ordering caveat, the cross-mode determinism requirement, judge-leaks-by-type, plus the
+parse gate as a required step; §B: rewritten to the current Files-app import
+procedure including the GitHub-zip-and-decompress path and the restart caveat,
+the 1.7.2 floor, the Virtual Controller and Scale Mode confirmations, the
+`faq.md` "import looks like a hang" warning, the swipe-up-terminates-XOGOT and
+offline behaviours, and a D-25-specific mipmap/normal-map visual check; §E:
+memory and VRAM re-test guidance); `KNOWN_DEFECTS.md` (K-14 → K-19 closed, K-05's
+leak counts refreshed, D-07/D-08 updated, new D-09/D-10 device-only items);
+`ASSET_REGISTER.md` (real texture dimensions and the D-25 import settings;
+XogotDocs row corrected); `LICENSES.md` (the six faces and their roles).
+
+### Still device-only, honestly
+
+`faq.md` and the rest of the current docs say **nothing** about device
+orientation — no mention of `handheld/orientation` or `sensor_landscape`
+anywhere outside the Asset Placer's and Modeler's own transform settings. So
+K-13's observation that the iOS shell runs portrait remains **empirical and
+unverified against current documentation**, and D-07 stays open rather than
+being closed on the strength of a doc that is silent. New device-only items
+D-09 (first-import cost and OOM risk after D-25) and D-10 (ASTC/ETC2 output
+quality — desktop encodes S3TC/BPTC, so the formats an iPhone actually receives
+can only be judged on the device).
+
+---
+
+## 2026-11-24 — DEPTH WAVE 49: a river that cuts the city, verbs that do things, and the fonts that were never loaded
 
 Wave 48 gave the city life on top of it. The audit that followed found the
 harder class of problem: things that were **authored, wired, and still inert**.

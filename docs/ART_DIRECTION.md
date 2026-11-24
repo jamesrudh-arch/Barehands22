@@ -26,8 +26,13 @@ model applied consistently across a fully generated asset set.
 
 ## 2. Texture language (96 world textures)
 
-All forged at 512–1024², power-of-two, tileable (mobile GPU constraints:
-4096² cap, non-POT repeat risk on some drivers):
+All forged power-of-two and tileable, **256–2048²** — measured census: 68×512²,
+18×256², 5×128², 2×1024² (`windows_atlas`, `road_marks`), 2×2048²
+(`signs_atlas`, `posters_atlas`), 1×64². The governing mobile rules are the
+4096² cap and the non-POT repeat risk, so every texture here is POT and none
+exceeds 2048²; an earlier revision of this line claimed "512–1024²", which was
+wrong at both ends. All 96 now import VRAM-compressed with mipmaps (D-25) —
+see `docs/ASSET_REGISTER.md`.
 
 - **Surfaces:** asphalt (aggregate noise + cracks), concrete (stained,
   panel lines), brick red/dark/grey (mortar course variation + per-brick
