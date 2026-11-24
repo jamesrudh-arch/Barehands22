@@ -873,12 +873,129 @@ func _process(_delta: float) -> bool:
 			_check(db.mission("side_bait").get("stages", []).size() == 3, "side_bait chase mission exists")
 			var evs = root.get_node("Db").events
 			_check(evs.has("turf_war"), "turf_war world event registered")
+		79:
+			# WAVE 46 — MEMORY/REPUTATION SPINE (RDR2: the world remembers)
+			var ws46 = root.get_node("WorldState")
+			ws46.street_deeds.clear()
+			ws46.set("_last_deed_t", Time.get_ticks_msec() / 1000.0 - 100.0)   # clear the deed throttle
+			var rep_seen: Array = []
+			var bus46 = root.get_node("Bus")
+			var sub46 := func(v): rep_seen.append(v)
+			bus46.street_rep_changed.connect(sub46)
+			ws46.note_deed("stood_up", "kiln_row", true)
+			_check(ws46.street_deeds.size() == 1, "deed recorded in street ledger")
+			_check(ws46.street_rep() == 2, "helped deed raises street rep")
+			_check(rep_seen.size() == 1 and rep_seen[0] == 2, "street_rep_changed signal fires")
+			_check(ws46.memory.get("street", []).has("stood_up"), "remember() finally has a caller (street memory)")
+			for i46 in 9:
+				ws46.note_deed("bully", "kiln_row", false)
+			_check(ws46.street_rep() == 2 - 18, "hostile deeds sink street rep")
+			_check(absf(ws46.snitch_chance() - 0.5) > 0.15, "witness cooperation scales with street rep (rep=%d snitch=%.2f)" % [ws46.street_rep(), ws46.snitch_chance()])
+			var ser46: Dictionary = ws46.serialize()
+			_check(ser46.has("street_deeds") and (ser46["street_deeds"] as Array).size() == 10, "street ledger serialized with the save")
+			bus46.street_rep_changed.disconnect(sub46)
+			ws46.street_deeds.clear()
+		80:
+			# WAVE 46 — ENEMY POSTURE / GUARD BREAK (Sifu: guards chip and shatter)
+			if _player:
+				var cc46 = load("res://scripts/combat/combat_controller.gd").new()
+				_check(cc46 != null and cc46.get("posture") != null, "posture: controller constructible with posture vars")
+				# direct unit: posture builds on blocked hits and breaks at max
+				var ccsrc46 := FileAccess.get_file_as_string("res://scripts/combat/combat_controller.gd")
+				_check("posture" in ccsrc46 and "guard_broken_t" in ccsrc46, "posture/guard-break meter present")
+				_check("guard_broken_t > 0.0:\n\t\t\tdmg *= 1.45" in ccsrc46, "broken guard takes bonus damage")
+				var npcsrc46 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+				_check("_guard_t" in npcsrc46 and "set_block(true)" in npcsrc46, "trained enemies raise guard in rhythm")
+				var hudsrc46 := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
+				_check("_posture_bar" in hudsrc46, "guard-posture bar surfaced in HUD")
+				cc46.free()
+		81:
+			# WAVE 46 — BULLETS GET HITSTOP + IMPACT MATERIAL VARIETY (Max Payne 3)
+			var wcsrc46 := FileAccess.get_file_as_string("res://scripts/combat/weapons_controller.gd")
+			_check("Cinematics.hitstop(0.09 if cc.dead else 0.045)" in wcsrc46, "bullet hits freeze the frame (kills longest)")
+			_check('"ashfall_docks", "slagworks":' in wcsrc46 and 'mat = "metal"' in wcsrc46, "docks/slagworks ring metal")
+			_check('mat = "glass"' in wcsrc46 and 'mat = "wood"' in wcsrc46, "glass + wood surfaces vary by district")
+			_check('"imp_" + mat' in wcsrc46, "surface sfx picked from material")
+		82:
+			# WAVE 46 — CIVILIAN AGENCY: greet / show respect / antagonize (GTA V)
+			var npcsrc47 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("start_choices" in npcsrc47 and "Antagonize" in npcsrc47, "pedestrian interaction is a decision, not a bark")
+			_check("note_deed(\"showed_respect\"" in npcsrc47 and "note_deed(\"bully\"" in npcsrc47, "greet/antagonize feed the street ledger")
+			var news46 := FileAccess.get_file_as_string("res://data/news.json")
+			_check("\"gossip\"" in news46 and "\"watch_it\"" in news46, "gossip + callout bark lines authored")
+			# live: a fresh ped offers the choice panel
+			if _player:
+				var ped46 = _spawn_ped46(_player.global_position + Vector3(2.0, 0, 0))
+				if ped46 != null:
+					ped46.interact(_player)
+					var dui46 = root.get_node("DialogueUI")
+					_check(dui46.choice_box.visible, "civilian agency panel opens")
+					_check(dui46._choice_opts.size() >= 3, "at least greet/respect/antagonize offered")
+					dui46._pick(2)   # antagonize
+					var ws47 = root.get_node("WorldState")
+					var bullied := false
+					for d46 in ws47.street_deeds:
+						if d46.get("id", "") == "bully":
+							bullied = true
+					_check(bullied, "antagonizing a local is a remembered deed")
+					ws47.street_deeds.clear()
+					ped46.queue_free()
+		83:
+			# WAVE 46 — OVERHEARD CONVERSATIONS (Sleeping Dogs: pairs talk, you linger, they notice)
+			var clsrc46 := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
+			_check("_gossip_tick" in clsrc46 and "gossip_pair" in clsrc46, "paired ambient conversations wired")
+			_check("_intervene_tick" in clsrc46 and "Step in" in clsrc46, "street events offer intervention")
+			if _player:
+				var cl46 = _city.get_node_or_null("CityLife")
+				if cl46 != null:
+					# force an event and stand in it: the choice must appear
+					var p46a = _spawn_ped46(_player.global_position + Vector3(3.0, 0, 0))
+					var p46b = _spawn_ped46(_player.global_position + Vector3(4.0, 0, 2.0))
+					if p46a != null and p46b != null:
+						cl46.event_actors.append(p46a)
+						cl46.event_actors.append(p46b)
+						p46a.set_meta("event_role", "mugger")
+						p46b.set_meta("event_role", "victim")
+						cl46._event_kind = "mugging"
+						cl46._event_kind_district = "kiln_row"
+						cl46._intervene_pos = _player.global_position + Vector3(3.0, 0, 0)
+						cl46._intervene_cd = 0.0
+						cl46._intervene_tick(0.016, _player)
+						var dui47 = root.get_node("DialogueUI")
+						_check(dui47.choice_box.visible, "mugging intervention panel opens near the event")
+						dui47._pick(0)   # step in
+						_check(cl46._intervene_cd > 0.0, "intervention goes on cooldown after the choice")
+						cl46.event_actors.erase(p46a)
+						cl46.event_actors.erase(p46b)
+						p46a.queue_free()
+						p46b.queue_free()
+		84:
+			# WAVE 46 — SNITCHING + THANKS + STREET REP CHIP
+			var npcsrc48 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("WorldState.snitch_chance()" in npcsrc48, "witness snitch chance driven by street rep, not a coin flip")
+			var shsrc46 := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
+			_check("_keeper_id" in shsrc46 and 'barks.get("thank"' in shsrc46, "shopkeepers thank you when the block respects you")
+			var hudsrc47 := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
+			_check("_street_lbl" in hudsrc47 and "STREET REP" in hudsrc47, "street rep chip visible on HUD")
+			var ws48 = root.get_node("WorldState")
+			_check("street_deeds" in FileAccess.get_file_as_string("res://scripts/core/world_state.gd"), "street ledger persists in saves")
+			ws48.street_deeds.clear()
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()
 			quit(0 if _fails == 0 else 1)
 			return true
 	return false
+
+
+func _spawn_ped46(pos: Vector3) -> Node:
+	var n := CharacterBody3D.new()
+	n.set_script(load("res://scripts/npc/npc.gd"))
+	_city.add_child(n)
+	var db46 = root.get_node("Db")
+	var pids: Array = db46.peds.keys()
+	n.setup_ped(pids[randi() % pids.size()], "kiln_row", pos)
+	return n
 
 
 func _grp(g: String) -> Node:

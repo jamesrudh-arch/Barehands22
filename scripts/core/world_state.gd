@@ -27,6 +27,53 @@ var factions: Dictionary = {"family": 40.0, "corp": -10.0, "crew": 0.0}
 # --- people ---
 var relationships: Dictionary = {}   # char_id -> -100..100
 var memory: Dictionary = {}          # char_id -> Array[String] of remembered deeds
+var street_deeds: Array = []         # [{id, did, helped, day}] — what the block saw you do
+
+
+## STREET REP: the RDR2 lesson — the world must remember your deeds and
+## treat you differently because of them. Derived, never authored: protect
+## the block and it protects you back; prey on it and everyone talks.
+func street_rep() -> int:
+	var r := 0
+	for d in street_deeds:
+		r += 2 if bool(d.get("helped", false)) else -2
+	return clampi(r, -30, 30)
+
+
+var _last_deed_t := 0.0
+
+
+func note_deed(id: String, did: String, helped: bool) -> void:
+	# throttle: deeds must be earned, not farmed off one long brawl
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _last_deed_t < 20.0 and id in ["stood_up", "preyed_on"]:
+		return
+	_last_deed_t = now
+	street_deeds.append({"id": id, "did": did, "helped": helped, "day": day})
+	if street_deeds.size() > 24:
+		street_deeds.pop_front()
+	remember("street", id)
+	Bus.street_rep_changed.emit(street_rep())
+
+
+## Witness cooperation scales with how the block sees you: people lie to
+## the CCPD for someone who stood up for them, and they snitch fast on a
+## predator.
+func snitch_chance() -> float:
+	var r := street_rep()
+	if r >= 15:
+		return 0.22
+	if r <= -15:
+		return 0.72
+	return 0.5
+
+
+func deeds_in(did: String) -> Array:
+	var out := []
+	for d in street_deeds:
+		if d.get("did", "") == did:
+			out.append(d)
+	return out
 
 # --- progression ---
 var flags: Dictionary = {}           # string -> bool/int
@@ -94,6 +141,7 @@ func reset_all() -> void:
 	factions = {"family": 40.0, "corp": -10.0, "crew": 0.0}
 	relationships = {}
 	memory = {}
+	street_deeds = []
 	flags = {}
 	mission_state = {}
 	stats = {"playtime": 0.0, "on_foot_km": 0.0, "driven_km": 0.0, "kos": 0,
@@ -303,6 +351,7 @@ func serialize() -> Dictionary:
 		"factions": factions.duplicate(),
 		"relationships": relationships.duplicate(),
 		"memory": memory.duplicate(),
+		"street_deeds": street_deeds.duplicate(true),
 		"flags": flags.duplicate(),
 		"mission_state": mission_state.duplicate(true),
 		"stats": stats.duplicate(),
@@ -342,6 +391,7 @@ func deserialize(d: Dictionary) -> void:
 	factions = d.get("factions", factions)
 	relationships = d.get("relationships", {})
 	memory = d.get("memory", {})
+	street_deeds = d.get("street_deeds", [])
 	flags = d.get("flags", {})
 	mission_state = d.get("mission_state", {})
 	stats = d.get("stats", stats)

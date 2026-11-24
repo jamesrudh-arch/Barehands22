@@ -35,6 +35,7 @@ signal police_state_changed(state: String)
 
 # --- factions / relationships ---
 signal faction_rep_changed(faction: String, value: float)
+signal street_rep_changed(value: int)
 signal relationship_changed(char_id: String, value: float)
 
 # --- story / missions / dialogue ---

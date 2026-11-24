@@ -1,5 +1,65 @@
 # LEVERAGE — Changelog
 
+## 2026-11-24 — DEPTH WAVE 46: the world that remembers (top-tier quality pass, part 1)
+
+Grounded in real design research — RDR2's NPC memory/reputation, GTA V's
+civilian agency, Sleeping Dogs' overheard conversations and street events,
+Sifu's guard-break meter, Max Payne 3's bullet hitstop — this wave closes
+six audited gaps where systems existed but were dead or missing.
+
+- **Street ledger + street rep (RDR2 memory spine)**: `WorldState.remember()`
+  finally has callers. A new `street_deeds` ledger (serialized, v5-compatible)
+  records what the block SAW you do: standing up to predators (`stood_up`,
+  +2), showing respect (+2), bullying locals (`bully`, -2), preying on
+  civilians (`preyed_on`, -2), backing muggers, ignoring muggings, breaking
+  up brawls. Derived `street_rep()` (-30..+30) drives everything below; a
+  HUD chip shows the block's verdict. Deeds are throttled (20 s) so rep is
+  earned, not farmed.
+- **Witnesses remember**: the hardcoded 50% snitch chance is now
+  `WorldState.snitch_chance()` — 22% when the block has your back (>=15),
+  72% when you're known as a predator (<=-15). Killing a predator within
+  14 m of civilians makes witnesses react with `respect` barks and logs a
+  deed; saving a mugging victim gets a spoken thank-you. Killing civilians
+  logs `preyed_on`.
+- **Civilian agency (GTA V)**: talking to a local is now a DECISION panel,
+  not a random bark — ask what's going on, show respect (a remembered deed,
+  4-min per-NPC cooldown), antagonize them (remembered deed; they may flee),
+  or walk away. Per-ped bark overrides from peds.json (`young`, `drunk`)
+  are finally wired — students sound like students, drunks like drunks.
+- **Overheard conversations (Sleeping Dogs)**: pairs of nearby locals now
+  hold 12-20 s gossip conversations (6 new authored gossip lines — dock
+  crates, Crowe's nephew, the Halcyon tower lights), facing each other,
+  talking/listening. Linger within 3.5 m and the conversation turns to
+  YOU: with bad street rep they call you out (`watch_it`), otherwise they
+  acknowledge you (`interrupted`/`greet`).
+- **Street-event intervention (GTA V/Sleeping Dogs)**: muggings and street
+  fights now offer a choice when you walk into them — mugging: step in
+  (mugger turns on you; killing them logs the deed and the victim thanks
+  you), walk past (remembered as `ignored_mugging`), or BACK THE MUGGER
+  (they stand down, you pay a cut, and the block remembers you as a
+  predator). Brawls: break it up (+rep, actors calm and nod), watch, or
+  jump in and swing (everyone within 14 m turns hostile, -rep).
+- **Enemy posture / guard break (Sifu)**: blocked hits now chip a posture
+  meter (heavies chip 2.2x) instead of dealing chip damage. Breach 100 and
+  the guard SHATTERS — clang, sparks, 0.10 s hitstop, stagger 30, and a
+  2.2 s window where the target can't block and eats +45% damage. Posture
+  decays 12/s out of combat. Trained enemies (guard_strength >= 0.5) now
+  raise guard in rhythm during melee — no more punching bags. The locked
+  target's posture renders as an amber bar under the district name; it
+  flashes red on break.
+- **Bullet weight (Max Payne 3)**: player bullet hits now trigger hitstop
+  (45 ms, 90 ms on kills) — guns no longer punch paper. Impact materials
+  vary by district instead of hardcoded concrete: docks/slagworks ring
+  metal, Neon Mile + Crown Heights shatter glass, the Furnace/Kiln Row
+  splinter wood (dust burst instead of sparks), with per-hit pitch jitter.
+- **Shopkeepers thank you**: buying from a keeper while your street rep is
+  non-negative earns a spoken `thank` bark — the till is a relationship.
+
+Harness: 221 checks, 0 fails (29 new — street ledger serialization and
+signals, snitch scaling, guard-break wiring, civilian agency panel live
+test, mugging intervention live test, impact materials, HUD surfaces).
+
+
 ## 2026-11-23 — DEPTH WAVE 45: the block fights back + full-repo audit
 
 Four systems, then a line-by-line audit of everything (see docs/AUDIT.md).
