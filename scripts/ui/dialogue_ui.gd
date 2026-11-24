@@ -61,11 +61,13 @@ func _ready() -> void:
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	panel.add_child(portrait)
 	name_lbl = Label.new()
+	Type.apply(name_lbl, "display")
 	name_lbl.position = Vector2(148, 16)
 	name_lbl.add_theme_font_size_override("font_size", 20)
 	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
 	panel.add_child(name_lbl)
 	text_lbl = RichTextLabel.new()
+	Type.apply(text_lbl, "body")
 	text_lbl.position = Vector2(148, 44)
 	text_lbl.size = Vector2(452, 110)
 	text_lbl.bbcode_enabled = false

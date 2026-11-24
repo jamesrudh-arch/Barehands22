@@ -230,3 +230,191 @@ ordering is not a test. When a step asserts on a gated path, enumerate the gates
 and set every one of them — do not assume the world arrived in a convenient
 state. And when a failure appears in code you never touched, check whether the
 *state* reaching that code changed, not only the code.
+
+## Wave-49 addendum: live-harness finds (B9)
+
+Wave 49 put a river through the city, gave six inert mission verbs real
+behaviour, rewrote the campaign from 89 to 125 stages, added difficulty
+presets, and ended the typography situation. Steps 96–97 took the harness from
+445 to **556 checks**. Six more defects surfaced. This wave's class is distinct
+again from B3–B8: these were things that were **authored, wired, validated by a
+test, and still wrong** — and two of them were wrong in the test as well as in
+the code.
+
+**B9 — a disconnected route graph returns an empty path, and nothing anywhere
+says so.** `route_world()` returns `PackedVector3Array()` when the destination is
+unreachable. That is a reasonable API. It is also completely silent: the GPS
+overlay simply draws nothing, the player assumes the phone is being decorative,
+and there is no log line, no warning and no fallback. Replicating the real graph
+build in Python found **two components — 388 lane nodes and 48 belonging to
+Crown Heights alone**. The lane rings are per-block islands stitched by a 70 m
+k-NN, and the gap between Neon Mile's easternmost ring (`x = 137.8`) and Crown
+Heights' westernmost (`x = 242`) is **104 m**, past the stitch cap. So the
+Overlook, the Country Club, the Observatory, Crown Premium Fuels and the Crown
+Heights stash had no GPS at all — and `m12_everyone`, the finale, opens with
+`goto(poi_overlook)`. The last mission in the game sent the player to a waypoint
+the phone could not route to.
+
+This predated the river entirely; the river merely made me count the components.
+
+**Lesson recorded:** any pathfinder that can fail must have its failure asserted,
+not inferred. `route_world(a, b).size() >= 2` is a check about one pair of
+points and tells you nothing about the graph. The assertion that matters is
+**connectedness**: flood-fill from node 0 and require `seen.size() == nodes.size()`.
+That is one loop, it is O(V+E), and it catches every unreachable-district bug at
+once instead of one destination at a time. A silent-empty-return API is a defect
+generator.
+
+**B10 — the test had the same inverted convention as the code it was testing.**
+`city.json`'s `axis` names the *constant* coordinate: `axis "x"` is a line of
+constant `x` running north–south. `_station_along_z()` read it the other way, so
+every filling station canopy was turned 90° from the arterial it fronts. The
+harness assertion at step 93 — written in the same pass, from the same reading
+of the JSON — inverted it identically, and so passed. It then asserted the
+*weakest possible* consequence: "some canopies run north-south and some don't"
+(`alongz93 > 0 and alongz93 < size`). A mixed result is what a correct builder
+produces *and* what a builder with the convention backwards produces.
+
+Fixed both, and changed the assertion to recompute the expected orientation per
+station from `city.json` and the nearest arterial, then diff against the
+builder's own answer: `wrong93.is_empty()`. Now 3 of 6 run north-south and the
+test would name the station that disagreed.
+
+**Lesson recorded:** a test written from the same misunderstanding as the code
+confirms the misunderstanding twice and reports success. When the data file
+defines a convention, derive the expectation **from the data file inside the
+test**, not from your reading of it at authoring time. And distrust any assertion
+of the form "some X and some not X" — it is satisfied by the bug and by the fix
+alike. State the per-item expectation and assert the violation list is empty.
+
+**B11 — `gdparse` cannot see identifier scope or a missing engine API, and one
+such error deletes an autoload.** After the river landed, the harness reported
+**130 checks / 6 fails** — a 380-check collapse. `gdparse` said the file was
+fine. The engine said otherwise, three times: an undeclared `neon` local used in
+two bridge builders (declared in `_build_river`, used in `_riv_road_bridge`), and
+`Rect2.intersects_segment()`, which is Godot 3 and does not exist in 4.7
+(`ClassDB.class_get_method_list("Rect2")` returns empty; `Geometry2D` has no
+segment-vs-rect primitive at all either). A single parse error in `world_gen.gd`
+takes the whole `WorldGen` autoload down with it, and `build_city`, `_poi_pos`,
+the route graph and every harness step that depends on them fail in cascade.
+The reported failures were nowhere near the actual defect.
+
+`/tmp/w49/check.sh` now runs `--check-only --script` per file and greps **only**
+`Parse Error` — bare `--check-only` also resolves identifiers, so it
+false-positives `Compile Error: Identifier not found: Db` on every script that
+touches an autoload. The gate runs before every harness run.
+
+**Lesson recorded:** a static syntax checker and an engine load are different
+tests, and only the second one sees scope and API existence. When the harness
+fails in areas you never touched, grep for the **first** `Parse Error` before
+reading a single assertion — a dead autoload produces hundreds of unrelated red
+lines. And `Rect2`/`Geometry2D` method names must be verified against the running
+engine's `ClassDB`, not against memory of a previous major version.
+
+**B12 — an unparented `CollisionShape3D` is a two-symptom bug and one symptom is
+at exit.** `_build_water` constructed its shape, sized it, positioned it, and
+never called `add_child`. The harbour therefore had **zero collision**, and
+`city.gd::_spawn_check` — awaiting two physics frames, finding no `_ground_below`,
+and repositioning via `_find_ground` — teleported any player who spawned over the
+water. The second symptom was a leaked `GodotShape3D` RID reported after the
+harness `DONE` line. That leak had been counted as an unexplained 4th `^ERROR:`
+in the wave-48 log and written off as shutdown noise.
+
+It is the same rule as B5 ("assert the effect, not the construction") arriving
+from a different direction: B5 was a node built and never tree-attached, and
+this is a node built and never *parented*. The leak line in the log was the
+diagnosis the whole time.
+
+**Lesson recorded:** an `ERROR: N RID allocations of type 'GodotShape3D' were
+leaked at exit` is not shutdown noise — it names a collision shape that was
+allocated and never owned by anything. Treat a change in the leaked-RID count as
+a signal, and when a count has been stable-but-unexplained across waves, go and
+explain it. This one was a gameplay bug wearing the costume of a teardown
+diagnostic.
+
+**B13 — shipped assets that nothing loads.** `assets/fonts/` carried four DejaVu
+faces with generated `.import` files, and `menu.gd` credited "Fonts: DejaVu
+(Bitstream Vera / Arev license)" on the about card. There was no theme resource
+anywhere in the project, **not one `add_theme_font_override()` call in 42
+scripts**, and `gui/theme/custom_font_size` was the entire typography
+configuration. Every label in the game rendered in Godot's built-in fallback
+face. The credit was accurate about what was in the repository and wrong about
+what was on screen — and nothing fails, warns or logs when an imported asset
+goes unreferenced.
+
+Fixed by `scripts/ui/type.gd`: a `Type` autoload with three roles (display /
+body / mono), `Type.install()` setting a `Theme` whose **default** font is the
+body role on the root `Window` so Controls nobody thought about still inherit,
+and `Type.apply()` branching on node type because **`RichTextLabel` has no
+`font` theme item at all** — it takes one override per weight, and setting only
+`normal_font` leaves every bold span on the fallback. The step-97 assertion
+lists `res://assets/fonts/*.ttf` and requires every one to be mapped to a role:
+the regression guard is written from the data on disk, not from `Type`'s own
+answer.
+
+**Lesson recorded:** add "every imported asset is referenced" to the audit
+checklist alongside "every reference resolves" — the existing cross-ref pass
+only ever ran in one direction. An about/credits card is a claim about runtime
+behaviour and should be verified as one. And `RichTextLabel` weight overrides
+are a trap worth a comment at the call site, because it fails silently and only
+on the bold spans.
+
+**B14 — a mission verb that ticks a timer is a costume, not a mechanic.**
+`survive`, `chase`, `plant`, `defend`, `rail_cross` and `observe` each had a
+`_setup` branch, a `_tick` branch and authored data — and each did the same
+thing: count down and advance. Six names for one verb. `observe` iterated an
+`actors` list that nothing ever populated, so it iterated nothing. `rail_cross`
+was literally unwinnable on foot: the Smoke Line runs at 17.5 m/s and the player
+sprints at 6.4. `_tick_plant` re-armed the fuse every tick, so a planted charge
+could never go off. `_on_choice_picked` silently dropped the `rel2` and
+`faction_rep` keys the data authored.
+
+Now each has a real win *and* a real loss condition, and each writes a stat the
+Street Ledger surfaces: `holds_kept`, `runners_caught` / `runners_lost`,
+`sabotages` + `clean_blasts`, `wards_kept`, `rail_crossings`, `stakeouts`.
+`rail_cross` spawns the mission van; `observe` spawns two subjects and fails if
+either reaches `suspicion >= 100`; `defend` gives the ward 4.5 dps inside 7 m
+and fails the mission when it dies.
+
+**Lesson recorded:** a stage type is not implemented because a `match` arm
+exists. For each verb, name the **failure condition** — if the only way to not
+complete it is to run out of clock, it is a timer. The `17.5 vs 6.4 m/s` case is
+the sharper form of the same error: two authored numbers in different files that
+individually look fine and together make an objective impossible. Cross-file
+numeric comparisons against the physics that has to satisfy them.
+
+### Verified clean this wave
+
+- **River placement**: 0 district plates, 0 road strips, 0 building blocks, 0
+  POIs, 0 filling stations and 0 rail viaduct piers intersect any of the three
+  channels. The harness recomputes all of it from `city.json` each run.
+- **Route graph**: 442 nodes (436 lane + 6 crossing), 1 component, 442/442
+  reachable, **0 wading edges** — lane-to-lane and crossing ties alike.
+- **Bridges**: every arterial that meets water has one and only those do (2
+  road + 2 foot); every deck has collision you can stand on; no waypoint on a
+  live GPS route is in the water.
+- **Escapability**: the four landing treads descend monotonically and the
+  bottom one is below the waterline, so the Cut is not a one-way trip.
+- **Dialogue**: 57 trees, 161 nodes, **0 dangling `next`/`option` refs**, every
+  `start` resolves. All three terminals using ad-hoc sentinels (`"end"`, `""`)
+  normalized to `null`.
+- **Choice contract**: every `choice` stage's `options[].id` matches a terminal
+  node id in its referenced tree (`m10.choice_plan`, `m11.choice_final`,
+  `m12.choice_ledger` → `ledger_burned` / `ledger_kept` / `ledger_law`).
+- **Mission data**: 29 missions / 125 stages / 22 stage types; every `enemy`
+  value is one of the six valid ids; every cutscene id is one of the five that
+  exist; all six `race` tracks are in `RACE_TRACKS`.
+- **JSON round-trip**: `data/city.json` and `data/missions.json` are stable under
+  `json.dumps(indent=1)` + trailing newline; `data/dialogue.json` likewise.
+- **Fonts**: all 6 roles load a real `Font`; display / body / mono are three
+  genuinely different faces; the root `Window` carries the theme.
+- **Harness hygiene**: 0 `SCRIPT ERROR`, 3 `^ERROR:` — all after the `DONE`
+  line, all shutdown RID leaks, and one fewer than wave 48 because C1 is fixed.
+
+### Scorecard after wave 49
+
+| Axis | Wave 47 | Wave 48 | Wave 49 | Note |
+|---|---|---|---|---|
+| Systems depth | 9/10 | 9/10 | **9.5/10** | six verbs are mechanics now; difficulty is a real knob; the graph is connected |
+| Game feel | 8.5/10 | 8.5/10 | **8.5/10** | unchanged — nothing this wave touched combat or movement response |
+| Look & presentation | 7/10 | 7.5/10 | **8.5/10** | a river with real banks, bridges and a promenade; the whole UI is typeset rather than defaulted |

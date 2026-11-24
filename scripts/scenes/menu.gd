@@ -187,7 +187,8 @@ generated in-house for this project.
 
 Engine: Godot 4.7 (Mobile renderer)
 Target device: iPhone via XOGOT
-Fonts: DejaVu (Bitstream Vera / Arev license)
+Fonts: DejaVu Serif / Sans / Sans Mono
+(Bitstream Vera / Arev license)
 All textures, music, SFX and voice barks:
 original procedural assets (see ASSET_REGISTER.md).
 

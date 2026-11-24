@@ -1,5 +1,188 @@
 # LEVERAGE — Changelog
 
+## 2026-11-23 — DEPTH WAVE 49: a river that cuts the city, verbs that do things, and the fonts that were never loaded
+
+Wave 48 gave the city life on top of it. The audit that followed found the
+harder class of problem: things that were **authored, wired, and still inert**.
+Six mission verbs that ticked a timer and advanced; a difficulty setting with
+one setting; 2.1 MB of imported font data that nothing loaded; and a route
+graph with a hole in it that had been quietly returning an empty GPS path for a
+whole district. This wave also does the thing the user has asked for by name
+twice now — it puts a **river** in the city, and makes it real: banks, bridges,
+collision, water sheets, promenade, and a GPS that knows not to drive into it.
+
+Harness: **445 → 556 checks, 0 fails**, 0 `SCRIPT ERROR`, 3 engine `ERROR:`
+(all after the `DONE` line — shutdown RID leaks). 44 GDScript files, 21,751
+lines. 29 missions / **125 stages** (was 89). 57 dialogue trees (was 51).
+`world_gen.gd` 1,316 → **2,074 lines**; `mission_manager.gd` 907 → 1,523.
+
+### 1. The Cinder Cut — `scripts/world/world_gen.gd` (+758 lines)
+
+There was no river. `world.water_z` was a single number and the harbour was
+three scrolling quads 380 m south of everything. A city with a waterfront and
+no waterway through it has no reason for the docks to be where the docks are.
+
+- **Three channels**, all authored in `data/city.json` → `world.river`: the main
+  Cut at `z = −7` (9 m half-width, 608 m of open water from `x = −77` to the
+  harbour mouth at `x = 531`), **Crown Reach** running south from the Cut to the
+  harbour as the old estuary bed, and the **Crown Cut**, a 18 m branch up through
+  Crown Heights carrying two footbridges.
+- Every channel is validated against the real generated city before it was
+  committed: 0 district plates, 0 road strips, 0 building blocks, 0 POIs, 0
+  filling stations, 0 rail viaduct piers in the water. The harness recomputes
+  this from `city.json` on every run rather than trusting the builder's own
+  answer — it is the invariant a future edit to the data is most likely to
+  break silently.
+- **Real structure, not a blue quad**: 1.2 m retaining walls both banks, a 590 m
+  south-bank promenade at `z = −22` (walkable for its whole length — asserted by
+  raycast at 8 points, 0 holes), bollards every 26 m, lamps every 46 m feeding
+  the existing `nearest_lamp_positions()` moth/night-emission systems, four
+  flights of 12 landing steps, a weir at `z = −330` with a 3-box crest, and a
+  foam line where the Cut meets Crown Reach.
+- **Bridges are derived, never authored.** `_build_river_crossings()` reads
+  `world.arterials`, intersects each road's rect against each channel, and spans
+  whatever meets. Two road bridges (the `x = −70` and `x = 190` arterials) plus
+  two footbridges on the Crown Cut. Adding an arterial in the JSON automatically
+  gets a bridge; the harness asserts both directions — every crossing has a
+  bridge *and only* crossings do.
+- **Parapets, decks and a reason to be able to climb out.** The Cut is a 3.6 m
+  hole with a 0.7 m lip. If the landing stairs did not reach below the waterline
+  it would be a one-way trip and nothing in the game would say so. Asserted:
+  the four step treads descend monotonically (`0.0 → −1.10 → −1.93 → −3.02`) and
+  the bottom tread sits below `river_water_y = −1.30`.
+
+### 2. The GPS — Crown Heights was an unreachable island
+
+This is the defect the river exposed and the one that matters most.
+
+- `_route_graph_build()` had **two components**: 388 lane nodes and **48 that
+  belonged to Crown Heights alone**. The lane rings are per-block islands
+  stitched by a 70 m k-NN, and the gap between Neon Mile's easternmost ring
+  (`x = 137.8`) and Crown Heights' westernmost (`x = 242`) is **104 m** — past
+  the stitch cap. So `route_world()` returned an empty `PackedVector3Array` for
+  any journey to or from the Overlook, the Country Club, the Observatory, Crown
+  Premium Fuels or the Crown Heights stash. The phone drew nothing at all.
+  `m12_everyone` — the finale — opens with `goto(poi_overlook)`, so the last
+  mission in the game sent the player to a waypoint it could not route to.
+- Fix: the crossings are **nodes in the route graph**, not just geometry. Each
+  bridge gets a deck node, each bank gets a tie to the nearest lane node whose
+  straight line does not wade (`_rg_link_clear`), and a footbridge additionally
+  gets a landing node on the far side — one node is not enough, because a tie
+  from the middle of a 20 m span to a lane node 24 m away on the far bank clips
+  the very water the span exists to avoid.
+- Result, asserted live: **442 nodes, 1 component, 442/442 reachable**. Kiln Row
+  → the Country Club now routes 26 waypoints / **651 m** against a 622 m direct
+  line, crosses the Cut *on a bridge*, and has **0 waypoints in the water**.
+- **No route-graph edge leaves the road for the water** — asserted over every
+  edge in the graph, the 6 crossing ties included, and 0 fail. The fast reject in
+  `_river_blocked()` is deliberately conservative (Godot 4.7's `Geometry2D` has
+  no segment-vs-rect primitive at all; `Rect2.intersects_segment` is Godot 3 and
+  parses clean while crashing the autoload).
+
+### 3. Six mission verbs that now do something — `scripts/missions/mission_manager.gd` (+616 lines)
+
+`survive`, `chase`, `plant`, `defend`, `rail_cross` and `observe` all existed in
+the data, all had a `_setup`/`_tick` branch, and all did the same thing: count
+down a timer and advance. They were the same verb wearing six costumes.
+
+| Verb | Was | Now |
+|---|---|---|
+| `survive` | timer | real waves every 18 s, a 46 m leash, **fail after 8 s outside it** → `stats.holds_kept` |
+| `chase` | timer | forces `State.FLEE`, tires the runner after 12 s (`flee_speed` 5.2 → 3.9), catch **or** kill advances, escape at 210 m → `runners_caught` / `runners_lost` |
+| `plant` | timer | `points[]` from POIs or coords, a two-phase `all_armed` latch, and `_detonate_plant`: shake 1.1, fov punch 8°, 46 dmg / 18 m to NPCs, 28 / 14 m to the player, scorch decal, `crime_committed("explosion", 3)` → `sabotages`, plus `clean_blasts` when you are 16 m clear |
+| `defend` | timer | a ward with 4.5 dps inside 7 m, ≤ 4 attackers, ward dies ⇒ mission fails → `wards_kept` |
+| `rail_cross` | timer | spawns the mission van (17.5 m/s train vs 6.4 m/s on foot made it literally unwinnable), 9 s grace, 34 s floor → `rail_crossings` |
+| `observe` | iterated an empty `actors` list | spawns 2 real subjects, 12 s inside 7 m, and any subject reaching `suspicion ≥ 100` **fails** the stakeout → `stakeouts` |
+
+Eight new tracked stats surface in the phone's Street Ledger. Also fixed here:
+`_tick_plant` re-armed the fuse every tick (now a one-shot latch), `_on_choice_picked`
+silently dropped `rel2` and `faction_rep`, talk NPCs leaked past their stage,
+two spellings of the pickup root meant one never got cleaned up, `race_furnace`
+was missing from `RACE_TRACKS`, a negative `rail_cross` deadline was possible,
+and a chase could fail itself.
+
+### 4. The mission rewrite — 89 → 125 stages
+
+- 29 missions: **12 story** (min 4 / median 5 / max 9 stages), **17 side**
+  (min 3 / median 3 / max 4). 22 distinct stage types.
+- Three finales now have shape rather than a long list of `goto`s:
+  `m10_smoke_line` (9 stages) runs observe → chase → plant → survive → choice;
+  `m11_the_leverage` (8) runs rail_cross → observe → `cs_finale` → combat →
+  chase → defend → choice; `m12_everyone` (7) runs observe → choice → `cs_ending`.
+- Every `choice` stage's `options[].id` was cross-validated against the
+  dialogue tree's terminal node ids — the contract is enforced, not assumed.
+- Six new trees: `dlg_m12_eli` (9 nodes), `dlg_m12_ruth` (12),
+  `dlg_m12_choice` (6), `dlg_side_race_dex`, `dlg_side_fight_mags`,
+  `dlg_side_dock_gunnar`. 51 → 57 trees / 161 nodes.
+
+### 5. Difficulty presets — one knob that moves everything
+
+`Difficulty` was a flat 1.0. Now three named presets:
+
+| # | Preset | Multiplier | What it is |
+|---|---|---|---|
+| 0 | **Street** | 0.72 | the story with room to breathe |
+| 1 | **Ledger** | 1.00 | as authored |
+| 2 | **Crowe** | 1.34 | the city fights back |
+
+One multiplier drives enemy HP and damage, accuracy bonus, aggression, loadout
+rolls, wave counts, the police cap and dispatch size, crowd and traffic density,
+and fight purses. Persisted as `Game.settings["difficulty"]` (not in the save),
+applied in `game.gd::_ready()`, and selectable in the phone's Settings app with
+a plain-language description of what the chosen preset actually does.
+
+### 6. Typography — `scripts/ui/type.gd` (new autoload)
+
+**Four DejaVu faces shipped in `assets/fonts/`, were credited by name on the
+menu's about card, and not one of them was ever loaded.** There was no theme
+resource anywhere in the project, not a single `add_theme_font_override()` call
+in 42 scripts, and `gui/theme/custom_font_size` was the entire typography
+configuration. The whole game — title card, HUD, phone, dialogue, cutscene
+slates — rendered in Godot's built-in fallback face while 2.1 MB of imported
+font data sat in the package doing nothing. A noir game about paperwork and
+reputation, in the engine's default sans.
+
+Three roles, one face each, asked for **by name and never by path**:
+
+- **display** — DejaVu Serif. Titles, slates, speaker names, place names,
+  section headers. A high-contrast serif reads as case file and as newspaper,
+  which is the register the game is written in; it is also what the amber
+  `Color(0.95, 0.72, 0.25)` had been approximating by colour alone.
+- **body** — DejaVu Sans. Objectives, barks, dialogue, buttons, help text.
+- **mono** — DejaVu Sans Mono. Everything that is a *number*: credits, wanted
+  level, the clock, ammo, road speed, fuel, XP, prices. Proportional figures
+  make a money counter crawl sideways as it counts; tabular ones hold still.
+
+`Type.install()` puts a `Theme` whose **default** face is the body role on the
+root `Window`, so a Control nobody thought about still does not fall back to
+the engine's. `Type.apply()` branches on node type, because **`RichTextLabel`
+has no `font` theme item at all** — it takes one override per weight, and
+setting only `normal_font` leaves every bold span on the fallback. The two
+serif faces are added under the same Bitstream Vera / Arev licence already
+shipped in `DejaVu-LICENSE.txt`, and the about card now names the three
+families it actually uses.
+
+### 7. Defects found on the way
+
+| # | Finding | Evidence | Fix |
+|---|---|---|---|
+| C1 | **`_build_water` never parented its `CollisionShape3D`** | `world_gen.gd:1124` — shape built, sized, positioned, and left with no parent, so it leaked a `GodotShape3D` RID at exit and the harbour had **zero collision** | Parented. The leak was the 4th unexplained `^ERROR:` in the wave-48 log; both symptoms are gone |
+| C2 | **`city.gd::_spawn_check` teleported the player** | Awaiting 2 physics frames then `_ground_below` returned false over the harbour for the same reason as C1 | Same fix; asserted by raycast now, not by reading the source |
+| C3 | **`_station_along_z()` had the axis convention inverted** | `city.json`'s `axis` names the *constant* coordinate (`"x"` = a line of constant x running N–S); the builder read it the other way | Fixed — and the harness assertion at step 93 mirrored the same inversion, so it agreed with the bug it was checking. Both corrected; the test now recomputes the expected orientation from `city.json` per station (3 of 6 run north-south) |
+| C4 | **`_build_river` weir passed a Z coordinate as a Y base** | `Acc.box(slot, centre, size)` takes x/z *centres* and a y *base*; the weir got `wz = −330` as its floor, putting three boxes 330 m underground | `var crest := -0.95`, with `wz` kept for z slots only |
+| C5 | **`npc.gd` used `Skeleton3D.bind_child_node_to_bone()`** | Godot 3 API; parsed clean, threw at load, and took the whole NPC armour visual with it | `BoneAttachment3D` chest plate in `_armor_visual()` |
+| C6 | **`sta_neon`'s forecourt straddled the `x = −70` arterial by 6 m** | 30 × 20 pad centred at `x = −58` overlapping a 16 m-wide road centred at `x = −70` | Moved to `x = −46` |
+| C7 | **Three dangling dialogue terminals** | `dlg_m12_choice` node `done` had `next: "end"` with no `end` node; two more used `next: ""` as an ad-hoc sentinel | All normalized to `next: null`, the documented terminal. Cross-ref validator now reports 0 dangling refs across 57 trees |
+| C8 | **`Rect2.intersects_segment()` and an undeclared `neon` local** | Both pass `gdparse` and both killed the entire `WorldGen` autoload at load, cascading into 380 missing harness checks | `Geometry2D.get_closest_point_to_segment` for the reject; `var neon := _neon_slot()` added to both bridge builders. **A new engine-level parse gate (`--check-only --script`, grepping only `Parse Error`) now runs before every harness run** |
+
+C8 is the reason the gate exists: `gdparse` cannot see identifier scope or a
+missing engine API, and one such error takes an autoload down with it. The first
+run after the river landed reported **130 checks / 6 fails** — not because the
+river was broken, but because three invisible parse errors had silently deleted
+the city.
+
+---
+
 ## 2026-11-24 — DEPTH WAVE 48: a living world, and a product that ships
 
 Wave 47 made the game *feel* right. The audit that followed said the honest

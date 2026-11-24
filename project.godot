@@ -27,6 +27,7 @@ buses/channel_disable_frames=2
 
 Bus="*res://scripts/core/bus.gd"
 Db="*res://scripts/core/db.gd"
+Type="*res://scripts/ui/type.gd"
 WorldState="*res://scripts/core/world_state.gd"
 Difficulty="*res://scripts/core/difficulty.gd"
 Progression="*res://scripts/core/progression.gd"

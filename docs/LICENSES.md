@@ -64,6 +64,21 @@ Redistributed under the DejaVu license (Bitstream Vera + Arev bases):
 The full unmodified license text ships at `assets/fonts/DejaVu-LICENSE.txt`.
 No font files were modified, so the rename clause is not triggered.
 
+Six faces ship, all from the same upstream DejaVu release, all mapped to a
+typographic role by the `Type` autoload (`scripts/ui/type.gd`):
+
+| File | Role |
+|---|---|
+| `DejaVuSerif.ttf` / `-Bold.ttf` | `display` — titles, cutscene slates, speaker names, place names, section headers |
+| `DejaVuSans.ttf` / `-Bold.ttf` | `body` — objectives, barks, dialogue, buttons, help text; also the theme's default face |
+| `DejaVuSansMono.ttf` / `-Bold.ttf` | `mono` — every figure: credits, wanted level, clock, ammo, speed, fuel, XP, prices |
+
+Wave 49 added the two Serif faces (the same licence already shipped covers them)
+and is also the wave in which any of these files were loaded at all: before it,
+four faces sat in `assets/fonts/` with generated `.import` files, were credited
+by name on the menu's about card, and not one was ever referenced by a single
+line of code.
+
 ## 4. Third-party content NOT used
 
 - No Kenney, Quaternius, Poly Pizza, OpenGameArt or AssetLib assets are

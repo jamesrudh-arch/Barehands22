@@ -35,6 +35,10 @@ var _routine_i := 0
 var _sim_t := 0.0
 var _sim_rate := 60.0
 var _flee_from: Vector3 = Vector3.ZERO
+## Fleeing pace in m/s. The player sprints at 6.4, so 5.2 is catchable but
+## only just. MissionManager drives this DOWN on a `chase` target so a long
+## pursuit is won by pressure rather than by a faster constant.
+var flee_speed: float = 5.2
 var _gawk_t := 0.0
 var _bark_cd := 0.0
 var _talk_partner: Node = null
@@ -195,9 +199,17 @@ func _armor_visual() -> void:
 	m.roughness = 0.6
 	m.metallic = 0.15
 	mi.material_override = m
-	sk.add_child(mi)
+	# Skeleton3D.bind_child_node_to_bone() is a GODOT 3 method — it does not
+	# exist in Godot 4, so this threw a script error on every halcyon_guard
+	# spawn and the armour plate was parented to the skeleton root instead of
+	# the chest bone, meaning it never followed the animation at all. Godot 4's
+	# equivalent is a BoneAttachment3D.
+	var ba := BoneAttachment3D.new()
+	ba.bone_idx = chest
+	sk.add_child(ba)
+	ba.owner = sk.owner
+	ba.add_child(mi)
 	mi.owner = sk.owner
-	sk.bind_child_node_to_bone(chest, mi)
 
 
 func _build_body(params: Dictionary) -> void:
@@ -561,7 +573,7 @@ func _flee(dt: float, _d: float) -> void:
 	away.y = 0
 	if away.length() < 0.5:
 		away = Vector3(1, 0, 0)
-	velocity = away.normalized() * 5.2
+	velocity = away.normalized() * flee_speed
 	_face(away.normalized(), dt)
 	anim.mode = "locomote"
 	anim.sprint = true
@@ -578,6 +590,11 @@ func _try_hop_in_car() -> void:
 	## Fleeing civilians sometimes dive into a nearby traffic car and
 	## peel away — the block scattering from wave 32, with wheels.
 	if hostile:
+		return
+	# A mission's chase target stays on foot. Diving into traffic queue_free()s
+	# this node, which would end a `chase` stage as an uncatchable accident
+	# rather than as something the player did or failed to do.
+	if has_meta("chase_target"):
 		return
 	_hop_t -= get_physics_process_delta_time()
 	if _hop_t > 0.0:

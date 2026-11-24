@@ -188,6 +188,8 @@ func build_city(parent: Node3D) -> void:
 		_build_district(did, city[did])
 	_build_arterials(city.get("world", {}))
 	_build_water(city.get("world", {}))
+	_build_river(city.get("world", {}))
+	_build_river_crossings(city.get("world", {}))
 	_build_rail(city.get("world", {}))
 	_build_stations(city.get("world", {}))
 	built = true
@@ -891,23 +893,30 @@ func _sta_bar(acc: Acc, i: int, ax: float, az: float, bx: float, bz: float,
 
 func _station_along_z(p: Vector2, w: Dictionary) -> bool:
 	## true when the nearest arterial runs north-south, so the canopy's long
-	## axis (and the bays) should run with it
+	## axis (and the bays) should run with it.
+	##
+	## city.json's axis label names the coordinate that is CONSTANT: axis "x"
+	## is a line of constant x, i.e. a road running N-S at x = at. That is what
+	## _build_arterials lays down and what the Smoke Line viaduct assumes when
+	## it runs along the "z = -30" arterial in x. This function had the two
+	## cases the other way round, so it measured every station against the wrong
+	## family of roads — Slag Diesel Yard fronts the x = 190 arterial 60 m to
+	## its west, but was told its nearest road was 280 m away, gave up, and
+	## built its canopy turned 90 degrees away from the traffic it exists to
+	## serve. The other five came out right by coincidence.
 	var best_d := 1e9
-	var best_axis := "x"
+	var best_ns := false
 	for a in w.get("arterials", []):
 		var ad: Dictionary = a
 		var at := float(ad.get("at", 0))
-		var d: float
-		if str(ad.get("axis", "x")) == "z":
-			d = absf(p.x - at)      # road runs N-S at x = at
-		else:
-			d = absf(p.y - at)      # road runs E-W at z = at
+		var ns: bool = str(ad.get("axis", "x")) == "x"
+		var d: float = absf(p.x - at) if ns else absf(p.y - at)
 		if d < best_d:
 			best_d = d
-			best_axis = str(ad.get("axis", "x"))
+			best_ns = ns
 	if best_d > 90.0:
 		return false                # no road worth orienting to
-	return best_axis == "z"
+	return best_ns
 
 
 func _station_brand(brand: String) -> Color:
@@ -1112,20 +1121,28 @@ func _build_water(w: Dictionary) -> void:
 	mi3.position = centre + Vector3(0, 0.05, sz.y * 0.5 - 3.0)
 	root.add_child(mi3)
 
-	# [material, scroll speed (uv/sec), axis]
+	# [material, scroll speed (uv/sec)]. Assigned here, appended to by
+	# _build_river so the Cut's sheets join the same _process() scroll.
 	_water_layers = [
 		[base_m, Vector2(0.014, 0.009)],
 		[chop_m, Vector2(-0.023, 0.017)],
 		[foam_m, Vector2(-0.085, 0.0)],
 	]
+	harbour_layers = _water_layers.duplicate()
 	_water_foam = foam_m
 
+	# The sea is solid. This CollisionShape3D was created, sized, shaped — and
+	# never parented to its body, so for the whole life of the project the
+	# harbour has had exactly zero collision: walk off the Berth 7 quay and you
+	# fall out of the world instead of into the water. One missing add_child.
 	var sb := StaticBody3D.new()
+	sb.name = "HarbourCollision"
 	var cs := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = Vector3(1400, 2, 260)
 	cs.shape = box
 	sb.position = Vector3(100, -1.5, z - 130)
+	sb.add_child(cs)
 	root.add_child(sb)
 
 
@@ -1133,6 +1150,12 @@ func _build_water(w: Dictionary) -> void:
 var _water_layers: Array = []
 var _water_foam: StandardMaterial3D = null
 var _water_t := 0.0
+## Which sheets belong to whom. _water_layers is one flat list that _process()
+## scrolls, and the river appends to it — so a test that wants to assert
+## something about the HARBOUR's three sheets cannot index the flat list
+## without also depending on the river's build order.
+var harbour_layers: Array = []
+var river_layers: Array = []
 
 
 func _process(delta: float) -> void:
@@ -1151,6 +1174,633 @@ func _process(delta: float) -> void:
 		# surge: alpha and UV stretch rise and fall together
 		var surge := 0.5 + 0.5 * sin(_water_t * 0.55)
 		_water_foam.albedo_color = Color(0.86, 0.90, 0.92, 0.20 + 0.26 * surge)
+
+
+
+
+# =================================================================== RIVER ==
+## The Cinder Cut.
+##
+## Cinder City had a harbour, four arterials, six districts and a freight
+## viaduct — and not one metre of running water inside the city. The harbour
+## sheet stops dead at z = -380, so every line about "the Cut", "the Reach" or
+## "meet me down by the water" was a word with no geometry behind it, and the
+## seams between districts were voids you could fall straight through.
+##
+## The Cut runs east from a sluice head behind Kiln Row, along the bare seam
+## between the furnace districts and the neon ones, then turns south at Crown
+## Reach, drops through the Reach weir and empties into the harbour. The Crown
+## Cut branches north off it between Neon Mile and Crown Heights, with the
+## x = 190 arterial as its quayside road and two footbridges over it — which
+## also gives poi_stash_crown at [236, 190] ground to stand on for the first
+## time: it was authored 4 m outside its own district's plate and floated.
+##
+## Road bridges are NOT authored. _build_river_crossings walks the arterials in
+## city.json and raises a bridge wherever one actually meets water, so moving a
+## road in the data moves its bridge with it. Footbridges ARE authored, because
+## which two banks are worth joining is a decision, not a consequence.
+##
+## Every rectangle in here was checked against district plates, road strips,
+## building blocks, POIs and filling stations before it was written: the whole
+## system fits in the corridors and touches nothing. tests/harness.gd re-proves
+## that at runtime from the data, so a future edit to city.json cannot quietly
+## drop a quay wall through somebody's ground floor.
+const RIVER_WALL := 1.2          # quay wall thickness
+const RIVER_TOP := 0.70          # how far the quay stands proud of the street
+const RIVER_RAIL := 1.05         # railing height on the open promenade edge
+const RIVER_STEP_RISE := 0.275
+const RIVER_STEP_RUN := 0.42
+const RIVER_STEP_N := 12         # 12 risers walk you from street level to bed
+const RIVER_BAY := 4.0           # landing-step bay width
+const RIVER_LAMP_EVERY := 46.0
+const RIVER_BOLLARD_EVERY := 26.0
+const RIVER_TILE := 9.0          # metres of water per texture tile
+
+var river_channels: Array = []   # {id, name, axis, rect: Rect2 in (x,z)}
+var river_bridges: Array = []    # {id, kind, axis, at, half_span, half_w, deck_y}
+var river_bounds: Rect2 = Rect2()
+var river_name := ""
+var river_water_y := -1.30       # water surface, for wading checks and effects
+var _river_built := false
+var _river_by := -3.60           # bed underside
+
+
+func _riv_box(acc: Acc, slot: int, x0: float, x1: float, y0: float, h: float,
+		z0: float, z1: float, tint := Color(1, 1, 1)) -> void:
+	## Min-corner authoring. Acc.box wants an x/z CENTRE and a y BASE, and
+	## getting that backwards builds the entire river in the wrong place while
+	## still parsing cleanly, so every box in this section goes through here.
+	if x1 <= x0 or z1 <= z0 or h <= 0.0:
+		return
+	acc.box(slot, Vector3((x0 + x1) * 0.5, y0, (z0 + z1) * 0.5),
+		Vector3(x1 - x0, h, z1 - z0), Vector3(0.22, 0.22, 0.22), tint)
+
+
+func _riv_span_gaps(a0: float, a1: float, gaps: Array) -> Array:
+	## [a0, a1] minus every [g0, g1] in gaps, as the surviving spans in order.
+	## Quay walls have to be interrupted by step bays, cut junctions and bridge
+	## abutments, and doing that arithmetic inline four times is how a wall ends
+	## up built straight through a staircase.
+	var gs: Array = gaps.duplicate()
+	gs.sort_custom(func(x, y): return float(x[0]) < float(y[0]))
+	var out: Array = []
+	var cur := a0
+	for gv in gs:
+		var g: Array = gv
+		var g0 := float(g[0])
+		var g1 := float(g[1])
+		if g1 <= cur or g0 >= a1:
+			continue
+		if g0 > cur:
+			out.append([cur, g0])
+		cur = maxf(cur, g1)
+	if cur < a1:
+		out.append([cur, a1])
+	return out
+
+
+func in_river(p: Vector2) -> bool:
+	## True when p is over open water. Bridge decks answer false, so this is
+	## safe both for "can I stand here" and for pruning GPS routes.
+	if not _river_built or river_channels.is_empty():
+		return false
+	if not river_bounds.grow(0.25).has_point(p):
+		return false
+	if bridge_at(p) >= 0:
+		return false
+	for c in river_channels:
+		var r: Rect2 = c["rect"]
+		if r.has_point(p):
+			return true
+	return false
+
+
+func bridge_at(p: Vector2) -> int:
+	## Index of the bridge whose deck covers p, or -1. b["axis"] is the
+	## direction TRAFFIC runs across the water, which is perpendicular to the
+	## waterway's own axis — the opposite of how city.json labels arterials,
+	## where axis "x" means a line of constant x. Both conventions live in this
+	## file and this is the one place they meet, so it is spelled out.
+	for i in river_bridges.size():
+		var b: Dictionary = river_bridges[i]
+		var at: Vector2 = b["at"]
+		var hs: float = b["half_span"]
+		var hw: float = b["half_w"]
+		if str(b["axis"]) == "z":
+			if absf(p.x - at.x) <= hw and absf(p.y - at.y) <= hs:
+				return i
+		else:
+			if absf(p.x - at.x) <= hs and absf(p.y - at.y) <= hw:
+				return i
+	return -1
+
+
+func _riv_wall(acc: Acc, con: int, rust: int, x0: float, x1: float, z0: float, z1: float,
+		by: float, sy: float, stone: Color, grime: Color, dark: Color,
+		top: float = RIVER_TOP) -> void:
+	## A quay wall in two lifts. Everything below the waterline is stained dark,
+	## everything above it is clean stone, with a metal coping on top. That one
+	## colour break is what stops a quay reading as a garden wall dropped into a
+	## hole, and it costs two boxes.
+	if x1 <= x0 or z1 <= z0 or top <= by:
+		return
+	var wet_top := minf(sy + 0.30, top)
+	_riv_box(acc, con, x0, x1, by, wet_top - by, z0, z1, grime)
+	if top > wet_top:
+		_riv_box(acc, con, x0, x1, wet_top, top - wet_top, z0, z1, stone)
+	_riv_box(acc, rust, x0 - 0.06, x1 + 0.06, top, 0.10, z0 - 0.06, z1 + 0.06, dark)
+
+
+func _riv_clear_of(x: float, excl: Array, margin: float) -> bool:
+	for e in excl:
+		if absf(x - float(e)) < margin:
+			return false
+	return true
+
+
+func _riv_in_cut(x: float, margin: float) -> bool:
+	for ch in river_channels:
+		if not ch.has("cut"):
+			continue
+		var r: Rect2 = ch["rect"]
+		if x > r.position.x - margin and x < r.end.x + margin:
+			return true
+	return false
+
+
+func _build_river(w: Dictionary) -> void:
+	var cfg: Dictionary = w.get("river", {})
+	if cfg.is_empty():
+		return
+	var hw: float = float(cfg.get("half_width", 9.0))
+	var zc: float = float(cfg.get("z", -7.0))
+	var hx: float = float(cfg.get("head_x", -77.0))
+	var mx: float = float(cfg.get("mouth_x", 531.0))
+	var sy: float = float(cfg.get("surface_y", -1.30))
+	var by: float = float(cfg.get("bed_y", -3.60))
+	var pz: float = float(cfg.get("promenade_z", -22.0))
+	var rz: float = float(cfg.get("reach_to_z", -384.0))
+	var wz: float = float(cfg.get("weir_z", -330.0))
+	var hwy: float = float(cfg.get("harbour_y", -0.62))
+	var z0 := zc - hw
+	var z1 := zc + hw
+	var rx0 := mx - hw * 2.0       # the Reach: the last channel-width of the
+	var rx1 := mx                  # Cut, turned south towards the harbour
+	river_name = str(cfg.get("name", "the Cinder Cut"))
+	river_water_y = sy
+	_river_by = by
+
+	# ---- the logical channels: what in_river() and the bridge derivation read
+	river_channels = []
+	river_channels.append({"id": "main", "name": river_name, "axis": "x",
+		"rect": Rect2(Vector2(hx, z0), Vector2(mx - hx, hw * 2.0))})
+	river_channels.append({"id": "reach", "name": str(cfg.get("reach_name", "Crown Reach")),
+		"axis": "z", "rect": Rect2(Vector2(rx0, rz), Vector2(rx1 - rx0, z1 - rz))})
+	for c in cfg.get("cuts", []):
+		var cd: Dictionary = c
+		var cx0 := float(cd.get("x0", 0.0))
+		var cx1 := float(cd.get("x1", 0.0))
+		var cz1 := float(cd.get("to_z", 0.0))
+		if cx1 <= cx0 or cz1 <= z1:
+			push_warning("WorldGen: river cut '%s' has an empty rect — skipped" % str(cd.get("id", "?")))
+			continue
+		river_channels.append({"id": str(cd.get("id", "cut")), "name": str(cd.get("name", "Cut")),
+			"axis": "z", "cut": cd,
+			"rect": Rect2(Vector2(cx0, z0), Vector2(cx1 - cx0, cz1 - z0))})
+	river_bounds = river_channels[0]["rect"]
+	for ch in river_channels:
+		river_bounds = river_bounds.merge(ch["rect"])
+	_river_built = true
+
+	var acc := Acc.new()
+	var con := mat_slot("concrete")
+	var met := mat_slot("metal")
+	var rust := mat_slot("rust")
+	var walk := mat_slot("sidewalk")
+	var neon := _neon_slot()
+	var stone := Color(0.400, 0.395, 0.385)
+	var dark := Color(0.235, 0.230, 0.225)
+	var grime := Color(0.265, 0.262, 0.250)
+	var silt := Color(0.205, 0.200, 0.185)
+	var bedtop := by + 0.30
+	# where the carriageways are, so quay furniture never ends up under a span
+	var crossings: Array = []
+	for a in w.get("arterials", []):
+		var ad: Dictionary = a
+		if str(ad.get("axis", "x")) == "x":
+			crossings.append(float(ad.get("at", 0.0)))
+
+	# ---- beds. Tiled so that no two channel beds overlap: coincident faces
+	#      inside one merged trimesh are how you get a floor that buzzes.
+	_riv_box(acc, con, hx, rx0, by, 0.30, z0, z1, silt)
+	_riv_box(acc, con, rx0, rx1, by, 0.30, rz, z1, silt)
+	for ch in river_channels:
+		if str(ch["id"]) == "main" or str(ch["id"]) == "reach":
+			continue
+		var r: Rect2 = ch["rect"]
+		_riv_box(acc, con, r.position.x, r.end.x, by, 0.30, z1, r.end.y, silt)
+
+	# ---- quay walls. The north wall of the Cut is interrupted wherever a cut
+	#      joins it, the south wall wherever a landing stair descends, and the
+	#      south wall stops dead where the Reach turns south.
+	var cut_gaps: Array = []
+	for ch in river_channels:
+		if not ch.has("cut"):
+			continue
+		var r2: Rect2 = ch["rect"]
+		cut_gaps.append([r2.position.x - RIVER_WALL, r2.end.x + RIVER_WALL])
+	var bay_gaps: Array = []
+	for bxv in cfg.get("steps_at", []):
+		bay_gaps.append([float(bxv) - RIVER_BAY * 0.5, float(bxv) + RIVER_BAY * 0.5])
+	var swall_end := rx0 - RIVER_WALL
+	for sv in _riv_span_gaps(hx, mx + RIVER_WALL, cut_gaps):
+		var s: Array = sv
+		_riv_wall(acc, con, rust, float(s[0]), float(s[1]), z1, z1 + RIVER_WALL, by, sy, stone, grime, dark)
+	for sv in _riv_span_gaps(hx, swall_end, bay_gaps):
+		var s: Array = sv
+		_riv_wall(acc, con, rust, float(s[0]), float(s[1]), z0 - RIVER_WALL, z0, by, sy, stone, grime, dark)
+	_riv_wall(acc, con, rust, rx0 - RIVER_WALL, rx0, rz, z0, by, sy, stone, grime, dark)
+	_riv_wall(acc, con, rust, rx1, rx1 + RIVER_WALL, rz, z1 + RIVER_WALL, by, sy, stone, grime, dark)
+	for ch in river_channels:
+		if not ch.has("cut"):
+			continue
+		var cd2: Dictionary = ch["cut"]
+		var kx0 := float(cd2["x0"])
+		var kx1 := float(cd2["x1"])
+		var kz1 := float(cd2["to_z"])
+		_riv_wall(acc, con, rust, kx0 - RIVER_WALL, kx0, z1 + RIVER_WALL, kz1, by, sy, stone, grime, dark)
+		_riv_wall(acc, con, rust, kx1, kx1 + RIVER_WALL, z1 + RIVER_WALL, kz1, by, sy, stone, grime, dark)
+		# the head wall is taller: this is where the cut stops, and it should
+		# read as a structure from the far bank rather than as a low kerb
+		_riv_wall(acc, con, rust, kx0 - RIVER_WALL, kx1 + RIVER_WALL, kz1, kz1 + 1.5, by, sy, stone, grime, dark, 2.60)
+		# ---- the east-bank walk. The far side of a cut is dead ground without
+		#      it, and it is what the footbridges actually land on. It also runs
+		#      under poi_stash_crown, which had nothing to stand on before.
+		var ex1 := float(cd2.get("east_walk_to_x", kx1 + RIVER_WALL))
+		if ex1 > kx1 + RIVER_WALL:
+			_riv_box(acc, walk, kx1 + RIVER_WALL, ex1, -0.35, 0.35, z1 + RIVER_WALL, kz1, stone)
+			var lzp := kz1 - 20.0
+			while lzp > z1 + RIVER_WALL + 12.0:
+				var lpp := Vector3(kx1 + RIVER_WALL + 3.4, 0.0, lzp)
+				_add_lamp(acc, lpp, district_at(lpp), [255, 196, 120])
+				lzp -= 58.0
+
+	# ---- the sluice head: the Cut comes out of a gatehouse behind Kiln Row ---
+	_riv_wall(acc, con, rust, hx - 2.0, hx, z0 - RIVER_WALL, z1 + RIVER_WALL, by, sy, stone, grime, dark, 3.40)
+	var glen := (z1 + RIVER_WALL) - (z0 - RIVER_WALL)
+	for k in 3:
+		var gz0 := (z0 - RIVER_WALL) + 0.55 + float(k) * (glen - 1.1) / 3.0
+		var gz1 := gz0 + (glen - 1.1) / 3.0 - 0.55
+		_riv_box(acc, rust, hx - 2.14, hx - 1.96, by + 0.45, (sy + 0.95) - (by + 0.45), gz0, gz1, Color(0.40, 0.29, 0.21))
+	_riv_box(acc, neon, hx - 1.50, hx - 0.50, 3.40, 0.34, zc - 0.45, zc + 0.45, Color(0.95, 0.34, 0.22))
+	var slp := Vector3(hx - 1.0, 3.72, zc)
+	lamp_posts.append({"pos": slp, "district": district_at(slp), "color": Color(0.95, 0.34, 0.22)})
+
+	# ---- the south-bank promenade. This is why the Cut is a place and not a
+	#      hazard: 590 m of walkable quayside linking Kiln Row, the Furnace,
+	#      Neon Mile, the Slagworks and Crown Reach over ground that was
+	#      previously a hole in the world.
+	_riv_box(acc, walk, hx, swall_end, -0.35, 0.35, pz, z0 - RIVER_WALL, stone)
+	_riv_box(acc, con, hx, swall_end, 0.0, 0.16, pz - 0.4, pz, dark)
+	# The east-west arterial only reaches x = 350, so east of that the kerb is
+	# the edge of the world and needs a railing rather than a road.
+	var rail_from := 350.0
+	if rail_from < swall_end:
+		_riv_box(acc, met, rail_from, swall_end, RIVER_RAIL - 0.10, 0.10, pz - 0.36, pz - 0.24, dark)
+		_riv_box(acc, met, rail_from, swall_end, 0.56, 0.08, pz - 0.34, pz - 0.26, dark)
+		var qx := rail_from
+		while qx < swall_end:
+			_riv_box(acc, met, qx, qx + 0.14, 0.0, RIVER_RAIL, pz - 0.40, pz - 0.16, dark)
+			qx += 6.5
+
+	# ---- landing stairs. Without these the Cut is a 3.6 m hole with a 0.7 m
+	#      parapet on both sides: go in and you are in it for the rest of the
+	#      night. Bays are sited clear of both bridges and of the cut.
+	for bxv in cfg.get("steps_at", []):
+		var bxc := float(bxv)
+		var bx0 := bxc - RIVER_BAY * 0.5
+		var bx1 := bxc + RIVER_BAY * 0.5
+		var nsteps := RIVER_STEP_N
+		while nsteps > 1 and -float(nsteps - 1) * RIVER_STEP_RISE <= bedtop:
+			nsteps -= 1
+		var send := (z0 - RIVER_WALL) + float(nsteps) * RIVER_STEP_RUN
+		for k in nsteps:
+			var sz0 := (z0 - RIVER_WALL) + float(k) * RIVER_STEP_RUN
+			var ty := -float(k) * RIVER_STEP_RISE
+			_riv_box(acc, con, bx0, bx1, by, ty - by, sz0, sz0 + RIVER_STEP_RUN, stone)
+		_riv_wall(acc, con, rust, bx0 - 0.30, bx0, z0 - RIVER_WALL, send, by, sy, stone, grime, dark)
+		_riv_wall(acc, con, rust, bx1, bx1 + 0.30, z0 - RIVER_WALL, send, by, sy, stone, grime, dark)
+
+	# ---- mooring bollards along the district-side quay ---------------------
+	var bxp := hx + 14.0
+	while bxp < mx - 8.0:
+		if _riv_clear_of(bxp, crossings, 15.0) and not _riv_in_cut(bxp, RIVER_WALL + 2.5):
+			var bz := z1 + RIVER_WALL * 0.5
+			acc.cyl(rust, Vector3(bxp, RIVER_TOP + 0.10, bz), Vector3(bxp, RIVER_TOP + 0.60, bz),
+				0.17, 0.14, 7, Color(0.34, 0.28, 0.22))
+			_riv_box(acc, rust, bxp - 0.23, bxp + 0.23, RIVER_TOP + 0.54, 0.12, bz - 0.23, bz + 0.23, dark)
+		bxp += RIVER_BOLLARD_EVERY
+
+	# ---- promenade lamps. They join the same pooled registry the streets use,
+	#      so the Cut is lit at night without adding a single light node.
+	var lx := hx + 22.0
+	while lx < swall_end - 10.0:
+		if _riv_clear_of(lx, crossings, 13.0) and not _riv_in_cut(lx, RIVER_WALL + 4.0):
+			var lpos := Vector3(lx, 0.0, pz + 2.2)
+			_add_lamp(acc, lpos, district_at(lpos), [255, 196, 120])
+		lx += RIVER_LAMP_EVERY
+
+	# ---- the Reach weir. The harbour sits at y = -0.62 and the Cut at -1.30,
+	#      so without a structure between them the two levels would meet in a
+	#      0.68 m step in the middle of nowhere. The weir is why the Cut holds
+	#      its level at all, and it is a landmark from the Crown Heights overlook.
+	var crest := -0.95   # between the Cut at -1.30 and the harbour at -0.62
+	_riv_box(acc, con, rx0 - RIVER_WALL, rx1 + RIVER_WALL, by, crest - by, wz - 4.0, wz, stone)
+	var gw := (rx1 + RIVER_WALL - (rx0 - RIVER_WALL)) / 3.0
+	for k in 3:
+		var gx0 := (rx0 - RIVER_WALL) + float(k) * gw
+		_riv_box(acc, met, gx0, gx0 + 0.26, crest, 2.60, wz - 3.80, wz - 0.20, dark)
+		_riv_box(acc, rust, gx0 + 0.26, gx0 + gw - 0.26, crest, 2.35, wz - 3.60, wz - 0.40, Color(0.42, 0.30, 0.22))
+	_riv_box(acc, met, rx0 - RIVER_WALL - 0.3, rx1 + RIVER_WALL + 0.3, 1.55, 0.30, wz - 3.90, wz - 0.10, dark)
+	_riv_box(acc, neon, rx0 + 3.0, rx0 + 7.0, 1.85, 0.22, wz - 2.60, wz - 1.40, Color(0.95, 0.72, 0.30))
+	var wlp := Vector3(rx0 + 5.0, 2.10, wz - 2.0)
+	lamp_posts.append({"pos": wlp, "district": district_at(wlp), "color": Color(0.95, 0.72, 0.30)})
+
+	var node := Node3D.new()
+	node.name = "river"
+	root.add_child(node)
+	_commit(acc, node, "river")
+
+	# ---- water. Two sheets per reach scrolling against each other, the same
+	#      trick the harbour uses, because water that never moves reads as
+	#      painted on. _build_water runs first and owns _water_layers, so this
+	#      appends; assigning here would silently delete the harbour's animation.
+	var _wl0 := _water_layers.size()
+	var flow_e := Vector2(0.052, 0.006)      # the Cut runs east
+	var flow_s := Vector2(0.006, -0.048)     # the Reach runs south
+	_riv_water_sheet(Rect2(Vector2(hx, z0), Vector2(rx0 - hx, z1 - z0)), sy,
+		"CutWater", flow_e, true)
+	_riv_water_sheet(Rect2(Vector2(rx0, wz), Vector2(rx1 - rx0, z1 - wz)), sy,
+		"ReachWaterUpper", flow_s, true)
+	_riv_water_sheet(Rect2(Vector2(rx0, rz), Vector2(rx1 - rx0, (wz - 4.0) - rz)), hwy,
+		"ReachWaterLower", flow_s * 0.6, false)
+	for ch in river_channels:
+		if not ch.has("cut"):
+			continue
+		var r3: Rect2 = ch["rect"]
+		_riv_water_sheet(Rect2(Vector2(r3.position.x, z1), Vector2(r3.size.x, r3.end.y - z1)),
+			sy + 0.012, "%sWater" % str(ch["id"]), Vector2(0.004, 0.036), true)
+	# foam against the one quay the player actually walks along
+	_riv_foam(Rect2(Vector2(hx, z0), Vector2(swall_end - hx, 3.0)), sy + 0.045, "CutFoam", true)
+	river_layers = _water_layers.slice(_wl0)
+
+
+func _riv_water_sheet(rect: Rect2, y: float, nm: String, flow: Vector2, chop: bool) -> void:
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	var mi := MeshInstance3D.new()
+	mi.name = nm
+	var q := QuadMesh.new()
+	q.size = rect.size
+	mi.mesh = q
+	var m: StandardMaterial3D = mat("water").duplicate()
+	# QuadMesh UVs run 0..1 across the whole sheet, so the scale has to be
+	# proportional to the sheet's own size — otherwise an 18 m canal and a
+	# 1400 m harbour tile at completely different densities and one of them
+	# looks like it has been printed on linoleum.
+	m.uv1_scale = Vector3(rect.size.x / RIVER_TILE, rect.size.y / RIVER_TILE, 1.0)
+	mi.material_override = m
+	mi.rotation_degrees.x = -90
+	var c := rect.get_center()
+	mi.position = Vector3(c.x, y, c.y)
+	root.add_child(mi)
+	_water_layers.append([m, flow])
+	if not chop:
+		return
+	var mi2 := MeshInstance3D.new()
+	mi2.name = nm + "Chop"
+	var q2 := QuadMesh.new()
+	q2.size = rect.size
+	mi2.mesh = q2
+	var cm: StandardMaterial3D = m.duplicate()
+	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	cm.albedo_color = Color(0.70, 0.78, 0.82, 0.36)
+	cm.uv1_scale = m.uv1_scale * 2.1
+	cm.metallic = 0.15
+	cm.roughness = 0.05
+	mi2.material_override = cm
+	mi2.rotation_degrees.x = -90
+	mi2.position = Vector3(c.x, y + 0.022, c.y)
+	root.add_child(mi2)
+	_water_layers.append([cm, -flow * 1.7])
+
+
+func _riv_foam(rect: Rect2, y: float, nm: String, along_x: bool) -> void:
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	var mi := MeshInstance3D.new()
+	mi.name = nm
+	var q := QuadMesh.new()
+	q.size = rect.size
+	mi.mesh = q
+	var fm := StandardMaterial3D.new()
+	fm.albedo_texture = load(TEX + "water.png")
+	fm.normal_texture = load(TEX + "water_n.png")
+	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fm.albedo_color = Color(0.84, 0.88, 0.90, 0.30)
+	fm.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	fm.uv1_scale = Vector3(rect.size.x / 6.0, rect.size.y / 6.0, 1.0)
+	fm.metallic = 0.0
+	fm.roughness = 0.24
+	mi.material_override = fm
+	mi.rotation_degrees.x = -90
+	var c := rect.get_center()
+	mi.position = Vector3(c.x, y, c.y)
+	root.add_child(mi)
+	_water_layers.append([fm, Vector2(-0.045, 0.012) if along_x else Vector2(0.012, -0.045)])
+
+
+# ---- bridges ---------------------------------------------------------------
+func _riv_bbox(acc: Acc, slot: int, b: Dictionary, du0: float, du1: float, y0: float,
+		h: float, dv0: float, dv1: float, tint := Color(1, 1, 1)) -> void:
+	## Bridge-local box. du runs WITH traffic along the crossing and dv runs
+	## across it, both relative to the bridge centre, so every structure below
+	## is written once and lands correctly on either axis.
+	var at: Vector2 = b["at"]
+	if str(b["axis"]) == "z":
+		_riv_box(acc, slot, at.x + dv0, at.x + dv1, y0, h, at.y + du0, at.y + du1, tint)
+	else:
+		_riv_box(acc, slot, at.x + du0, at.x + du1, y0, h, at.y + dv0, at.y + dv1, tint)
+
+
+func _riv_bp(b: Dictionary, du: float, y: float, dv: float) -> Vector3:
+	var at: Vector2 = b["at"]
+	if str(b["axis"]) == "z":
+		return Vector3(at.x + dv, y, at.y + du)
+	return Vector3(at.x + du, y, at.y + dv)
+
+
+func _build_river_crossings(w: Dictionary) -> void:
+	if not _river_built:
+		return
+	river_bridges = []
+	var acc := Acc.new()
+	var con := mat_slot("concrete")
+	var met := mat_slot("metal")
+	var rust := mat_slot("rust")
+	var stone := Color(0.400, 0.395, 0.385)
+	var dark := Color(0.235, 0.230, 0.225)
+	var steel := Color(0.560, 0.560, 0.585)
+
+	# ---- road bridges, derived from the arterials that actually meet water --
+	for a in w.get("arterials", []):
+		var ad: Dictionary = a
+		var axis := str(ad.get("axis", "x"))
+		var at := float(ad.get("at", 0.0))
+		var wd := float(ad.get("width", 16.0))
+		# exactly the rect _build_arterials lays down, so a bridge can never be
+		# derived for a road that is not really there
+		var road: Rect2
+		if axis == "x":
+			road = Rect2(Vector2(at - wd * 0.5, -450.0), Vector2(wd, 700.0))
+		else:
+			road = Rect2(Vector2(-550.0, at - wd * 0.5), Vector2(900.0, wd))
+		for ch in river_channels:
+			var r: Rect2 = ch["rect"]
+			if not road.intersects(r):
+				continue
+			var inter := road.intersection(r)
+			if inter.size.x < 1.0 or inter.size.y < 1.0:
+				continue
+			var span_axis: String = "z" if axis == "x" else "x"
+			var across: float = inter.size.y if axis == "x" else inter.size.x
+			river_bridges.append({
+				"id": "bridge_%s_%d" % [str(ch["id"]), int(round(at))],
+				"kind": "road", "axis": span_axis, "at": inter.get_center(),
+				"half_span": across * 0.5 + 2.0, "half_w": wd * 0.5 + 0.9,
+				"deck_y": 0.04, "channel": str(ch["id"]),
+				"road_axis": axis, "road_at": at, "road_w": wd,
+			})
+	# ---- footbridges, authored per cut -------------------------------------
+	for ch in river_channels:
+		if not ch.has("cut"):
+			continue
+		var cd: Dictionary = ch["cut"]
+		for fb in cd.get("footbridges", []):
+			var fd: Dictionary = fb
+			var fz := float(fd.get("at_z", 0.0))
+			var fx0 := float(fd.get("x0", 0.0))
+			var fx1 := float(fd.get("x1", 0.0))
+			if fx1 - fx0 < 4.0:
+				push_warning("WorldGen: footbridge '%s' is too short to build" % str(fd.get("name", "?")))
+				continue
+			river_bridges.append({
+				"id": "foot_%s_%d" % [str(cd.get("id", "cut")), int(round(fz))],
+				"kind": "foot", "name": str(fd.get("name", "Footbridge")), "axis": "x",
+				"at": Vector2((fx0 + fx1) * 0.5, fz), "half_span": (fx1 - fx0) * 0.5,
+				"half_w": 2.0, "deck_y": RIVER_TOP, "channel": str(ch["id"]),
+				"deck_x0": fx0, "deck_x1": fx1,
+			})
+	if river_bridges.is_empty():
+		return
+	for bb in river_bridges:
+		var b: Dictionary = bb
+		if str(b["kind"]) == "road":
+			_riv_road_bridge(acc, b, con, met, rust, stone, dark, steel)
+		else:
+			_riv_foot_bridge(acc, b, con, met, rust, stone, dark, steel)
+	var node := Node3D.new()
+	node.name = "river_crossings"
+	root.add_child(node)
+	_commit(acc, node, "crossings")
+
+
+func _riv_road_bridge(acc: Acc, b: Dictionary, con: int, met: int, rust: int,
+		stone: Color, dark: Color, steel: Color) -> void:
+	var hs: float = b["half_span"]
+	var hw: float = b["half_w"]
+	var by := _river_by
+	var neon := _neon_slot()
+	# ---- deck soffit. The arterials are a 6 cm veneer, which is fine over
+	#      ground and ridiculous over open water, so the crossing gets a real
+	#      underside hanging a metre below the carriageway.
+	_riv_bbox(acc, con, b, -hs, hs, -1.00, 0.98, -hw, hw, stone)
+	# ---- girders, diaphragms and cross bracing: the detail that makes a
+	#      crossing read as built rather than as a road that happens to float
+	_riv_bbox(acc, met, b, -hs, hs, -2.15, 1.15, -hw + 0.50, -hw + 0.86, dark)
+	_riv_bbox(acc, met, b, -hs, hs, -2.15, 1.15, hw - 0.86, hw - 0.50, dark)
+	for buv in [-hs * 0.5, 0.0, hs * 0.5]:
+		var bu: float = buv
+		_riv_bbox(acc, met, b, bu - 0.14, bu + 0.14, -2.05, 0.95, -hw + 0.86, hw - 0.86, dark)
+		acc.cyl(met, _riv_bp(b, bu - 3.0, -2.05, -hw + 0.68), _riv_bp(b, bu + 3.0, -1.15, hw - 0.68), 0.06, 0.06, 5, dark)
+		acc.cyl(met, _riv_bp(b, bu - 3.0, -1.15, -hw + 0.68), _riv_bp(b, bu + 3.0, -2.05, hw - 0.68), 0.06, 0.06, 5, dark)
+	# ---- abutments, sitting on the quay walls either bank
+	_riv_bbox(acc, con, b, -hs, -hs + 2.0, by, 0.14 - by, -hw - 0.3, hw + 0.3, stone)
+	_riv_bbox(acc, con, b, hs - 2.0, hs, by, 0.14 - by, -hw - 0.3, hw + 0.3, stone)
+	# ---- piers: two rows, tapered, on plinths in the bed
+	for puv in [-hs + 5.0, hs - 5.0]:
+		var pu: float = puv
+		for pvv in [-hw * 0.56, hw * 0.56]:
+			var pv: float = pvv
+			_riv_bbox(acc, con, b, pu - 1.15, pu + 1.15, by, 0.55, pv - 1.15, pv + 1.15, dark)
+			acc.cyl(con, _riv_bp(b, pu, by + 0.50, pv), _riv_bp(b, pu, -2.05, pv), 0.92, 0.66, 8, stone)
+	# ---- parapets and coping. These carry collision from the merged trimesh,
+	#      which is the whole point: an arterial over water with no barrier is
+	#      a 16 m wide ramp into the Cut, at 90 km/h, in the dark.
+	_riv_bbox(acc, met, b, -hs, hs, 0.04, 1.06, -hw, -hw + 0.30, dark)
+	_riv_bbox(acc, met, b, -hs, hs, 0.04, 1.06, hw - 0.30, hw, dark)
+	_riv_bbox(acc, rust, b, -hs, hs, 1.10, 0.10, -hw - 0.08, -hw + 0.38, steel)
+	_riv_bbox(acc, rust, b, -hs, hs, 1.10, 0.10, hw - 0.38, hw + 0.08, steel)
+	# ---- bridge lamps, two a side, into the same pool as the street lights
+	for puv in [-hs + 2.6, hs - 2.6]:
+		var pu: float = puv
+		for sidev in [-1.0, 1.0]:
+			var side: float = sidev
+			var pv: float = side * (hw - 0.15)
+			acc.cyl(met, _riv_bp(b, pu, 1.10, pv), _riv_bp(b, pu, 4.10, pv), 0.09, 0.07, 6, dark)
+			_riv_bbox(acc, neon, b, pu - 0.30, pu + 0.30, 4.02, 0.26, pv - 0.30, pv + 0.30, Color(1.0, 0.88, 0.62))
+			var wp := _riv_bp(b, pu, 4.05, pv)
+			lamp_posts.append({"pos": wp, "district": district_at(wp), "color": Color(1.0, 0.88, 0.62)})
+
+
+func _riv_foot_bridge(acc: Acc, b: Dictionary, con: int, met: int, rust: int,
+		stone: Color, dark: Color, steel: Color) -> void:
+	var hs: float = b["half_span"]
+	var hw: float = b["half_w"]
+	var by := _river_by
+	var neon := _neon_slot()
+	# The deck is flush with the quay parapet it springs from, so there is no
+	# step up at one end and none down at the other.
+	var dy: float = b["deck_y"]
+	var seg := 2.6
+	var u := -hs
+	while u < hs - 0.01:
+		var u1 := minf(u + seg, hs)
+		_riv_bbox(acc, met, b, u, u1, dy - 0.28, 0.28, -hw, hw, steel)
+		_riv_bbox(acc, met, b, u, u + 0.22, dy - 0.52, 0.24, -hw + 0.20, hw - 0.20, dark)
+		u = u1
+	_riv_bbox(acc, met, b, -hs, hs, dy, RIVER_RAIL, -hw, -hw + 0.10, dark)
+	_riv_bbox(acc, met, b, -hs, hs, dy, RIVER_RAIL, hw - 0.10, hw, dark)
+	_riv_bbox(acc, rust, b, -hs, hs, dy + RIVER_RAIL - 0.02, 0.09, -hw - 0.05, -hw + 0.15, steel)
+	_riv_bbox(acc, rust, b, -hs, hs, dy + RIVER_RAIL - 0.02, 0.09, hw - 0.15, hw + 0.05, steel)
+	for puv in [-hs * 0.45, hs * 0.45]:
+		var pu: float = puv
+		_riv_bbox(acc, con, b, pu - 0.85, pu + 0.85, by, 0.50, -hw - 0.15, hw + 0.15, dark)
+		acc.cyl(con, _riv_bp(b, pu, by + 0.45, 0.0), _riv_bp(b, pu, dy - 0.30, 0.0), 0.50, 0.40, 8, stone)
+	# ---- the two stairs that make it reachable. A deck flush with the parapet
+	#      is still 0.66 m above the carriageway to the west and 0.70 m above
+	#      the promenade to the east; without these it bridges nothing.
+	for k in 4:
+		var wu := -hs - 1.2 + float(k) * 0.30
+		var wt := 0.04 + float(k + 1) * ((dy - 0.04) / 4.0)
+		_riv_bbox(acc, con, b, wu, wu + 0.30, by, wt - by, -hw, hw, stone)
+		var eu := hs + float(k) * 0.30
+		var et := dy * float(3 - k) / 4.0
+		_riv_bbox(acc, con, b, eu, eu + 0.30, by, et - by, -hw, hw, stone)
+	acc.cyl(met, _riv_bp(b, 0.0, dy, -hw + 0.18), _riv_bp(b, 0.0, dy + 2.90, -hw + 0.18), 0.08, 0.06, 6, dark)
+	_riv_bbox(acc, neon, b, -0.28, 0.28, dy + 2.82, 0.22, -hw - 0.06, -hw + 0.42, Color(0.86, 0.94, 1.0))
+	var fp := _riv_bp(b, 0.0, dy + 2.85, -hw + 0.18)
+	lamp_posts.append({"pos": fp, "district": district_at(fp), "color": Color(0.86, 0.94, 1.0)})
 
 
 # ----------------------------------------------------------------- queries --
@@ -1219,6 +1869,8 @@ func _route_graph_build() -> void:
 	for i in n:
 		for j in range(i + 1, n):
 			if (_rg_nodes[i] - _rg_nodes[j]).length() < 5.0:
+				if _river_blocked(_rg_nodes[i], _rg_nodes[j]):
+					continue
 				_rg_adj[i].append([j, 2.0])
 				_rg_adj[j].append([i, 2.0])
 	# k-NN stitching: lane loops are per-block islands; connect every node to
@@ -1236,7 +1888,7 @@ func _route_graph_build() -> void:
 			elif dd < best[1][0]:
 				best[1] = [dd, j]
 		for b in best:
-			if b[1] >= 0 and b[0] < 70.0 * 70.0:
+			if b[1] >= 0 and b[0] < 70.0 * 70.0 and not _river_blocked(_rg_nodes[i], _rg_nodes[b[1]]):
 				var c: float = sqrt(b[0])
 				var dup := false
 				for e in _rg_adj[i]:
@@ -1246,18 +1898,125 @@ func _route_graph_build() -> void:
 				if not dup:
 					_rg_adj[i].append([b[1], c])
 					_rg_adj[b[1]].append([i, c])
+	# ---- crossing nodes ----------------------------------------------------
+	# Pruning the wading edges is only half the job; on its own it would leave
+	# the graph exactly as disconnected as it found it, and it found it badly
+	# disconnected. The lane rings are per-block islands stitched by a 70 m
+	# k-NN, and the gap between Neon Mile's easternmost ring (x = 137.8) and
+	# Crown Heights' westernmost (x = 242) is 104 m, so Crown Heights was a
+	# 48-node island with no edge to the rest of the city. route_world()
+	# returned an EMPTY path for any journey to or from it: the Overlook, the
+	# Country Club, the Observatory, Crown Premium Fuels and the Crown Heights
+	# stash all had a GPS that drew nothing at all — and m12_everyone opens with
+	# goto(poi_overlook), so the finale sent the player to a waypoint the phone
+	# could not route to. A crossing is a real edge in the real city, so it
+	# becomes one here.
+	rg_lane_count = _rg_nodes.size()
+	for bb in river_bridges:
+		var b: Dictionary = bb
+		var at: Vector2 = b["at"]
+		var hs: float = b["half_span"]
+		var deck := Vector3(at.x, 0.0, at.y)
+		var bi := _rg_add_node(deck)
+		if str(b["kind"]) == "road":
+			for sidev in [-1.0, 1.0]:
+				var side: float = sidev
+				var bank: Vector3
+				if str(b["axis"]) == "z":
+					bank = Vector3(at.x, 0.0, at.y + side * (hs + 6.0))
+				else:
+					bank = Vector3(at.x + side * (hs + 6.0), 0.0, at.y)
+				_rg_link_clear(bi, bank, deck, rg_lane_count)
+		else:
+			# A footbridge gets a node on the deck AND a node on the bank it
+			# lands on. One node is not enough: a straight tie from the middle
+			# of a 20 m span to a lane node 24 m away on the far bank clips the
+			# very water the span exists to avoid, which would put the crossing
+			# back on the wading list it was added to get off.
+			var landing := Vector3(float(b.get("deck_x1", at.x + hs)) + 6.0, 0.0, at.y)
+			var li := _rg_add_node(landing)
+			_rg_link(bi, li)
+			_rg_link_clear(bi, Vector3(float(b.get("deck_x0", at.x - hs)) - 6.0, 0.0, at.y), deck, rg_lane_count)
+			_rg_link_clear(li, landing, landing, rg_lane_count)
 	_rg_built = true
 
 
-func _rg_nearest(p: Vector3) -> int:
-	var best := 0
+func _rg_nearest(p: Vector3, limit: int = -1) -> int:
+	## Nearest graph node to p, or -1 if the graph is empty. limit restricts the
+	## search to indices below it, which is how the bridge insertion finds a
+	## LANE node to tie into instead of finding itself.
+	var best := -1
 	var bd := 1e18
-	for i in _rg_nodes.size():
+	var hi: int = _rg_nodes.size() if limit < 0 else mini(limit, _rg_nodes.size())
+	for i in hi:
 		var d := (_rg_nodes[i] - p).length_squared()
 		if d < bd:
 			bd = d
 			best = i
 	return best
+
+
+var rg_lane_count := 0           # nodes below this are lane nodes; the rest are
+                                 # crossings inserted by _route_graph_build
+
+
+func _rg_add_node(p: Vector3) -> int:
+	_rg_nodes.append(p)
+	_rg_adj.append([])
+	return _rg_nodes.size() - 1
+
+
+func _rg_link(i: int, j: int) -> void:
+	if i < 0 or j < 0 or i == j:
+		return
+	var c: float = (_rg_nodes[i] - _rg_nodes[j]).length()
+	_rg_adj[i].append([j, c])
+	_rg_adj[j].append([i, c])
+
+
+func _rg_link_clear(i: int, near: Vector3, from: Vector3, limit: int) -> void:
+	## Tie node i to the lane node nearest `near` whose straight tie from
+	## `from` does not wade. Falls back to the plain nearest, because a
+	## crossing that ties to nothing is worse than one whose tie line clips a
+	## corner of water it is already standing over.
+	var best := -1
+	var bd := 1e18
+	var fb := -1
+	var fbd := 1e18
+	var hi: int = mini(limit, _rg_nodes.size())
+	for k in hi:
+		var d: float = (_rg_nodes[k] - near).length_squared()
+		if d < fbd:
+			fbd = d
+			fb = k
+		if d < bd and not _river_blocked(from, _rg_nodes[k]):
+			bd = d
+			best = k
+	_rg_link(i, best if best >= 0 else fb)
+
+
+func _river_blocked(a: Vector3, b: Vector3) -> bool:
+	## True when the straight line a->b wades: some sample point is open water
+	## and not on a bridge deck. A GPS that tells you to drive into the Cut is
+	## worse than a GPS with no opinion, so the stitch loops above skip these.
+	if not _river_built:
+		return false
+	var pa := Vector2(a.x, a.z)
+	var pb := Vector2(b.x, b.z)
+	# Fast reject. Godot 3's Rect2.intersects_segment() is gone and Godot 4's
+	# Geometry2D has no segment/rect test at all, so this compares the segment's
+	# closest point to the bounds centre against the bounds' half-diagonal —
+	# conservative, and cheap enough to run inside an O(n^2) stitch loop. The
+	# per-sample in_river() walk below is what actually decides.
+	var bc := river_bounds.get_center()
+	var reach := river_bounds.size.length() * 0.5 + 1.0
+	if Geometry2D.get_closest_point_to_segment(bc, pa, pb).distance_to(bc) > reach:
+		return false
+	var steps := int(ceil(pb.distance_to(pa) / 3.0)) + 1
+	for k in range(steps + 1):
+		if in_river(pa.lerp(pb, float(k) / float(steps))):
+			return true
+	return false
 
 
 func route_world(from: Vector3, to: Vector3) -> PackedVector3Array:

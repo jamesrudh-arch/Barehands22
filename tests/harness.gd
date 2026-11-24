@@ -766,8 +766,8 @@ func _process(_delta: float) -> bool:
 			_check("lounge_room" in ctsrc and "cab_share" in phsrc2 and "laundromat" in ser8, "lounge/cab/laundromat perks wired")
 			# wave 24: side jobs using the new verbs
 			_check(db8.mission("side_repo").get("stages", []).size() == 3, "side_repo (theft + pursuit run) registered")
-			_check(db8.mission("side_partner").get("stages", []).size() == 2, "side_partner (business buy-in) registered")
-			_check(db8.mission("side_heatmagnet").get("stages", []).size() == 2, "side_heatmagnet (3-star broadcast run) registered")
+			_check(db8.mission("side_partner").get("stages", []).size() == 3, "side_partner (business buy-in) registered")
+			_check(db8.mission("side_heatmagnet").get("stages", []).size() == 4, "side_heatmagnet (3-star broadcast run) registered")
 			_check('"prop:"' in msrc, "mission objectives understand prop: expressions")
 			var tutsrc := FileAccess.get_file_as_string("res://scripts/ui/tutorial.gd")
 			_check('"lockpick"' in tutsrc and '"driveby"' in tutsrc and '"garage"' in tutsrc, "tutorial coaches the new verbs")
@@ -809,7 +809,7 @@ func _process(_delta: float) -> bool:
 			_check("func respray" in vsrc6 and "color = col" in vsrc6, "vehicles can be resprayed")
 			var mmsrc := FileAccess.get_file_as_string("res://scripts/missions/mission_manager.gd")
 			var db8x = root.get_node("Db")
-			_check(db8x.mission("side_torch").get("stages", []).size() == 2, "side_torch mission registered")
+			_check(db8x.mission("side_torch").get("stages", []).size() == 4, "side_torch mission registered")
 			_check(db8x.mission("side_clean_wheels").get("stages", []).size() == 4, "side_clean_wheels mission registered")
 			_check("_check_objective" in mmsrc and "statd:" in mmsrc, "relative stat goals supported for repeatable jobs")
 			_check('"wrecks"' in vsrc6, "wrecks tracked as a stat")
@@ -849,7 +849,9 @@ func _process(_delta: float) -> bool:
 			var hads9 = ws13.stats.get("wrecks", 0)
 			ws13.stats["wrecks"] = 7
 			mm7.active_id = "side_torch"
-			mm7.stage = db8x.mission("side_torch").get("stages", [])[1]
+			var tj_st: Array = db8x.mission("side_torch").get("stages", [])
+			_check(tj_st[1].get("check", "") == "statd:wrecks>=2", "side_torch stage 1 is still the relative-wrecks objective the statd test reads")
+			mm7.stage = tj_st[1]
 			mm7.rt = {}
 			_check(not mm7._check_objective("statd:wrecks>=2"), "statd ignores pre-existing stats")
 			ws13.stats["wrecks"] = 9
@@ -1289,8 +1291,12 @@ func _process(_delta: float) -> bool:
 							bad90 += 1
 				_check(bad90 == 0, "%s mesh has UVs on every surface" % pair90[0])
 			# --- the harbour is no longer a frozen quad --------------------
-			var layers90: Array = wg90._water_layers
+			# _water_layers is one flat scroll list that the Cinder Cut appends
+			# its own sheets to, so the harbour's three have to be addressed by
+			# name rather than by position in that list.
+			var layers90: Array = wg90.harbour_layers
 			_check(layers90.size() == 3, "harbour built from 3 sheets: base, chop, foam (%d)" % layers90.size())
+			_check(wg90._water_layers.size() > layers90.size(), "the river appends to the same scroll list without stealing the harbour's (%d total)" % wg90._water_layers.size())
 			if layers90.size() == 3:
 				var m090: StandardMaterial3D = layers90[0][0]
 				var m190: StandardMaterial3D = layers90[1][0]
@@ -1551,18 +1557,42 @@ func _process(_delta: float) -> bool:
 					var ad93: Dictionary = a93
 					var at93: float = float(ad93.get("at", 0))
 					var half93: float = float(ad93.get("width", 16)) * 0.5 + 5.0
-					var onroad93: bool = absf(pos93.x - at93) < half93 if str(ad93.get("axis", "x")) == "z" else absf(pos93.z - at93) < half93
+					# axis names the CONSTANT coordinate: "x" is a line of
+					# constant x running N-S. This matched the inverted
+					# convention in _station_along_z, so the test agreed with
+					# the bug it was supposed to be checking.
+					var onroad93: bool = absf(pos93.x - at93) < half93 if str(ad93.get("axis", "x")) == "x" else absf(pos93.z - at93) < half93
 					if onroad93:
 						bad93.append(str(sid93) + " sitting on arterial " + str(at93))
 			_check(seen93.size() == 6, "one filling station per district (%d districts covered)" % seen93.size())
 			_check(bad93.is_empty(), "stations are inside their district and off the arterials (%s)" % str(bad93))
 			# --- canopies orient to the road they front --------------------
+			# Recomputed from the data, not from the builder's own answer: a
+			# "some do, some don't" assertion passes just as happily when the
+			# axis convention is backwards and one canopy is turned 90 degrees
+			# away from the road it fronts.
 			var alongz93 := 0
+			var wrong93: Array = []
 			for sid93b in wg93.stations:
-				if wg93.stations[sid93b].get("along_z", false) == true:
+				var st93b: Dictionary = wg93.stations[sid93b]
+				var p93b: Vector3 = st93b.get("pos", Vector3.ZERO)
+				var bestd93 := 1e9
+				var bestns93 := false
+				for a93b in wcfg93.get("arterials", []):
+					var ad93b: Dictionary = a93b
+					var ns93b: bool = str(ad93b.get("axis", "x")) == "x"
+					var at93b := float(ad93b.get("at", 0))
+					var d93b: float = absf(p93b.x - at93b) if ns93b else absf(p93b.z - at93b)
+					if d93b < bestd93:
+						bestd93 = d93b
+						bestns93 = ns93b
+				var want93: bool = bestns93 if bestd93 <= 90.0 else false
+				if st93b.get("along_z", false) != want93:
+					wrong93.append("%s wants %s" % [str(sid93b), str(want93)])
+				if want93:
 					alongz93 += 1
-			_check(alongz93 > 0 and alongz93 < wg93.stations.size(),
-				"canopies turn to face the arterial they front (%d of %d run north-south)" % [alongz93, wg93.stations.size()])
+			_check(wrong93.is_empty(),
+				"every canopy faces the arterial it actually fronts (%d of %d run north-south; %s)" % [alongz93, wg93.stations.size(), str(wrong93)])
 			# --- pumps ----------------------------------------------------
 			var npump93 := 0
 			var badlbl93: Array = []
@@ -1859,6 +1889,628 @@ func _process(_delta: float) -> bool:
 			ws94.weather = wv94
 			if hint94 != null:
 				_check(not hint94.visible, "the skip hint hides once the cinematic is over")
+		95:
+			# WAVE 49 — THE SIX NEW STAGE VERBS, DRIVEN LIVE.
+			# Act 3 used to be four dialogue boxes and a cutscene: m12_everyone,
+			# the ENDING, was two stages long. Missions are now 125 stages over
+			# 29 jobs using 22 verbs. Source-scanning would pass even if every
+			# new verb crashed on its first tick, so each one is set up for real
+			# and ticked to completion here, with all state pinned and restored.
+			var mm95 = root.get_node("MissionManager")
+			var ws95 = root.get_node("WorldState")
+			var db95 = root.get_node("Db")
+			var diff95 = root.get_node("Difficulty")
+			var prog95 = root.get_node("Progression")
+			# --- pin everything a live mission run can touch ------------------
+			var sv95 := {
+				"active": mm95.active_id, "stage_i": mm95.active_stage_i,
+				"stage": mm95.stage.duplicate(true), "rt": mm95.rt.duplicate(true),
+				"completed": mm95.completed.duplicate(true), "failed": mm95.failed.duplicate(true),
+				"offer": mm95.story_offer, "sideoffer": mm95.side_offer.duplicate(true),
+				"money": ws95.money, "wanted": ws95.wanted, "stats": ws95.stats.duplicate(true),
+				"flags": ws95.flags.duplicate(true), "rels": ws95.relationships.duplicate(true),
+				"factions": ws95.factions.duplicate(true), "inv": ws95.inventory.duplicate(true),
+				"xp": prog95.xp, "level": prog95.level,
+			}
+			var home95: Vector3 = _player.global_position
+			_revive_player()
+			if _player.in_vehicle != null:
+				_player.exit_vehicle()
+			var dlg95 = root.get_node("DialogueUI")
+			if dlg95.is_open():
+				dlg95.close()
+			var cut95b = root.get_node("Cutscene")
+			if cut95b.playing:
+				cut95b.skip()
+				for i95 in 4:
+					cut95b._process(0.5)
+
+			# ======================= the data got longer =====================
+			var allm95: Dictionary = db95.missions
+			var tot95 := 0
+			var short95 := 0
+			var tset95 := {}
+			for k95 in allm95.keys():
+				var st95: Array = allm95[k95].get("stages", [])
+				tot95 += st95.size()
+				if st95.size() <= 2:
+					short95 += 1
+				for s95 in st95:
+					tset95[String(s95.get("type", ""))] = true
+			_check(tot95 >= 120, "missions now total %d stages (was 89 across the same 29 jobs)" % tot95)
+			_check(short95 == 0, "no mission is a 1-2 stage stub any more (was 15 of 29 at <=3, and the FINALE at 2)")
+			_check(tset95.size() >= 22, "%d distinct stage verbs are in use (was 16)" % tset95.size())
+			for v95 in ["survive", "chase", "plant", "defend", "rail_cross", "observe"]:
+				_check(tset95.has(v95), "the new '%s' verb is actually AUTHORED into a mission, not just implemented" % v95)
+			_check(allm95["m12_everyone"].get("stages", []).size() >= 6, "the ending m12_everyone is a mission, not a walk to a viewpoint (was 2 stages)")
+			_check(allm95["m10_smoke_line"].get("stages", []).size() >= 8, "m10_smoke_line is no longer talk talk talk choice (was 4, zero gameplay)")
+			_check(allm95["m11_the_leverage"].get("stages", []).size() >= 7, "the penultimate job m11_the_leverage got longer (was 4)")
+			# act 3 must not be all conversation
+			var a3play95 := 0
+			for mid95 in ["m10_smoke_line", "m11_the_leverage", "m12_everyone"]:
+				for s95b in allm95[mid95].get("stages", []):
+					if not (String(s95b.get("type", "")) in ["talk", "choice", "cutscene"]):
+						a3play95 += 1
+			_check(a3play95 >= 10, "act 3 now contains %d stages that are something other than talking (was 3)" % a3play95)
+
+			# ============ every reference in every stage must resolve =========
+			var bad95: Array = []
+			for k95b in allm95.keys():
+				for s95c in allm95[k95b].get("stages", []):
+					for pk95 in ["poi", "from", "to"]:
+						var pv = s95c.get(pk95)
+						if pv != null and String(pv) != "":
+							if not db95.districts.has("_poi_" + String(pv)) and _poi_known95(String(pv)) == false:
+								bad95.append("%s.%s=%s" % [k95b, pk95, pv])
+					var dv = s95c.get("dialogue")
+					if dv != null and String(dv) != "" and db95.dialogue_tree(String(dv)).is_empty():
+						bad95.append("%s.dialogue=%s" % [k95b, dv])
+					var cv = s95c.get("char")
+					if cv != null and String(cv) != "" and not db95.characters.has(String(cv)):
+						bad95.append("%s.char=%s" % [k95b, cv])
+			_check(bad95.is_empty(), "every poi/dialogue/char reference in all 125 stages resolves (%s)" % str(bad95))
+
+			# ==================== verb 1: SURVIVE (hold ground) ================
+			mm95.active_id = "side_fightclub"
+			mm95.active_stage_i = 3          # side_fightclub's survive stage
+			mm95.stage = allm95["side_fightclub"]["stages"][3]
+			mm95.rt = {}
+			mm95.actors.clear()
+			mm95._setup_stage()
+			_check(mm95.actors.size() >= 2, "survive: the first wave actually spawned (%d actors)" % mm95.actors.size())
+			_check(mm95.rt.get("spawned", false) == true, "survive: rt records that the wave is on the street")
+			var scount95: int = mm95.actors.size()
+			var stime95: float = mm95.rt["time"]
+			_check(stime95 > 40.0, "survive: the hold has a real clock (%.0fs)" % stime95)
+			# tick the clock down; the player stands on the ground being held
+			_player.global_position = mm95.rt["center"]
+			for i95b in 6:
+				mm95._tick_stage(1.0, _player)
+			_check(float(mm95.rt["time"]) < stime95 - 5.0, "survive: the clock runs down as the hold is lived through")
+			_check(mm95.active_id == "side_fightclub", "survive: still holding — the clock has not expired")
+			# abandon the ground and the hold is lost
+			_player.global_position = mm95.rt["center"] + Vector3(400, 0, 0)
+			for i95c in 12:
+				mm95._tick_stage(1.0, _player)
+			_check(mm95.failed.has("side_fightclub"), "survive: walking 400 m off the ground you were holding FAILS the job (leash)")
+			mm95._cleanup_stage()
+
+			# ==================== verb 2: CHASE (catch a runner) ===============
+			mm95.active_id = "side_courier"
+			mm95.active_stage_i = 2
+			mm95.stage = allm95["side_courier"]["stages"][2]
+			mm95.rt = {}
+			mm95.failed.clear()
+			mm95._setup_stage()
+			var rn95 = mm95.rt.get("npc")
+			_check(rn95 != null and is_instance_valid(rn95), "chase: a runner is on the street")
+			_check(rn95.has_meta("chase_target"), "chase: the runner is tagged so it cannot dive into traffic and vanish")
+			var fs95: float = rn95.get("flee_speed")
+			_check(absf(fs95 - 5.2) < 0.01, "chase: the runner starts at the civilian flee pace of 5.2 m/s")
+			_player.global_position = rn95.global_position + Vector3(30, 0, 0)
+			for i95d in 20:
+				mm95._tick_stage(1.0, _player)
+			var fs95b: float = rn95.get("flee_speed")
+			_check(fs95b < fs95 - 0.5, "chase: the runner TIRES under pressure (%.2f -> %.2f m/s), so a sprint at 6.4 can actually close" % [fs95, fs95b])
+			_check(rn95.state == rn95.State.FLEE, "chase: the runner is genuinely fleeing, not idling")
+			# close the gap and the chase is won
+			_player.global_position = rn95.global_position + Vector3(1.2, 0, 0)
+			mm95._tick_stage(0.1, _player)
+			# _advance_stage() resets rt = {}, so rt["caught"] is gone by the
+			# time we can read it. Assert what SURVIVES: the stage index moved
+			# and the stat was written.
+			_check(mm95.active_stage_i == 3, "chase: getting inside the reach distance catches them and advances the job")
+			_check(ws95.stats.get("runners_caught", 0) == 1, "chase: a caught runner is recorded in the stats")
+			mm95._cleanup_stage()
+
+			# ==================== verb 3: PLANT (sabotage) =====================
+			mm95.active_id = "side_torch"
+			mm95.active_stage_i = 2
+			mm95.stage = allm95["side_torch"]["stages"][2]
+			mm95.rt = {}
+			mm95._setup_stage()
+			var mk95: Array = mm95.rt.get("marks", [])
+			_check(mk95.size() == 2, "plant: the stage laid out %d charge marks (authored count=2)" % mk95.size())
+			var vis95 := 0
+			for m95 in mk95:
+				if m95.get("node") != null and is_instance_valid(m95["node"]):
+					vis95 += 1
+			_check(vis95 == mk95.size(), "plant: every mark is a VISIBLE pylon in the tree, not a minimap abstraction")
+			_player.global_position = mk95[0]["pos"]
+			mm95._tick_stage(0.1, _player)
+			_check(int(mm95.rt["armed"]) == 1, "plant: standing on a mark arms it")
+			_check(float(mm95.rt["fuse"]) > 0.0, "plant: arming the last charge starts the fuse")
+			_player.global_position = mk95[1]["pos"]
+			mm95._tick_stage(0.1, _player)
+			_check(int(mm95.rt["armed"]) == 2, "plant: both marks armed")
+			# stand clear and let the fuse burn out
+			_player.global_position = mk95[1]["pos"] + Vector3(40, 0, 0)
+			var hp95: float = _player.combat.hp
+			for i95e in 20:
+				mm95._tick_stage(1.0, _player)
+			_check(ws95.stats.get("sabotages", 0) == 1, "plant: the charges went off — the fuse used to be re-armed every tick and never reached zero")
+			_check(mm95.active_stage_i == 3, "plant: detonating advances the job")
+			_check(ws95.stats.get("clean_blasts", 0) == 1, "plant: clearing the blast before the fuse ends is REWARDED")
+			_check(_player.combat.hp >= hp95 - 0.01, "plant: standing 40 m clear means the blast did not touch the player")
+			mm95._cleanup_stage()
+
+			# ==================== verb 4: DEFEND (keep a body alive) ===========
+			mm95.active_id = "side_nightshift"
+			mm95.active_stage_i = 2
+			mm95.stage = allm95["side_nightshift"]["stages"][2]
+			mm95.rt = {}
+			mm95.failed.clear()
+			mm95._setup_stage()
+			var wd95 = mm95.rt.get("ward")
+			_check(wd95 != null and is_instance_valid(wd95), "defend: the person you are protecting is on the street")
+			_check(mm95.actors.has(wd95), "defend: the ward is owned by the stage so cleanup frees it")
+			var atk95 := 0
+			for a95 in mm95.actors:
+				if is_instance_valid(a95) and a95 != wd95 and a95.get("hostile") == true:
+					atk95 += 1
+			_check(atk95 >= 1, "defend: attackers spawned to actually threaten the ward (%d)" % atk95)
+			_check(String(wd95.get("display_name")) != "" and String(wd95.get("display_name")) != "<null>", "defend: the objective line can name the ward (got '%s')" % String(wd95.get("display_name")))
+			var whp95: float = mm95._ward_hp(wd95)
+			# put an attacker on top of the ward and let it work
+			var one95 = null
+			for a95b in mm95.actors:
+				if is_instance_valid(a95b) and a95b != wd95:
+					one95 = a95b
+					break
+			one95.global_position = wd95.global_position + Vector3(1.5, 0, 0)
+			for i95f in 8:
+				mm95._tick_stage(1.0, _player)
+			_check(mm95._ward_hp(wd95) < whp95 - 1.0, "defend: an attacker inside reach genuinely HURTS the ward — the fail condition is real")
+			# kill the ward: the job must fail
+			var wcc95 = wd95.get("combat")
+			wcc95.iframes = 0.0
+			wcc95.take_hit(9999.0, Vector3(1, 0, 0), "test", null)
+			mm95._tick_stage(0.1, _player)
+			_check(mm95.failed.has("side_nightshift"), "defend: the ward dying FAILS the job (this is what makes it a defend, not a survive)")
+			mm95._cleanup_stage()
+
+			# ==================== verb 5: RAIL_CROSS (beat the freight) ========
+			var sl95 = mm95._smoke_line()
+			_check(sl95 != null, "rail_cross: MissionManager can find the wave-48 freight train")
+			if sl95 != null:
+				_check(sl95.has_method("seconds_to_crossing"), "rail_cross: the train exposes a wrap-aware arrival time")
+				var sp95: float = sl95.speed()
+				_check(sp95 > 10.0, "rail_cross: the consist runs at %.1f m/s — faster than the player's 6.4 sprint, so it is a real deadline" % sp95)
+				var span95: float = sl95.span()
+				_check(span95 > 800.0, "rail_cross: the line spans %.0f m" % span95)
+				# the deadline must be non-negative for EVERY x on the line,
+				# including one the locomotive has already passed
+				var worst95 := 1e9
+				var best95 := -1e9
+				for i95g in 40:
+					var x95 := -700.0 + float(i95g) * 35.0
+					var t95: float = sl95.seconds_to_crossing(x95)
+					worst95 = minf(worst95, t95)
+					best95 = maxf(best95, t95)
+				_check(worst95 >= 0.0, "rail_cross: no crossing yields a NEGATIVE deadline (min %.2fs) — a passed train gives the NEXT one" % worst95)
+				_check(best95 <= span95 / sp95 + 0.01, "rail_cross: the longest wait is one full lap (%.1fs <= %.1fs)" % [best95, span95 / sp95])
+			mm95.active_id = "m11_the_leverage"
+			mm95.active_stage_i = 1
+			mm95.stage = allm95["m11_the_leverage"]["stages"][1]
+			mm95.rt = {}
+			mm95.failed.clear()
+			mm95._setup_stage()
+			var dl95: float = mm95.rt.get("deadline", 0.0)
+			_check(dl95 >= 34.0, "rail_cross: the deadline is at least the 34 s floor (got %.1fs)" % dl95)
+			_check(dl95 <= 120.0, "rail_cross: the deadline is not absurd either (got %.1fs)" % dl95)
+			var mv95 = mm95.rt.get("mission_vehicle")
+			_check(mv95 != null and is_instance_valid(mv95), "rail_cross: the stage supplies a car — on foot a 17.5 m/s train is unbeatable")
+			var to95: Vector3 = mm95.rt["to"]
+			_player.global_position = to95 + Vector3(1.0, 0, 0)
+			mm95._tick_stage(0.1, _player)
+			_check(mm95.active_stage_i == 2, "rail_cross: reaching the far side wins the crossing and advances the job")
+			_check(ws95.stats.get("rail_crossings", 0) == 1, "rail_cross: a beaten freight is recorded")
+			mm95._cleanup_stage()
+
+			# ==================== verb 6: OBSERVE (stakeout) ===================
+			mm95.active_id = "m10_smoke_line"
+			mm95.active_stage_i = 3
+			mm95.stage = allm95["m10_smoke_line"]["stages"][3]
+			mm95.rt = {}
+			mm95.failed.clear()
+			mm95._setup_stage()
+			var gd95 := 0
+			for a95c in mm95.actors:
+				if is_instance_valid(a95c) and a95c.get("state") != null:
+					gd95 += 1
+			_check(gd95 >= 2, "observe: the stakeout spawned %d subjects — 'don't be seen' is fiction with nobody to see you" % gd95)
+			var sus95 := 0
+			for a95d in mm95.actors:
+				if is_instance_valid(a95d) and a95d.get("suspicion") != null:
+					sus95 += 1
+			_check(sus95 >= 2, "observe: the subjects carry a live suspicion meter the stage reads")
+			_player.global_position = mm95.rt["pos"]
+			for i95h in 6:
+				mm95._tick_stage(1.0, _player)
+			_check(float(mm95.rt["held"]) > 5.0, "observe: standing on the spot accumulates watch time (%.1fs)" % float(mm95.rt["held"]))
+			# wander off and the time bleeds back out
+			var held95: float = mm95.rt["held"]
+			_player.global_position = mm95.rt["pos"] + Vector3(60, 0, 0)
+			for i95i in 4:
+				mm95._tick_stage(1.0, _player)
+			_check(float(mm95.rt["held"]) < held95, "observe: leaving the spot bleeds the stakeout time back off")
+			# finish it properly
+			_player.global_position = mm95.rt["pos"]
+			for i95j in 20:
+				mm95._tick_stage(1.0, _player)
+			_check(ws95.stats.get("stakeouts", 0) == 1, "observe: holding the spot for the full count completes the stakeout")
+			mm95._cleanup_stage()
+
+			# ============= the fixes that came out of building these ==========
+			var msrc95 := FileAccess.get_file_as_string("res://scripts/missions/mission_manager.gd")
+			var nsrc95 := FileAccess.get_file_as_string("res://scripts/npc/npc.gd")
+			_check("var flee_speed: float = 5.2" in nsrc95, "npc flee pace is a VARIABLE now — the chase tiring was fiction while it was a hardcoded 5.2")
+			_check('has_meta("chase_target")' in nsrc95, "a chase target cannot dive into traffic and queue_free() itself mid-pursuit")
+			_check('"race_furnace"' in msrc95, "RACE_TRACKS finally defines race_furnace — side_race2's 'Furnace Loop' silently raced around the Docks")
+			_check('push_warning("MissionManager: unknown race track' in msrc95, "an unknown race track now says so instead of quietly substituting another district")
+			_check('e.has("rel2")' in msrc95, "choice effects honour rel2 — m06 authored it and nothing ever read it, so the witness choice cost Okoro nothing")
+			_check('e.has("faction_rep")' in msrc95, "choice effects honour faction_rep, also authored and also ignored")
+			# the talk-stage NPC leak: speakers were parented to the city but
+			# never in `actors`, so _cleanup_stage() never freed them.
+			var talkblk95 := msrc95.substr(msrc95.find('"talk":'), 900)
+			_check("actors.append(n)" in talkblk95, "a talk stage OWNS its speaker — 18 talk stages used to leave 18 permanent ghosts on the street")
+			_check('add_to_group("smoke_line")' in FileAccess.get_file_as_string("res://scripts/world/smoke_line.gd"), "the freight train joins a group so missions can find it without going through city.gd")
+
+			# --- restore everything ------------------------------------------
+			_revive_player()
+			_player.global_position = home95
+			mm95._cleanup_stage()
+			mm95.actors.clear()
+			mm95.active_id = sv95["active"]
+			mm95.active_stage_i = sv95["stage_i"]
+			mm95.stage = sv95["stage"]
+			mm95.rt = sv95["rt"]
+			mm95.completed = sv95["completed"]
+			mm95.failed = sv95["failed"]
+			mm95.story_offer = sv95["offer"]
+			mm95.side_offer = sv95["sideoffer"]
+			ws95.money = sv95["money"]
+			ws95.wanted = sv95["wanted"]
+			ws95.stats = sv95["stats"]
+			ws95.flags = sv95["flags"]
+			ws95.relationships = sv95["rels"]
+			ws95.factions = sv95["factions"]
+			ws95.inventory = sv95["inv"]
+			prog95.xp = sv95["xp"]
+			prog95.level = sv95["level"]
+			_check(diff95.threat() >= 0.0, "difficulty threat survived a full six-verb mission gauntlet")
+		96:
+			# ============ THE CINDER CUT: rivers, bridges, and the GPS =======
+			var wg96 = root.get_node("WorldGen")
+			var db96 = root.get_node("Db")
+			var wcfg96: Dictionary = db96.districts.get("world", {})
+			var rcfg96: Dictionary = wcfg96.get("river", {})
+			_check(not rcfg96.is_empty(), "city.json authors a river")
+			_check(wg96._river_built and wg96.river_name == "the Cinder Cut",
+				"WorldGen built %s" % wg96.river_name)
+			_check(wg96.river_channels.size() == 3,
+				"three channels: the Cut, Crown Reach and the Crown Cut branch (%d)" % wg96.river_channels.size())
+			_check(wg96.root.get_node_or_null("river") != null, "river geometry committed")
+			_check(wg96.root.get_node_or_null("river_crossings") != null, "bridge geometry committed")
+			# --- water sheets: the harbour's three survive the river joining --
+			_check(wg96.harbour_layers.size() == 3 and wg96.river_layers.size() >= 5,
+				"harbour keeps its 3 sheets and the river brings its own (%d + %d)" % [wg96.harbour_layers.size(), wg96.river_layers.size()])
+			var rm96: StandardMaterial3D = wg96.river_layers[0][0]
+			var roff96: Vector3 = rm96.uv1_offset
+			wg96._process(0.5)
+			_check(rm96.uv1_offset != roff96, "the Cut's surface actually moves")
+			# --- the river touches nothing it was not given -------------------
+			# Recomputed from city.json rather than from the builder: this is
+			# the invariant the whole layout was designed around, and it is the
+			# one a future edit to the data is most likely to break silently.
+			var bad96: Array = []
+			for did96 in db96.districts:
+				if did96 == "world":
+					continue
+				var d96: Dictionary = db96.districts[did96]
+				var c96 := Vector2(d96["center"][0], d96["center"][1])
+				var sz96 := Vector2(d96["size"][0], d96["size"][1])
+				var plate96 := Rect2(c96 - sz96 * 0.5, sz96)
+				var blk96: float = d96.get("block", 48)
+				var rw96: float = d96.get("road_w", 10)
+				var nx96 := int(sz96.x / blk96)
+				var nz96 := int(sz96.y / blk96)
+				var hits96: Array = []
+				hits96.append(["plate", plate96])
+				for i96 in range(nx96 + 1):
+					var x96 := plate96.position.x + i96 * blk96
+					hits96.append(["road", Rect2(Vector2(x96 - rw96 * 0.5, plate96.position.y), Vector2(rw96, sz96.y))])
+				for j96 in range(nz96 + 1):
+					var z96 := plate96.position.y + j96 * blk96
+					hits96.append(["road", Rect2(Vector2(plate96.position.x, z96 - rw96 * 0.5), Vector2(sz96.x, rw96))])
+				var span96 := blk96 - rw96 - 3.0
+				for i96b in range(nx96):
+					for j96b in range(nz96):
+						var bc96 := Vector2(plate96.position.x + i96b * blk96 + blk96 * 0.5,
+							plate96.position.y + j96b * blk96 + blk96 * 0.5)
+						hits96.append(["block", Rect2(bc96 - Vector2(span96, span96) * 0.5, Vector2(span96, span96))])
+				for chv96 in wg96.river_channels:
+					var ch96: Dictionary = chv96
+					var r96: Rect2 = ch96["rect"]
+					for hv96 in hits96:
+						var h96: Array = hv96
+						var hr96: Rect2 = h96[1]
+						if hr96.intersects(r96):
+							bad96.append("%s %s x %s" % [str(did96), str(h96[0]), str(ch96["id"])])
+			_check(bad96.is_empty(),
+				"no channel runs through a district plate, road strip or building block (%s)" % str(bad96))
+			# --- nobody is standing in it ------------------------------------
+			var wet96: Array = []
+			for pid96 in wg96.pois:
+				var pd96: Dictionary = wg96.pois[pid96]["data"]
+				var at96: Array = pd96.get("at", [0, 0])
+				if wg96.in_river(Vector2(float(at96[0]), float(at96[1]))):
+					wet96.append(str(pid96))
+			_check(wet96.is_empty(), "no POI or filling station is standing in the Cut (%s)" % str(wet96))
+			_check(wg96.in_river(Vector2(100, -7)), "mid-channel reads as water")
+			_check(not wg96.in_river(Vector2(190, -7)), "a bridge deck over the Cut does not read as water")
+			_check(not wg96.in_river(Vector2(-240, 40)), "Kiln Row, 120 m from the water, does not read as water")
+			_check(not wg96.in_river(Vector2(300, 60)), "the Crown Heights overlook does not read as water")
+			# --- bridges are derived from the roads that actually cross ------
+			var want96: Array = []
+			for av96 in wcfg96.get("arterials", []):
+				var ad96: Dictionary = av96
+				var ax96 := str(ad96.get("axis", "x"))
+				var at96f := float(ad96.get("at", 0))
+				var wd96 := float(ad96.get("width", 16))
+				var road96: Rect2 = Rect2(Vector2(at96f - wd96 * 0.5, -450.0), Vector2(wd96, 700.0)) if ax96 == "x" else Rect2(Vector2(-550.0, at96f - wd96 * 0.5), Vector2(900.0, wd96))
+				for chv96b in wg96.river_channels:
+					var ch96b: Dictionary = chv96b
+					if road96.intersects(ch96b["rect"]):
+						want96.append(at96f)
+			var roadb96 := 0
+			var footb96 := 0
+			for bv96 in wg96.river_bridges:
+				var b96: Dictionary = bv96
+				if str(b96["kind"]) == "road":
+					roadb96 += 1
+				else:
+					footb96 += 1
+			_check(roadb96 == want96.size() and roadb96 == 2,
+				"every arterial that meets water has a bridge, and only those do (%d built, %d crossings)" % [roadb96, want96.size()])
+			_check(footb96 == 2, "two footbridges carry the Crown Cut (%d)" % footb96)
+			# --- solid underfoot, and the parapets are real ------------------
+			var space96 = _city.get_world_3d().direct_space_state
+			var nodeck96: Array = []
+			for bv96b in wg96.river_bridges:
+				var b96b: Dictionary = bv96b
+				var c96b: Vector2 = b96b["at"]
+				var q96 := PhysicsRayQueryParameters3D.new()
+				q96.from = Vector3(c96b.x, 6.0, c96b.y)
+				q96.to = Vector3(c96b.x, -3.0, c96b.y)
+				if space96.intersect_ray(q96).is_empty():
+					nodeck96.append(str(b96b["id"]))
+			_check(nodeck96.is_empty(), "every crossing has a deck you can stand on (%s)" % str(nodeck96))
+			# --- the promenade is walkable for its whole length --------------
+			var gap96 := 0
+			for x96b in [-60.0, 0.0, 60.0, 140.0, 260.0, 340.0, 420.0, 480.0]:
+				var q96b := PhysicsRayQueryParameters3D.new()
+				q96b.from = Vector3(x96b, 5.0, -19.6)
+				q96b.to = Vector3(x96b, -3.0, -19.6)
+				if space96.intersect_ray(q96b).is_empty():
+					gap96 += 1
+			_check(gap96 == 0, "the south-bank promenade is solid for its whole 590 m (%d holes)" % gap96)
+			# --- and you can get back out ------------------------------------
+			# The Cut is a 3.6 m hole with a 0.7 m parapet on both banks. If the
+			# landing stairs do not reach below the waterline it is a one-way
+			# trip, and nothing in the game says so.
+			var flight96: Array = []
+			for z96b in [-17.0, -15.5, -14.0, -12.5]:
+				var q96c := PhysicsRayQueryParameters3D.new()
+				q96c.from = Vector3(-30.0, 4.0, z96b)
+				q96c.to = Vector3(-30.0, -4.0, z96b)
+				var hit96: Dictionary = space96.intersect_ray(q96c)
+				if hit96.is_empty():
+					flight96.append(99.0)
+				else:
+					flight96.append((hit96["position"] as Vector3).y)
+			var descends96 := true
+			for k96 in range(flight96.size() - 1):
+				if flight96[k96 + 1] >= flight96[k96]:
+					descends96 = false
+			_check(descends96, "the landing stairs descend into the channel (%s)" % str(flight96))
+			_check(flight96[flight96.size() - 1] < wg96.river_water_y,
+				"and the bottom step is below the waterline, so the Cut is escapable (%.2f < %.2f)" % [flight96[flight96.size() - 1], wg96.river_water_y])
+			# --- the harbour is solid too (it never was) ---------------------
+			var q96d := PhysicsRayQueryParameters3D.new()
+			q96d.from = Vector3(100, 4.0, -510)
+			q96d.to = Vector3(100, -4.0, -510)
+			_check(not space96.intersect_ray(q96d).is_empty(),
+				"the harbour has collision — before this its shape was built, sized and never parented")
+			# --- the GPS: Crown Heights used to be an unreachable island -----
+			var a96 := Vector3(-240, 0, 43)     # Kiln Row
+			var b96v := Vector3(380, 0, 90)     # Crown Heights, the Country Club
+			var path96: PackedVector3Array = wg96.route_world(a96, b96v)
+			_check(path96.size() >= 2,
+				"the GPS can route Kiln Row to Crown Heights at all (%d waypoints)" % path96.size())
+			if path96.size() >= 2:
+				_check(wg96.route_length(path96) > (b96v - a96).length() * 0.9,
+					"and it routes a plausible distance, not a straight line through the void (%.0f m)" % wg96.route_length(path96))
+				var onbridge96 := false
+				var wadewp96 := 0
+				for pv96 in path96:
+					if wg96.bridge_at(Vector2(pv96.x, pv96.z)) >= 0:
+						onbridge96 = true
+					if wg96.in_river(Vector2(pv96.x, pv96.z)):
+						wadewp96 += 1
+				_check(onbridge96, "the route crosses the Cut ON A BRIDGE")
+				_check(wadewp96 == 0, "and no waypoint in it is in the water (%d)" % wadewp96)
+			# --- no lane edge tells a driver to wade -------------------------
+			var wade96 := 0
+			var wadebridge96 := 0
+			for i96c in wg96._rg_adj.size():
+				for ev96 in wg96._rg_adj[i96c]:
+					var e96: Array = ev96
+					var j96c: int = e96[0]
+					if j96c <= i96c:
+						continue
+					if wg96._river_blocked(wg96._rg_nodes[i96c], wg96._rg_nodes[j96c]):
+						wade96 += 1
+						if i96c >= wg96.rg_lane_count or j96c >= wg96.rg_lane_count:
+							wadebridge96 += 1
+			_check(wade96 == 0,
+				"no route-graph edge leaves the road for the water (%d, %d of them bridge ties)" % [wade96, wadebridge96])
+			_check(wg96._rg_nodes.size() > wg96.rg_lane_count,
+				"the crossings are in the route graph as nodes (%d lanes + %d crossings)" % [wg96.rg_lane_count, wg96._rg_nodes.size() - wg96.rg_lane_count])
+			# --- the whole graph is one piece now ----------------------------
+			var seen96 := {}
+			var stack96: Array = [0]
+			while not stack96.is_empty():
+				var u96: int = stack96.pop_back()
+				if seen96.has(u96):
+					continue
+				seen96[u96] = true
+				for ev96b in wg96._rg_adj[u96]:
+					var e96b: Array = ev96b
+					if not seen96.has(e96b[0]):
+						stack96.append(e96b[0])
+			_check(seen96.size() == wg96._rg_nodes.size(),
+				"one connected route graph — Crown Heights was a 48-node island with no way in (%d of %d reachable)" % [seen96.size(), wg96._rg_nodes.size()])
+			# --- and the Crown Cut's east bank finally has ground ------------
+			var q96e := PhysicsRayQueryParameters3D.new()
+			q96e.from = Vector3(236, 4.0, 190)
+			q96e.to = Vector3(236, -3.0, 190)
+			_check(not space96.intersect_ray(q96e).is_empty(),
+				"poi_stash_crown has ground under it — it was authored 4 m outside its own district's plate")
+		97:
+			# ============ TYPOGRAPHY: the fonts that shipped but were never used
+			# The project carried four DejaVu faces in assets/fonts/, credited
+			# them by name on the menu's about card, and loaded none of them.
+			# No theme resource existed, no script called
+			# add_theme_font_override once, and gui/theme/custom_font_size was the
+			# only typography in project.godot — so the entire game rendered in
+			# the engine's built-in fallback face. These assertions are written
+			# from the data files, not from Type's own answer, so a face that
+			# goes back to being dead weight fails here.
+			var ty97 = root.get_node_or_null("Type")
+			_check(ty97 != null, "Type autoload registered")
+			if ty97 != null:
+				var fdir := DirAccess.open("res://assets/fonts")
+				var ondisk: Array = []
+				for nv97 in fdir.get_files():
+					var nm97 := str(nv97)
+					if nm97.ends_with(".ttf"):
+						ondisk.append(nm97)
+				var faces97: Dictionary = ty97.FACES
+				var dead97: Array = []
+				for nm97b in ondisk:
+					var used97 := false
+					for rv97 in faces97:
+						if str(faces97[rv97]) == nm97b:
+							used97 = true
+					if not used97:
+						dead97.append(nm97b)
+				_check(dead97.is_empty(),
+					"every face shipped in assets/fonts/ is mapped to a role — 4 of 4 were dead weight before (%d on disk, %s)" % [ondisk.size(), str(dead97)])
+				var null97: Array = []
+				for rv97b in faces97:
+					if ty97.face(str(rv97b)) == null:
+						null97.append(str(rv97b))
+				_check(null97.is_empty(),
+					"all %d roles load a real Font (%s)" % [faces97.size(), str(null97)])
+				var disp97: Font = ty97.face("display")
+				var body97: Font = ty97.face("body")
+				var mono97: Font = ty97.face("mono")
+				_check(disp97 != null and body97 != null and mono97 != null
+					and disp97 != body97 and body97 != mono97 and disp97 != mono97,
+					"display, body and mono are three genuinely different faces")
+				# ---- the project-wide theme actually got installed ----------
+				var th97: Theme = root.theme
+				_check(th97 != null and th97.default_font == body97,
+					"the root Window carries a theme whose default face is the body role")
+				# ---- HUD: numbers in mono, names in display, sentences in body
+				var hud97 = _city.get("hud")
+				if hud97 != null:
+					var mis97: Array = []
+					for kv97 in [["_money_lbl", mono97], ["_stars_lbl", mono97], ["_clock_lbl", mono97],
+							["_ammo_lbl", mono97], ["_style_lbl", mono97], ["_speed_lbl", mono97],
+							["_fuel_lbl", mono97], ["_lvl_lbl", mono97]]:
+						var k97: Array = kv97
+						var lbl97 = hud97.get(k97[0])
+						if lbl97 == null:
+							mis97.append(str(k97[0]) + " missing")
+						elif lbl97.get_theme_font("font") != k97[1]:
+							mis97.append(str(k97[0]))
+					_check(mis97.is_empty(),
+						"every HUD figure — credits, wanted, clock, ammo, style, speed, fuel, XP — is set in mono so the counters do not crawl sideways (%s)" % str(mis97))
+					var disp97b: Array = []
+					for kv97b in [["_district_lbl", disp97], ["_mission_lbl", disp97], ["_objective_lbl", body97]]:
+						var k97b: Array = kv97b
+						var lbl97b = hud97.get(k97b[0])
+						if lbl97b != null and lbl97b.get_theme_font("font") != k97b[1]:
+							disp97b.append(str(k97b[0]))
+					_check(disp97b.is_empty(),
+						"place and mission names are display, the objective sentence is body (%s)" % str(disp97b))
+				# ---- dialogue: the RTL weight trap --------------------------
+				var dui97 = root.get_node("DialogueUI")
+				if dui97 != null:
+					var nl97 = dui97.get("name_lbl")
+					_check(nl97 != null and nl97.get_theme_font("font") == disp97,
+						"the speaker's name is set in the display face")
+					var tl97 = dui97.get("text_lbl")
+					if tl97 != null:
+						# RichTextLabel has no "font" item at all: it takes one
+						# override per weight. Setting only normal_font leaves
+						# every bold span on the engine fallback, which is the
+						# reason Type.apply() branches on the node type.
+						_check(tl97.get_theme_font("normal_font") == body97,
+							"the spoken line is set in the body face")
+						_check(tl97.get_theme_font("bold_font") != null
+							and tl97.get_theme_font("bold_font") == tl97.get_theme_font("bold_italics_font"),
+							"and its bold and bold-italic weights are set too — RichTextLabel ignores 'font'")
+				# ---- the cutscene slate -------------------------------------
+				var cs97 = root.get_node("Cutscene")
+				if cs97 != null:
+					var card97 = cs97.get("_card")
+					_check(card97 != null and card97.get_theme_font("font") == disp97,
+						"the cutscene location card is set in the display face")
+				# ---- the phone, the shop and the caller ---------------------
+				var ph97 = root.get_node("PhoneUI")
+				if ph97 != null:
+					var dd97 = ph97.get("_diff_desc")
+					if dd97 != null:
+						_check(dd97.get_theme_font("font") != null, "phone labels inherit a face")
+				var sh97 = root.get_node("ShopUI")
+				if sh97 != null:
+					var st97 = sh97.get("_title")
+					var sm97 = sh97.get("_money")
+					if st97 != null and sm97 != null:
+						_check(st97.get_theme_font("font") == disp97 and sm97.get_theme_font("font") == mono97,
+							"shop title in display, its credit counter in mono")
+					else:
+						_check(true, "shop panel not open this run — title/counter faces checked when it is")
+				# ---- the about card credits what it actually ships ----------
+				var menu97 := FileAccess.get_file_as_string("res://scripts/scenes/menu.gd")
+				_check("DejaVu Serif / Sans / Sans Mono" in menu97,
+					"the about card names the three families it now uses, not 'DejaVu' in the abstract")
+				var usedroles97: Array = ty97.roles_in_use()
+				_check(usedroles97.has("display") and usedroles97.has("body") and usedroles97.has("mono"),
+					"all three primary roles were requested by the UI this run (%s)" % str(usedroles97))
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()
@@ -1905,6 +2557,24 @@ func _spawn_ped46(pos: Vector3) -> Node:
 	var pids: Array = db46.peds.keys()
 	n.setup_ped(pids[randi() % pids.size()], "kiln_row", pos)
 	return n
+
+
+## Wave 49: mission stages name POIs, and every one of them has to exist in
+## city.json or the stage silently targets Vector3.ZERO. Db has no poi index,
+## so this reads the district table directly.
+func _poi_known95(pid: String) -> bool:
+	var db95h = root.get_node("Db")
+	var all95: Dictionary = db95h.districts
+	for k95h in all95.keys():
+		if k95h == "world":
+			continue
+		var dv = all95[k95h]
+		if dv == null or not (dv is Dictionary):
+			continue
+		for p95h in (dv as Dictionary).get("pois", []):
+			if String((p95h as Dictionary).get("id", "")) == pid:
+				return true
+	return false
 
 
 func _grp(g: String) -> Node:

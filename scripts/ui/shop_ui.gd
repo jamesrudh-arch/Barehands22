@@ -25,11 +25,13 @@ func _ready() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_panel.add_child(bg)
 	_title = Label.new()
+	Type.apply(_title, "display")
 	_title.position = Vector2(40, 26)
 	_title.add_theme_font_size_override("font_size", 28)
 	_title.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
 	_panel.add_child(_title)
 	_money = Label.new()
+	Type.apply(_money, "mono")
 	_money.anchor_left = 1.0
 	_money.anchor_right = 1.0
 	_money.offset_left = -300
@@ -387,6 +389,7 @@ func _row(name: String, price: String, blurb: String, cb) -> Control:
 	nl.add_theme_font_size_override("font_size", 17)
 	h.add_child(nl)
 	var pl := Label.new()
+	Type.apply(pl, "mono")
 	pl.text = price
 	pl.custom_minimum_size = Vector2(110, 0)
 	pl.add_theme_font_size_override("font_size", 16)

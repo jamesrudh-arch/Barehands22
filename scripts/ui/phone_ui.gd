@@ -7,6 +7,7 @@ var _root: Control
 var _frame: Panel
 var _screen: Control
 var _app := ""
+var _diff_desc: Label = null      # settings: what the chosen difficulty preset does
 var _map_view: Control
 var _news_i := 0
 
@@ -85,6 +86,7 @@ func _header(title: String) -> void:
 	_screen.add_child(h)
 	var t := Label.new()
 	t.text = title
+	Type.apply(t, "display")
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.add_theme_font_size_override("font_size", 22)
 	t.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
@@ -657,6 +659,36 @@ func _show_settings() -> void:
 			Game.save_settings())
 		h.add_child(cb)
 		vb.add_child(h)
+	# ---- difficulty preset --------------------------------------------------
+	# Sits ABOVE quality because it changes the game, not the framerate. It
+	# scales Difficulty's progress-derived threat curve rather than replacing
+	# it, so the story still escalates on every preset.
+	var dh := HBoxContainer.new()
+	var dl := Label.new()
+	dl.text = "Difficulty"
+	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.add_theme_font_size_override("font_size", 15)
+	dh.add_child(dl)
+	var dob := OptionButton.new()
+	var diff96 := get_node_or_null("/root/Difficulty")
+	for i96 in diff96.preset_count():
+		dob.add_item(diff96.preset_name(i96))
+	dob.selected = clampi(int(Game.settings.get("difficulty", 1)), 0, diff96.preset_count() - 1)
+	dob.custom_minimum_size = Vector2(150, 0)
+	dob.item_selected.connect(func(i96b: int):
+		Game.settings["difficulty"] = i96b
+		Game.save_settings()
+		_refresh_diff_desc())
+	dh.add_child(dob)
+	vb.add_child(dh)
+	_diff_desc = Label.new()
+	_diff_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_diff_desc.custom_minimum_size = Vector2(0, 34)
+	_diff_desc.add_theme_font_size_override("font_size", 12)
+	_diff_desc.add_theme_color_override("font_color", Color(0.62, 0.62, 0.57))
+	vb.add_child(_diff_desc)
+	_refresh_diff_desc()
+
 	# quality
 	var h := HBoxContainer.new()
 	var l := Label.new()
@@ -675,6 +707,19 @@ func _show_settings() -> void:
 		Bus.settings_changed.emit())
 	h.add_child(ob)
 	vb.add_child(h)
+
+
+func _refresh_diff_desc() -> void:
+	## Say what the preset actually DOES. A difficulty menu that only names
+	## three levels tells the player nothing about what changed.
+	if _diff_desc == null or not is_instance_valid(_diff_desc):
+		return
+	var diff := get_node_or_null("/root/Difficulty")
+	if diff == null:
+		return
+	var i := clampi(int(Game.settings.get("difficulty", 1)), 0, diff.preset_count() - 1)
+	var mult: float = float(diff.PRESETS[i]["mult"])
+	_diff_desc.text = "%s  (threat x%.2f)\n%s" % [diff.preset_name(i), mult, diff.preset_desc(i)]
 
 
 func _slider(key: String, label: String, mn: float, mx: float, step: float) -> Control:
