@@ -298,6 +298,7 @@ func _draw_map() -> void:
 			"home": col = Color(0.5, 0.75, 0.95)
 			"law": col = Color(0.55, 0.6, 0.95)
 			"place": col = Color(0.75, 0.7, 0.6)
+			"fuel": col = Color(0.95, 0.45, 0.25)
 		v.draw_circle(p, 3.0, col)
 	# mission target
 	var mm := get_node_or_null("/root/MissionManager")

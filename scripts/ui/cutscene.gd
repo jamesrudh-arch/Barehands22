@@ -13,6 +13,7 @@ var _sub: Label
 var _fade: ColorRect
 var _cam: Camera3D
 var _finished_cb := Callable()
+var _skip_lbl: Label
 
 
 func _ready() -> void:
@@ -23,6 +24,25 @@ func _ready() -> void:
 		b.visible = false
 		add_child(b)
 	_bars[0].offset_bottom = -1.0  # top bar sized on play
+	_skip_lbl = Label.new()
+	_skip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_skip_lbl.anchor_left = 1.0
+	_skip_lbl.anchor_right = 1.0
+	_skip_lbl.anchor_top = 1.0
+	_skip_lbl.anchor_bottom = 1.0
+	_skip_lbl.offset_left = -260
+	_skip_lbl.offset_right = -22
+	_skip_lbl.offset_top = -104
+	_skip_lbl.offset_bottom = -84
+	_skip_lbl.add_theme_font_size_override("font_size", 13)
+	_skip_lbl.add_theme_color_override("font_color", Color(0.78, 0.76, 0.72, 0.85))
+	_skip_lbl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	_skip_lbl.add_theme_constant_override("shadow_offset_x", 1)
+	_skip_lbl.add_theme_constant_override("shadow_offset_y", 1)
+	_skip_lbl.text = "ESC \u2014 skip"
+	_skip_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_skip_lbl.visible = false
+	add_child(_skip_lbl)
 	_card = Label.new()
 	_card.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_card.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -106,8 +126,17 @@ func _setup_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not playing:
+		if _skip_lbl != null and _skip_lbl.visible:
+			_skip_lbl.visible = false
 		return
+	if _skip_lbl != null and not _skip_lbl.visible:
+		_skip_lbl.visible = true
 	_t += delta
+	# skip() parks _step_i at size(); indexing _steps there would throw. This
+	# guard is what makes the skip binding safe rather than a crash on keypress.
+	if _step_i < 0 or _step_i >= _steps.size():
+		_finish()
+		return
 	var s: Dictionary = _steps[_step_i]
 	match s.get("v", ""):
 		"fade":
@@ -220,6 +249,8 @@ func _finish() -> void:
 	_card.visible = false
 	_sub.visible = false
 	_fade.visible = false
+	if _skip_lbl != null:
+		_skip_lbl.visible = false
 	Game.cutscene_active = false
 	if _cam:
 		_cam.current = false
@@ -262,22 +293,86 @@ func _script(id: String) -> Array:
 	match id:
 		"cs_intro":
 			var p := _player_pos()
+			# THE OPENING IS A CONVERSATION, NOT A VOICEOVER.
+			# Eli is the player and is never spawned as an actor; Ruth stands
+			# three and a half metres off his right shoulder, under the awning,
+			# in the rain. Every line is answered by the next one, and the camera
+			# cuts between them on classic shot/reverse-shot grammar so the
+			# player always knows who is being replied to.
+			var rp := p + Vector3(3.0, 0.0, -2.0)
+			# Cam A sits on Ruth's far side and looks past her at Eli.
+			# Cam B sits on Eli's far side and looks past him at Ruth.
+			# They are ~7 m apart, so each cut genuinely reverses the angle.
+			var cam_eli := [p.x + 3.75, 1.75, p.z - 2.50]
+			var look_eli := [p.x, 1.56, p.z]
+			var cam_ruth := [p.x - 0.75, 1.75, p.z + 0.50]
+			var look_ruth := [rp.x, 1.54, rp.z]
 			return [
-				{"v": "fade", "to": 0.0, "dur": 1.2},
+				{"v": "fade", "to": 0.0, "dur": 1.4},
 				{"v": "bars", "on": true},
+				{"v": "weather", "kind": "rain"},
+				{"v": "hour", "h": 21.4},
 				{"v": "music", "track": "music_tension"},
-				{"v": "card", "text": "CINDER CITY", "dur": 2.8},
-				{"v": "card", "text": "Six districts. One debt. Everybody keeps a ledger.", "dur": 3.6},
-				# slow push over the rain-slick street toward Eli
-				{"v": "cam", "pos": [p.x + 14, 6.5, p.z + 16], "look": [p.x, 1.4, p.z], "dur": 0.01},
-				{"v": "cam", "pos": [p.x + 4.5, 2.2, p.z + 5.5], "look": [p.x, 1.4, p.z], "dur": 5.0},
-				{"v": "line", "spk": "eli", "text": "Twelve years keeping other people\'s books. Tonight the city collects mine.", "dur": 4.2},
-				{"v": "cam", "pos": [p.x + 1.2, 1.7, p.z + 1.6], "look": [p.x, 1.55, p.z], "dur": 3.0},
-				{"v": "line", "spk": "eli", "text": "Marcus is in deep. Deep enough that deep stops being a number.", "dur": 3.8},
+				{"v": "card", "text": "CINDER CITY", "dur": 2.6},
+				{"v": "card", "text": "Six districts. One debt. Everybody keeps a ledger.", "dur": 3.4},
+				{"v": "spawn", "char": "ruth", "at": [rp.x, rp.y, rp.z]},
+				{"v": "teleport", "who": "ruth", "at": [rp.x, rp.y, rp.z], "rot": 2.15},
+				# master shot: the street, the rain, the two of them
+				{"v": "cam", "pos": [p.x + 9.5, 4.6, p.z + 11.0], "look": [p.x + 1.4, 1.3, p.z - 0.8], "dur": 0.05},
+				{"v": "sfx", "name": "thunder_1"},
+				{"v": "cam", "pos": [p.x + 5.4, 2.5, p.z + 6.2], "look": [p.x + 1.4, 1.35, p.z - 0.8], "dur": 4.2},
+				# ---- BEAT 1: Ruth has come to find him ----------------------
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.05},
+				{"v": "line", "spk": "ruth", "text": "Sit down, Elias. You have been standing in that doorway eleven minutes.", "dur": 4.2},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "I was counting the rain. It is a habit. Numbers do not move when you are not looking.", "dur": 4.6},
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.05},
+				{"v": "line", "spk": "ruth", "text": "Your brother is not a number.", "dur": 2.6},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "Everything is a number, Mama. That is the job. Twelve years reading other people's ledgers.", "dur": 4.6},
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.05},
+				{"v": "line", "spk": "ruth", "text": "Then read this one. Where is Marcus?", "dur": 3.0},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "Owed. That is all I have got. Owed, and three days gone.", "dur": 3.6},
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.05},
+				{"v": "line", "spk": "ruth", "text": "Then we call the police.", "dur": 2.4},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "The police are on a ledger too, Mama. I have seen that ledger.", "dur": 3.8},
+				# ---- BEAT 2: the phone. Crowe's man, and Eli answers back ---
+				{"v": "sfx", "name": "phone_ring"},
+				{"v": "card", "text": "UNKNOWN NUMBER", "dur": 1.6},
+				{"v": "cam", "pos": [p.x + 2.4, 2.6, p.z + 3.4], "look": [p.x + 1.2, 1.45, p.z - 0.6], "dur": 1.2},
+				{"v": "line", "spk": "gunnar", "text": "Mr Vane. Silas Crowe sends his regards, and a number. Five thousand. Friday.", "dur": 4.4},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "And if Friday comes without it?", "dur": 2.6},
+				{"v": "cam", "pos": [p.x + 2.4, 2.6, p.z + 3.4], "look": [p.x + 1.2, 1.45, p.z - 0.6], "dur": 0.05},
+				{"v": "line", "spk": "gunnar", "text": "Then the harbour gets a story it has already told twice.", "dur": 3.6},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "Marcus is nineteen years old.", "dur": 2.4},
+				{"v": "cam", "pos": [p.x + 2.4, 2.6, p.z + 3.4], "look": [p.x + 1.2, 1.45, p.z - 0.6], "dur": 0.05},
+				{"v": "line", "spk": "gunnar", "text": "Nineteen is old enough to sign. Friday, Mr Vane.", "dur": 3.2},
 				{"v": "sfx", "name": "phone_msg"},
-				{"v": "line", "spk": "ruth", "text": "Come home, baby. Whatever it is — we face it at my table.", "dur": 3.6},
+				# ---- BEAT 3: the decision, and the thesis of the game -------
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.9},
+				{"v": "line", "spk": "ruth", "text": "Who was that.", "dur": 2.0},
+				{"v": "cam", "pos": cam_eli, "look": look_eli, "dur": 0.05},
+				{"v": "line", "spk": "eli", "text": "The man holding the pen.", "dur": 2.6},
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.05},
+				{"v": "line", "spk": "ruth", "text": "So we pay it.", "dur": 2.0},
+				{"v": "cam", "pos": [p.x + 1.5, 1.66, p.z + 1.9], "look": [p.x, 1.57, p.z], "dur": 1.1},
+				{"v": "line", "spk": "eli", "text": "No. We find out whose hand the pen is in. Everyone in this city has leverage on somebody, Mama. That is the whole economy.", "dur": 6.4},
+				{"v": "cam", "pos": cam_ruth, "look": look_ruth, "dur": 0.05},
+				{"v": "line", "spk": "ruth", "text": "And when they find out you have been reading their books?", "dur": 3.4},
+				# the last line is the closest the camera ever gets to him
+				{"v": "cam", "pos": [p.x + 0.72, 1.60, p.z + 0.95], "look": [p.x, 1.58, p.z], "dur": 1.3},
+				{"v": "line", "spk": "eli", "text": "Then I will have leverage too.", "dur": 3.2},
+				# ---- BEAT 4: pull out to the city, and the title ------------
+				{"v": "cam", "pos": [p.x + 8.5, 6.2, p.z + 12.5], "look": [p.x + 1.4, 1.2, p.z - 0.8], "dur": 3.8},
+				{"v": "sfx", "name": "thunder_1"},
+				{"v": "fade", "to": 1.0, "dur": 1.2},
 				{"v": "card", "text": "LEVERAGE", "dur": 3.0},
-				{"v": "card", "text": "A D\'Youngs Games story", "dur": 2.4},
+				{"v": "card", "text": "A D'Youngs Games story", "dur": 2.6},
+				{"v": "card", "text": "Friday is three days away.", "dur": 2.8},
 				{"v": "bars", "on": false},
 				{"v": "fade", "to": 0.0, "dur": 1.0},
 			]
@@ -348,9 +443,20 @@ func _player_pos() -> Vector3:
 	return Vector3.ZERO
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	## A 90-second opening the player cannot leave is not a cinematic, it is a
+	## hostage situation. skip() existed from day one and was bound to nothing.
+	if not playing:
+		return
+	if event.is_action_pressed("skip_cutscene"):
+		skip()
+		get_viewport().set_input_as_handled()
+
+
 func skip() -> void:
 	if playing:
 		_step_i = _steps.size()
+		_t = 9999.0
 
 
 func _scene() -> Node:

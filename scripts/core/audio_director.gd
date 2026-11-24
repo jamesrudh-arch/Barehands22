@@ -53,7 +53,7 @@ func _ready() -> void:
 	vox_player = AudioStreamPlayer.new()
 	vox_player.bus = "Vox"
 	add_child(vox_player)
-	for nm in ["rain", "traffic", "crowd", "interior", "fire", "siren"]:
+	for nm in ["rain", "traffic", "crowd", "interior", "fire", "siren", "harbour"]:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Ambient"
 		add_child(p)

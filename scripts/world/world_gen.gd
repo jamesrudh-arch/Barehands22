@@ -188,6 +188,8 @@ func build_city(parent: Node3D) -> void:
 		_build_district(did, city[did])
 	_build_arterials(city.get("world", {}))
 	_build_water(city.get("world", {}))
+	_build_rail(city.get("world", {}))
+	_build_stations(city.get("world", {}))
 	built = true
 
 
@@ -703,16 +705,421 @@ func _commit_simple(acc: Acc, node: Node3D) -> void:
 		node.add_child(sb)
 
 
+# ============================================================ SMOKE LINE ====
+## The Smoke Line: a freight viaduct carried above the east-west arterial at
+## z = -30. Missions m10_smoke_line, the Smokeline Bolt-Hole safehouse and the
+## Smoke Line Overlook all name this railway; until now there were no rails in
+## the game, only the word. It runs the full width of the city so a train is
+## something you hear before you see, from four districts away.
+const RAIL_Z := -30.0
+const RAIL_X0 := -560.0
+const RAIL_X1 := 360.0
+const RAIL_DECK_Y := 7.2
+const RAIL_PIERS := 24.0        # pier spacing
+const RAIL_SLEEPERS := 2.0      # sleeper spacing
+const RAIL_GAUGE := 0.72        # half-gauge: rails at +/- this
+const RAIL_PLATFORM_X := 300.0  # the Overlook station, 90 m from the POI
+
+## Where the rails are, so the running train and the audio can find them.
+# ---------------------------------------------------------------- stations --
+# Filling stations. Six forecourts, one per district, priced so that the cheap
+# fuel is in the rough districts and the premium is in Crown Heights — where
+# you fill up is a small economic decision the city already understands.
+const STA_PAD_X := 30.0
+const STA_PAD_Z := 20.0
+const STA_CANOPY_Y := 4.30
+const STA_PUMP_Y := 1.05
+
+var stations: Dictionary = {}          # id -> {data, node, pumps, district, pos}
+
+# per-station local frame: stations are authored long-axis-X and rotated to
+# face whichever arterial they front
+var _sta_cx := 0.0
+var _sta_cz := 0.0
+var _sta_swap := false
+
+
+func rail_height() -> float:
+	return RAIL_DECK_Y + 1.05
+
+
+func _build_rail(_w: Dictionary) -> void:
+	var acc := Acc.new()
+	var con := mat_slot("concrete")
+	var met := mat_slot("metal")
+	var rust := mat_slot("rust")
+	var neon := _neon_slot()
+	var grey := Color(0.42, 0.41, 0.40)
+	var dark := Color(0.24, 0.235, 0.23)
+	var steel := Color(0.58, 0.58, 0.60)
+
+	var x := RAIL_X0
+	# ---- piers + capitals -------------------------------------------------
+	while x <= RAIL_X1:
+		# tapered pier: wide at the base, narrower at the deck
+		acc.cyl(con, Vector3(x, 0.0, RAIL_Z - 2.3), Vector3(x, RAIL_DECK_Y - 0.5, RAIL_Z - 2.3), 0.85, 0.62, 8, grey)
+		acc.cyl(con, Vector3(x, 0.0, RAIL_Z + 2.3), Vector3(x, RAIL_DECK_Y - 0.5, RAIL_Z + 2.3), 0.85, 0.62, 8, grey)
+		# capital beam tying the two legs
+		acc.box(con, Vector3(x - 0.55, RAIL_DECK_Y - 0.9, RAIL_Z - 3.1), Vector3(1.1, 0.5, 6.2), Vector3(0.3, 0.3, 0.3), grey)
+		# base plinths so the legs meet the ground with weight
+		acc.box(con, Vector3(x - 1.05, 0.0, RAIL_Z - 3.2), Vector3(2.1, 0.5, 1.8), Vector3(0.3, 0.3, 0.3), dark)
+		acc.box(con, Vector3(x - 1.05, 0.0, RAIL_Z + 1.4), Vector3(2.1, 0.5, 1.8), Vector3(0.3, 0.3, 0.3), dark)
+		x += RAIL_PIERS
+
+	# ---- deck: ballast bed, two girders, parapets (segmented for UVs) -----
+	var seg := 23.0
+	x = RAIL_X0
+	while x < RAIL_X1:
+		var w := minf(seg, RAIL_X1 - x)
+		var cx := x + w * 0.5
+		# deck slab (Acc.box grows upward from its centre.y)
+		acc.box(con, Vector3(cx - w * 0.5, RAIL_DECK_Y - 0.45, RAIL_Z - 3.4), Vector3(w, 0.45, 6.8), Vector3(0.25, 0.25, 0.25), grey)
+		# ballast
+		acc.box(rust, Vector3(cx - w * 0.5, RAIL_DECK_Y, RAIL_Z - 2.6), Vector3(w, 0.22, 5.2), Vector3(0.5, 0.5, 0.5), Color(0.30, 0.27, 0.25))
+		# girders under the slab
+		acc.box(met, Vector3(cx - w * 0.5, RAIL_DECK_Y - 1.55, RAIL_Z - 3.35), Vector3(w, 1.1, 0.22), Vector3(0.3, 0.3, 0.3), dark)
+		acc.box(met, Vector3(cx - w * 0.5, RAIL_DECK_Y - 1.55, RAIL_Z + 3.13), Vector3(w, 1.1, 0.22), Vector3(0.3, 0.3, 0.3), dark)
+		# cross-bracing in an X, the detail that makes a viaduct read as built
+		acc.cyl(met, Vector3(x, RAIL_DECK_Y - 1.5, RAIL_Z - 3.2), Vector3(x + w, RAIL_DECK_Y - 0.5, RAIL_Z + 3.2), 0.07, 0.07, 5, dark)
+		acc.cyl(met, Vector3(x, RAIL_DECK_Y - 0.5, RAIL_Z - 3.2), Vector3(x + w, RAIL_DECK_Y - 1.5, RAIL_Z + 3.2), 0.07, 0.07, 5, dark)
+		# parapets
+		acc.box(met, Vector3(cx - w * 0.5, RAIL_DECK_Y + 0.1, RAIL_Z - 3.55), Vector3(w, 0.95, 0.10), Vector3(0.35, 0.35, 0.35), dark)
+		acc.box(met, Vector3(cx - w * 0.5, RAIL_DECK_Y + 0.1, RAIL_Z + 3.45), Vector3(w, 0.95, 0.10), Vector3(0.35, 0.35, 0.35), dark)
+		x += seg
+
+	# ---- sleepers + rails -------------------------------------------------
+	var sleeper_n := int((RAIL_X1 - RAIL_X0) / RAIL_SLEEPERS)
+	for i in sleeper_n:
+		var sx := RAIL_X0 + float(i) * RAIL_SLEEPERS
+		acc.box(rust, Vector3(sx - 1.25, RAIL_DECK_Y + 0.20, RAIL_Z - 1.25), Vector3(2.5, 0.14, 0.24), Vector3(0.6, 0.6, 0.6), Color(0.26, 0.22, 0.19))
+		acc.box(rust, Vector3(sx - 1.25, RAIL_DECK_Y + 0.20, RAIL_Z + 1.01), Vector3(2.5, 0.14, 0.24), Vector3(0.6, 0.6, 0.6), Color(0.26, 0.22, 0.19))
+	# rails run in 20 m lengths so the UV tiling stays sane over 920 m
+	var rx := RAIL_X0
+	while rx < RAIL_X1:
+		var rw := minf(20.0, RAIL_X1 - rx)
+		for side in [-1.0, 1.0]:
+			acc.box(met, Vector3(rx, RAIL_DECK_Y + 0.33, RAIL_Z + side * RAIL_GAUGE - 0.05), Vector3(rw, 0.13, 0.10), Vector3(0.8, 0.8, 0.8), steel)
+		rx += 20.0
+
+	# ---- gantry lamps: they glow at night and mark the line from anywhere --
+	var lx := RAIL_X0 + 30.0
+	while lx < RAIL_X1:
+		acc.cyl(met, Vector3(lx, RAIL_DECK_Y + 0.2, RAIL_Z + 3.4), Vector3(lx, RAIL_DECK_Y + 4.6, RAIL_Z + 3.4), 0.09, 0.07, 6, dark)
+		acc.box(met, Vector3(lx - 0.9, RAIL_DECK_Y + 4.5, RAIL_Z + 2.4), Vector3(1.8, 0.10, 1.0), Vector3(0.4, 0.4, 0.4), dark)
+		acc.box(neon, Vector3(lx - 0.8, RAIL_DECK_Y + 4.34, RAIL_Z + 2.5), Vector3(1.6, 0.10, 0.8), Vector3(0.4, 0.4, 0.4), Color(1.0, 0.92, 0.78))
+		lx += 60.0
+
+	# ---- the Overlook station: a platform, a canopy, and a stair down -----
+	var px := RAIL_PLATFORM_X
+	acc.box(con, Vector3(px - 26.0, RAIL_DECK_Y + 0.05, RAIL_Z - 7.6), Vector3(52.0, 0.30, 3.6), Vector3(0.3, 0.3, 0.3), grey)
+	for cxo in [-24.0, -8.0, 8.0, 24.0]:
+		acc.cyl(met, Vector3(px + cxo, RAIL_DECK_Y + 0.3, RAIL_Z - 7.2), Vector3(px + cxo, RAIL_DECK_Y + 3.5, RAIL_Z - 7.2), 0.11, 0.11, 6, dark)
+	acc.box(met, Vector3(px - 26.0, RAIL_DECK_Y + 3.5, RAIL_Z - 8.4), Vector3(52.0, 0.16, 4.4), Vector3(0.3, 0.3, 0.3), Color(0.20, 0.20, 0.22))
+	# stair from the street up to the platform
+	var sy := 0.0
+	var sz := RAIL_Z - 11.0
+	var step_i := 0
+	while sy < RAIL_DECK_Y:
+		acc.box(con, Vector3(px - 30.0, sy, sz - 0.5), Vector3(3.0, 0.42, 1.0), Vector3(0.3, 0.3, 0.3), grey)
+		sy += 0.42
+		sz -= 0.34
+		step_i += 1
+
+	var node := Node3D.new()
+	node.name = "smoke_line"
+	root.add_child(node)
+	_commit(acc, node, "smoke_line")
+
+	# collision: the deck is solid, so a train cannot be walked through and
+	# the player can be on top of it. Segmented to keep the shape count sane.
+	var cx2 := RAIL_X0
+	while cx2 < RAIL_X1:
+		var cw := minf(46.0, RAIL_X1 - cx2)
+		var sb := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(cw, 1.6, 7.0)
+		cs.shape = box
+		sb.position = Vector3(cx2 + cw * 0.5, RAIL_DECK_Y - 0.2, RAIL_Z)
+		sb.collision_layer = 1
+		root.add_child(sb)
+		sb.add_child(cs)
+		cx2 += 46.0
+
+
+func _sta_p(lx: float, ly: float, lz: float) -> Vector3:
+	## local station space -> world. ly is a BASE height (Acc.box grows up).
+	if _sta_swap:
+		return Vector3(_sta_cx + lz, ly, _sta_cz + lx)
+	return Vector3(_sta_cx + lx, ly, _sta_cz + lz)
+
+
+func _sta_s(lx: float, ly: float, lz: float) -> Vector3:
+	## local SIZE -> world size (axes swap with the orientation)
+	if _sta_swap:
+		return Vector3(lz, ly, lx)
+	return Vector3(lx, ly, lz)
+
+
+func _sta_box(acc: Acc, i: int, lx: float, ly: float, lz: float,
+		sx: float, sy: float, sz: float, uvs := Vector3(0.25, 0.25, 0.25),
+		tint := Color(1, 1, 1)) -> void:
+	acc.box(i, _sta_p(lx, ly, lz), _sta_s(sx, sy, sz), uvs, tint)
+
+
+func _sta_cyl(acc: Acc, i: int, ax: float, ay: float, az: float,
+		bx: float, by: float, bz: float, r1: float, r2: float,
+		seg := 8, tint := Color(1, 1, 1)) -> void:
+	acc.cyl(i, _sta_p(ax, ay, az), _sta_p(bx, by, bz), r1, r2, seg, tint)
+
+
+func _sta_bar(acc: Acc, i: int, ax: float, az: float, bx: float, bz: float,
+		width: float, y := 0.085) -> void:
+	## a flat painted stripe on the forecourt. Winding matches Acc.box's top
+	## face so it can never end up facing away from the sky.
+	var a := _sta_p(ax, y, az)
+	var b := _sta_p(bx, y, bz)
+	var d := b - a
+	var L := d.length()
+	if L < 0.01:
+		return
+	d /= L
+	var perp := Vector3(-d.z, 0.0, d.x) * (width * 0.5)
+	acc.quad(i, a - perp, b - perp, b + perp, a + perp, Vector3(0, 1, 0),
+		Vector2(0, 0), Vector2(L, 0), Vector2(L, width), Vector2(0, width))
+
+
+func _station_along_z(p: Vector2, w: Dictionary) -> bool:
+	## true when the nearest arterial runs north-south, so the canopy's long
+	## axis (and the bays) should run with it
+	var best_d := 1e9
+	var best_axis := "x"
+	for a in w.get("arterials", []):
+		var ad: Dictionary = a
+		var at := float(ad.get("at", 0))
+		var d: float
+		if str(ad.get("axis", "x")) == "z":
+			d = absf(p.x - at)      # road runs N-S at x = at
+		else:
+			d = absf(p.y - at)      # road runs E-W at z = at
+		if d < best_d:
+			best_d = d
+			best_axis = str(ad.get("axis", "x"))
+	if best_d > 90.0:
+		return false                # no road worth orienting to
+	return best_axis == "z"
+
+
+func _station_brand(brand: String) -> Color:
+	match brand:
+		"Dockside":
+			return Color(0.20, 0.47, 0.58)
+		"Halcyon":
+			return Color(0.72, 0.80, 0.90)
+		"Neon Mile":
+			return Color(0.90, 0.28, 0.60)
+		"Slag Yard":
+			return Color(0.70, 0.36, 0.16)
+		"Crown":
+			return Color(0.88, 0.74, 0.32)
+		_:
+			return Color(0.83, 0.53, 0.20)   # Ember & Ash
+
+
+func _build_stations(w: Dictionary) -> void:
+	var list: Array = w.get("stations", [])
+	if list.is_empty():
+		return
+	var acc := Acc.new()
+	var con := mat_slot("concrete")
+	var met := mat_slot("metal")
+	var rust := mat_slot("rust")
+	var gls := mat_slot("glass")
+	var neon := _neon_slot()
+	var node := Node3D.new()
+	node.name = "filling_stations"
+	root.add_child(node)
+	var pump_script: GDScript = load("res://scripts/world/fuel_pump.gd")
+	var pale := Color(0.50, 0.49, 0.47)
+	var dark := Color(0.24, 0.235, 0.23)
+
+	for entry in list:
+		var sd: Dictionary = entry
+		var sid: String = str(sd.get("id", ""))
+		if sid == "":
+			continue
+		var at: Array = sd.get("at", [0, 0])
+		_sta_cx = float(at[0])
+		_sta_cz = float(at[1])
+		_sta_swap = _station_along_z(Vector2(_sta_cx, _sta_cz), w)
+		var npumps := clampi(int(sd.get("pumps", 3)), 2, 6)
+		var brand: Color = _station_brand(str(sd.get("brand", "")))
+		var did: String = str(sd.get("district", district_at(_sta_p(0, 0, 0))))
+
+		# ---- forecourt pad ----
+		_sta_box(acc, con, 0.0, 0.0, 0.0, STA_PAD_X, 0.07, STA_PAD_Z,
+			Vector3(0.11, 0.11, 0.11), pale)
+
+		# ---- canopy: slab, fascia band, soffit light panels, four posts ----
+		_sta_box(acc, met, 2.0, STA_CANOPY_Y, 0.0, 20.0, 0.42, 12.5,
+			Vector3(0.3, 0.3, 0.3), Color(0.62, 0.62, 0.64))
+		_sta_box(acc, met, 2.0, STA_CANOPY_Y, -6.36, 20.5, 0.64, 0.24, Vector3(0.4, 0.4, 0.4), brand)
+		_sta_box(acc, met, 2.0, STA_CANOPY_Y, 6.36, 20.5, 0.64, 0.24, Vector3(0.4, 0.4, 0.4), brand)
+		_sta_box(acc, met, -8.13, STA_CANOPY_Y, 0.0, 0.24, 0.64, 13.0, Vector3(0.4, 0.4, 0.4), brand)
+		_sta_box(acc, met, 12.13, STA_CANOPY_Y, 0.0, 0.24, 0.64, 13.0, Vector3(0.4, 0.4, 0.4), brand)
+		for k in 3:
+			_sta_box(acc, neon, -4.4 + float(k) * 6.4, 4.20, 0.0, 5.4, 0.08, 1.4,
+				Vector3(0.5, 0.5, 0.5))
+		for sx in [-9.0, 9.0]:
+			for sz in [-5.2, 5.2]:
+				_sta_box(acc, con, 2.0 + sx, 0.0, sz, 0.46, STA_CANOPY_Y, 0.46,
+					Vector3(0.4, 0.4, 0.4), pale)
+				# a base plinth so the post meets the pad with weight
+				_sta_box(acc, con, 2.0 + sx - 0.16, 0.07, sz - 0.16, 0.78, 0.20, 0.78,
+					Vector3(0.4, 0.4, 0.4), dark)
+
+		# ---- pumps: island, body, head, hose, nozzle, bollards ----
+		var pumps: Array = []
+		var span := 15.0 if npumps > 1 else 0.0
+		for k in npumps:
+			var lx := 2.0 + (float(k) - float(npumps - 1) * 0.5) * (span / maxf(1.0, float(npumps - 1)))
+			_sta_box(acc, con, lx, 0.07, 0.0, 3.4, 0.18, 1.15, Vector3(0.4, 0.4, 0.4), pale)
+			_sta_box(acc, met, lx, 0.25, 0.0, 0.68, 1.20, 0.46, Vector3(0.5, 0.5, 0.5), brand)
+			_sta_box(acc, gls, lx, 1.32, 0.0, 0.54, 0.38, 0.48, Vector3(0.5, 0.5, 0.5))
+			_sta_box(acc, met, lx, 1.70, 0.0, 0.74, 0.10, 0.54, Vector3(0.5, 0.5, 0.5), dark)
+			_sta_cyl(acc, rust, lx + 0.34, 1.25, 0.0, lx + 0.62, 0.95, 0.20, 0.045, 0.045, 6)
+			_sta_box(acc, rust, lx + 0.54, 0.86, 0.16, 0.16, 0.30, 0.14, Vector3(0.6, 0.6, 0.6))
+			for bx in [-1.85, 1.85]:
+				_sta_cyl(acc, met, lx + bx, 0.07, 0.0, lx + bx, 1.00, 0.0, 0.09, 0.09, 7,
+					Color(0.85, 0.78, 0.20))
+			# painted bay lines either side of the island
+			_sta_bar(acc, S_MARK, lx - 1.95, -2.55, lx + 1.95, -2.55, 0.14)
+			_sta_bar(acc, S_MARK, lx - 1.95, 2.55, lx + 1.95, 2.55, 0.14)
+			# the interactable itself — a real Area3D the player can walk to
+			var area := Area3D.new()
+			area.name = "pump_%s_%d" % [sid, k]
+			area.set_script(pump_script)
+			area.add_to_group("interact")
+			area.set("station_id", sid)
+			area.set("station_name", str(sd.get("name", "Filling Station")))
+			area.set("price_per_l", float(sd.get("price", 2.20)))
+			area.set("diesel", bool(sd.get("diesel", false)))
+			area.set("district", did)
+			area.set("pump_index", k)
+			var cs := CollisionShape3D.new()
+			var bs := BoxShape3D.new()
+			bs.size = Vector3(3.2, 2.6, 3.6)
+			cs.shape = bs
+			area.add_child(cs)
+			node.add_child(area)
+			area.position = _sta_p(lx, STA_PUMP_Y, 0.0)
+			pumps.append(area)
+
+		# ---- kiosk: the shop beside the forecourt ----
+		_sta_box(acc, con, -10.0, 0.0, 0.0, 6.0, 3.10, 4.6, Vector3(0.22, 0.22, 0.22), pale)
+		_sta_box(acc, met, -10.0, 3.10, 0.0, 7.0, 0.24, 5.6, Vector3(0.3, 0.3, 0.3), dark)
+		_sta_box(acc, gls, -6.95, 0.95, -0.9, 0.10, 1.55, 2.6, Vector3(0.5, 0.5, 0.5))
+		_sta_box(acc, rust, -6.94, 0.07, 1.50, 0.12, 2.05, 1.05, Vector3(0.4, 0.4, 0.4))
+		_sta_box(acc, met, -6.93, 2.60, 0.0, 0.14, 0.48, 4.4, Vector3(0.4, 0.4, 0.4), brand)
+
+		# ---- price totem: the thing you actually spot from down the road ----
+		_sta_cyl(acc, con, -10.0, 0.0, -7.6, -10.0, 5.60, -7.6, 0.26, 0.22, 8, pale)
+		_sta_box(acc, met, -10.0, 4.20, -7.6, 3.2, 1.80, 0.26, Vector3(0.4, 0.4, 0.4), brand)
+		_sta_box(acc, neon, -10.0, 4.36, -7.44, 2.8, 1.48, 0.06, Vector3(0.4, 0.4, 0.4))
+		_sta_box(acc, neon, -10.0, 4.36, -7.76, 2.8, 1.48, 0.06, Vector3(0.4, 0.4, 0.4))
+
+		# ---- painted entry / exit arrows on the pad ----
+		_sta_bar(acc, S_MARK, 13.2, -6.0, 13.2, 6.0, 0.30)
+		_sta_bar(acc, S_MARK, 11.6, 0.0, 13.2, 0.0, 0.30)
+		_sta_bar(acc, S_MARK, -13.6, -6.0, -13.6, 6.0, 0.30)
+
+		# the pooled street lights know about the canopy too, so a forecourt
+		# is genuinely lit when you are standing in it (and moths find it)
+		lamp_posts.append({"pos": _sta_p(-3.0, 4.20, 0.0), "district": did,
+			"color": Color(1.0, 0.95, 0.86)})
+		lamp_posts.append({"pos": _sta_p(7.0, 4.20, 0.0), "district": did,
+			"color": Color(1.0, 0.95, 0.86)})
+
+		stations[sid] = {
+			"data": sd, "node": node, "pumps": pumps, "district": did,
+			"pos": Vector3(_sta_cx, 0.0, _sta_cz),
+			"along_z": _sta_swap,
+		}
+		# on the minimap, the big map and the phone's tap-to-route list
+		pois[sid] = {"data": sd, "node": node, "district": did}
+
+	_commit(acc, node, "stations")
+
+
 func _build_water(w: Dictionary) -> void:
+	## The harbour. It used to be one flat static quad — a blue floor with a
+	## normal map frozen on it. Water that never moves reads as painted on,
+	## so it is now three sheets:
+	##   1. a base sheet scrolling slowly one way,
+	##   2. a second sheet at a different scale scrolling the OTHER way —
+	##      two overlapping normal maps interfere and read as real chop,
+	##      which is far cheaper than a vertex-displaced mesh on mobile,
+	##   3. a foam strip along the quay that surges in and out.
+	## _process() drives the scroll; see _water_layers.
 	var z: float = w.get("water_z", -380)
+	var centre := Vector3(100, -0.6, z - 130)
+	var sz := Vector2(1400, 260)
+
 	var mi := MeshInstance3D.new()
+	mi.name = "HarbourWater"
 	var q := QuadMesh.new()
-	q.size = Vector2(1400, 260)
+	q.size = sz
 	mi.mesh = q
-	mi.material_override = mat("water")
+	var base_m: StandardMaterial3D = mat("water").duplicate()
+	mi.material_override = base_m
 	mi.rotation_degrees.x = -90
-	mi.position = Vector3(100, -0.6, z - 130)
+	mi.position = centre
 	root.add_child(mi)
+
+	var mi2 := MeshInstance3D.new()
+	mi2.name = "HarbourChop"
+	var q2 := QuadMesh.new()
+	q2.size = sz
+	mi2.mesh = q2
+	var chop_m: StandardMaterial3D = base_m.duplicate()
+	chop_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	chop_m.albedo_color = Color(0.72, 0.80, 0.84, 0.42)
+	chop_m.uv1_scale = Vector3(1.9, 1.9, 1.0)
+	chop_m.metallic = 0.15
+	chop_m.roughness = 0.05
+	mi2.material_override = chop_m
+	mi2.rotation_degrees.x = -90
+	mi2.position = centre + Vector3(0, 0.025, 0)
+	root.add_child(mi2)
+
+	# foam along the quay edge (the shoreward side of the sheet)
+	var mi3 := MeshInstance3D.new()
+	mi3.name = "HarbourFoam"
+	var q3 := QuadMesh.new()
+	q3.size = Vector2(1400, 9)
+	mi3.mesh = q3
+	var foam_m := StandardMaterial3D.new()
+	foam_m.albedo_texture = load(TEX + "water.png")
+	foam_m.normal_texture = load(TEX + "water_n.png")
+	foam_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	foam_m.albedo_color = Color(0.86, 0.90, 0.92, 0.34)
+	foam_m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	foam_m.uv1_scale = Vector3(26.0, 1.0, 1.0)
+	foam_m.metallic = 0.0
+	foam_m.roughness = 0.22
+	mi3.material_override = foam_m
+	mi3.rotation_degrees.x = -90
+	mi3.position = centre + Vector3(0, 0.05, sz.y * 0.5 - 3.0)
+	root.add_child(mi3)
+
+	# [material, scroll speed (uv/sec), axis]
+	_water_layers = [
+		[base_m, Vector2(0.014, 0.009)],
+		[chop_m, Vector2(-0.023, 0.017)],
+		[foam_m, Vector2(-0.085, 0.0)],
+	]
+	_water_foam = foam_m
+
 	var sb := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -720,6 +1127,30 @@ func _build_water(w: Dictionary) -> void:
 	cs.shape = box
 	sb.position = Vector3(100, -1.5, z - 130)
 	root.add_child(sb)
+
+
+## Harbour scroll state, filled by _build_water.
+var _water_layers: Array = []
+var _water_foam: StandardMaterial3D = null
+var _water_t := 0.0
+
+
+func _process(delta: float) -> void:
+	## Drives the harbour. Two sheets scrolling against each other is what
+	## makes it read as water; the foam surges on a slower, longer cycle so
+	## the quay breathes instead of ticking.
+	if _water_layers.is_empty():
+		return
+	_water_t += delta
+	for l in _water_layers:
+		var m: StandardMaterial3D = l[0]
+		var sp: Vector2 = l[1]
+		var off: Vector3 = m.uv1_offset
+		m.uv1_offset = Vector3(off.x + sp.x * delta, off.y + sp.y * delta, off.z)
+	if _water_foam != null:
+		# surge: alpha and UV stretch rise and fall together
+		var surge := 0.5 + 0.5 * sin(_water_t * 0.55)
+		_water_foam.albedo_color = Color(0.86, 0.90, 0.92, 0.20 + 0.26 * surge)
 
 
 # ----------------------------------------------------------------- queries --

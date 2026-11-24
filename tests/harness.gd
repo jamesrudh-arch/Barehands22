@@ -960,8 +960,21 @@ func _process(_delta: float) -> bool:
 						cl46._event_kind_district = "kiln_row"
 						cl46._intervene_pos = _player.global_position + Vector3(3.0, 0, 0)
 						cl46._intervene_cd = 0.0
-						cl46._intervene_tick(0.016, _player)
 						var dui47 = root.get_node("DialogueUI")
+						# _intervene_tick BAILS on in_vehicle, cutscene_active,
+						# distance and cooldown. Adding world content shifts
+						# randf() everywhere, so which of those is true at step
+						# 83 is a coin flip unless the test pins all of them.
+						_revive_player()
+						if _player.in_vehicle != null:
+							_player.exit_vehicle()
+						root.get_node("Game").cutscene_active = false
+						if dui47.is_open():
+							dui47.close()
+						cl46._intervene_pos = _player.global_position + Vector3(3.0, 0, 0)
+						cl46._event_kind = "mugging"
+						cl46._intervene_cd = 0.0
+						cl46._intervene_tick(0.016, _player)
 						_check(dui47.choice_box.visible, "mugging intervention panel opens near the event")
 						dui47._pick(0)   # step in
 						_check(cl46._intervene_cd > 0.0, "intervention goes on cooldown after the choice")
@@ -1035,6 +1048,7 @@ func _process(_delta: float) -> bool:
 			var crsrc47 := FileAccess.get_file_as_string("res://scripts/player/camera_rig.gd")
 			_check("kick_dir" in crsrc47 and "_frame_wide" in crsrc47, "camera punches toward the blow + widens when outnumbered")
 			if _player:
+				_revive_player()
 				var got47: Array = []
 				var bus47 = root.get_node("Bus")
 				var sub47 := func(d, a): got47.append([d, a])
@@ -1165,12 +1179,712 @@ func _process(_delta: float) -> bool:
 					fn89 = da89.get_next()
 				da89.list_dir_end()
 			_check(risky89.is_empty(), "no unguarded bool()/float() cast on node.get() anywhere (%d found: %s)" % [risky89.size(), "; ".join(risky89.slice(0, 4))])
+		90:
+			# WAVE 48 — A LIVING WORLD. The city had 234 sound effects and not
+			# one creature in it. Everything here is asserted LIVE: creatures
+			# must actually spawn, actually react, and actually be textured.
+			var wl90 = _city.get_node_or_null("Wildlife")
+			_check(wl90 != null, "Wildlife layer present in the city")
+			if wl90 == null or _player == null:
+				_check(false, "step 90 prerequisites")
+				return false
+			# force the spawn passes rather than waiting on the 1.1s cadence
+			wl90._player = _player
+			wl90._top_up_birds()
+			wl90._top_up_rats()
+			wl90._top_up_strays()
+			var birds90: Array = wl90._birds
+			var rats90: Array = wl90._rats
+			var strays90: Array = wl90._strays
+			_check(birds90.size() > 0, "birds spawned near the player (%d)" % birds90.size())
+			_check(rats90.size() > 0, "rats spawned near the player (%d)" % rats90.size())
+			_check(strays90.size() > 0, "stray cats/dogs spawned near the player (%d)" % strays90.size())
+			# a bird must be a body plus two independently flapping wings
+			if birds90.size() > 0:
+				var bn90: Node = birds90[0]["node"]
+				_check(is_instance_valid(bn90) and bn90.get_child_count() == 3, "bird built from body + 2 wings (%d children)" % (bn90.get_child_count() if is_instance_valid(bn90) else -1))
+				var wl90b = birds90[0]["wing_l"]
+				var wr90 = birds90[0]["wing_r"]
+				wl90b.rotation.z = 0.0
+				wr90.rotation.z = 0.0
+				birds90[0]["state"] = "flee"
+				birds90[0]["flee_t"] = 1.0
+				birds90[0]["vel"] = Vector3(1, 2, 0)
+				wl90._tick_birds(0.05)
+				_check(absf(wl90b.rotation.z) > 0.05 and absf(wr90.rotation.z) > 0.05, "fleeing bird flaps both wings (%.2f/%.2f)" % [wl90b.rotation.z, wr90.rotation.z])
+			# GUNFIRE EMPTIES THE ROOFTOPS: a crime must startle birds into flight
+			var perch90 := 0
+			for b90 in birds90:
+				b90["state"] = "perch"
+				b90["flee_t"] = 0.0
+				perch90 += 1
+			if perch90 > 0:
+				var bp90: Vector3 = birds90[0]["node"].global_position
+				root.get_node("Bus").crime_committed.emit("gunfire", 3, bp90)
+				var fled90 := 0
+				for b90b in birds90:
+					if b90b["state"] == "flee":
+						fled90 += 1
+				_check(fled90 > 0, "gunfire startles the flock into flight (%d/%d fled)" % [fled90, perch90])
+			# rats bolt from a player who gets too close
+			if rats90.size() > 0:
+				var rn90: Node3D = rats90[0]["node"]
+				rn90.global_position = _player.global_position + Vector3(1.0, 0, 0)
+				rats90[0]["state"] = "sniff"
+				wl90._tick_rats(0.05)
+				_check(rats90[0]["state"] == "flee", "rat bolts when the player steps on it")
+			# moths only work the neon after dark
+			var ws90 = root.get_node("WorldState")
+			var had90: float = ws90.game_hour
+			ws90.game_hour = 22.5
+			wl90._update_moths()
+			var lit90 := 0
+			for m90 in wl90._moth_sites:
+				var mn90: Node = m90["node"]
+				if is_instance_valid(mn90) and (mn90 as GPUParticles3D).emitting:
+					lit90 += 1
+			_check(lit90 > 0, "moth swarms light up the lamps at night (%d emitting)" % lit90)
+			ws90.game_hour = 13.0
+			wl90._update_moths()
+			var lit91 := 0
+			for m91 in wl90._moth_sites:
+				var mn91: Node = m91["node"]
+				if is_instance_valid(mn91) and (mn91 as GPUParticles3D).emitting:
+					lit91 += 1
+			_check(lit91 == 0, "moth swarms stand down by day (%d emitting)" % lit91)
+			ws90.game_hour = had90
+			# fish need the harbour: teleport the player to the quay and spawn
+			var wg90 = root.get_node("WorldGen")
+			var w90d: Dictionary = root.get_node("Db").districts.get("world", {})
+			var wz90: float = float(w90d.get("water_z", -380.0))
+			var save90: Vector3 = _player.global_position
+			# stand on the quay: water_z is the shoreward edge, land is z > it
+			_player.global_position = Vector3(100, 0.5, wz90 + 8.0)
+			wl90._top_up_fish()
+			# stand over whichever fish actually spawned, so the jump test
+			# measures the fish and not the spawn lottery
+			if wl90._fish.size() > 0:
+				var fp0: Vector3 = (wl90._fish[0]["node"] as Node3D).global_position
+				_player.global_position = fp0 + Vector3(0, 1.0, 22.0)
+			_check(wl90._fish.size() > 0, "fish populate the harbour near the player (%d)" % wl90._fish.size())
+			if wl90._fish.size() > 0:
+				var f90: Dictionary = wl90._fish[0]
+				f90["state"] = "idle"
+				f90["jump_t"] = 0.0
+				wl90._tick_fish(0.05)
+				var fp90: Vector3 = (f90["node"] as Node3D).global_position
+				_check(fp90.z < wz90 - 4.0, "fish spawn in the water, not on the docks (z=%.0f, quay=%.0f)" % [fp90.z, wz90])
+				_check(f90["state"] == "jump", "fish breaks the surface on its timer")
+				_check((f90["node"] as Node3D).visible, "jumping fish is actually visible")
+			_player.global_position = save90
+			# every creature mesh must carry UVs (the wave-47 vehicle lesson)
+			for pair90 in [["bird", wl90._mbird], ["rat", wl90._mrat], ["cat", wl90._mcat], ["dog", wl90._mdog], ["fish", wl90._mfish], ["wing", wl90._mwing], ["tail", wl90._mtail]]:
+				var mesh90: ArrayMesh = pair90[1]
+				var bad90 := 0
+				if mesh90 == null:
+					bad90 = 1
+				else:
+					for si90 in mesh90.get_surface_count():
+						if mesh90.surface_get_format(si90) & Mesh.ARRAY_TEX_UV == 0:
+							bad90 += 1
+				_check(bad90 == 0, "%s mesh has UVs on every surface" % pair90[0])
+			# --- the harbour is no longer a frozen quad --------------------
+			var layers90: Array = wg90._water_layers
+			_check(layers90.size() == 3, "harbour built from 3 sheets: base, chop, foam (%d)" % layers90.size())
+			if layers90.size() == 3:
+				var m090: StandardMaterial3D = layers90[0][0]
+				var m190: StandardMaterial3D = layers90[1][0]
+				var off090: Vector3 = m090.uv1_offset
+				var off190: Vector3 = m190.uv1_offset
+				wg90._process(0.5)
+				_check(m090.uv1_offset != off090, "harbour base sheet scrolls")
+				_check(m190.uv1_offset != off190, "harbour chop sheet scrolls")
+				var sp090: Vector2 = layers90[0][1]
+				var sp190: Vector2 = layers90[1][1]
+				_check(signf(sp090.x) != signf(sp190.x), "the two sheets scroll AGAINST each other (interference = chop)")
+				var foam90: StandardMaterial3D = wg90._water_foam
+				var fa90: float = foam90.albedo_color.a
+				wg90._water_t = 1.7
+				wg90._process(0.016)
+				_check(foam90.albedo_color.a != fa90, "quay foam surges instead of sitting still")
+			# --- the harbour must be audible before it is visible ----------
+			var ad90 = root.get_node("AudioDirector")
+			_check(ad90.ambient_players.has("harbour"), "harbour ambient bus slot exists")
+			_player.global_position = Vector3(100, 0.5, -510.0 + 30.0)
+			_city._harbour_ambience()
+			_check(float(ad90.ambient_target.get("harbour", 0.0)) > 0.05, "standing on the quay raises the harbour wash (%.2f)" % float(ad90.ambient_target.get("harbour", 0.0)))
+			_player.global_position = Vector3(-240, 0.5, 46)
+			_city._harbour_ambience()
+			_check(float(ad90.ambient_target.get("harbour", 0.0)) == 0.0, "inland the harbour wash drops out")
+			# --- every creature needs a voice ------------------------------
+			for sfx90 in ["bird_chirp_0", "bird_chirp_1", "bird_chirp_2", "gull_cry", "crow_caw", "wing_flutter", "rat_squeak", "rat_scuttle", "cat_meow", "dog_bark", "insect_buzz", "fish_splash", "water_lap"]:
+				_check(FileAccess.file_exists("res://assets/audio/sfx/%s.wav" % sfx90), "wildlife sound forged: %s" % sfx90)
+			var fa91 := FileAccess.get_file_as_string("res://tools/forge/forge_audio.py")
+			_check("def bird_chirp" in fa91 and "def cat_meow" in fa91 and "def water_lap" in fa91, "wildlife audio is synthesized in the forge, not dropped in")
+			# --- the studio card ------------------------------------------
+			var bt90 := FileAccess.get_file_as_string("res://scripts/scenes/boot.gd")
+			_check('AudioDirector.sting("studio_sting")' in bt90, "studio logo plays its own forged sting")
+			_check("STRIKE" in bt90 and "NAME_IN" in bt90, "logo reveal is timed to the sting's strike")
+			_check(FileAccess.file_exists("res://assets/audio/music/studio_sting.ogg"), "studio sting asset shipped")
+			_check('dbg.position = Vector2(6, 6)' not in bt90.split("func _toggle_dbg")[0], "no dev debug overlay printed on the studio logo")
+			_check("_skipping" in bt90, "studio card is skippable — never holds a returning player")
+		91:
+			# WAVE 48 — THE SMOKE LINE. Missions and POIs named this railway
+			# (m10_smoke_line, Smokeline Bolt-Hole, Smoke Line Overlook) while
+			# the game contained no rails at all. Now it does, and it runs.
+			var sl91 = _city.get_node_or_null("SmokeLine")
+			_check(sl91 != null, "SmokeLine freight train present in the city")
+			if sl91 == null or _player == null:
+				_check(false, "step 91 prerequisites")
+				return false
+			var wg91 = root.get_node("WorldGen")
+			# --- the viaduct is real geometry, not a rumour ----------------
+			var rail_node91 = wg91.root.get_node_or_null("smoke_line")
+			_check(rail_node91 != null, "Smoke Line viaduct built into the world")
+			if rail_node91 != null:
+				var tris91 := 0
+				var nouv91 := 0
+				for mi91 in rail_node91.get_children():
+					if mi91 is MeshInstance3D and mi91.mesh != null:
+						for si91 in mi91.mesh.get_surface_count():
+							tris91 += mi91.mesh.surface_get_array_index_len(si91) / 3
+							if mi91.mesh.surface_get_format(si91) & Mesh.ARRAY_TEX_UV == 0:
+								nouv91 += 1
+				_check(tris91 > 4000, "viaduct carries real structure: piers, deck, sleepers, rails (%d tris)" % tris91)
+				_check(nouv91 == 0, "every viaduct surface is textured (%d without UVs)" % nouv91)
+			_check(wg91.rail_height() > 6.0, "rails are elevated above the street (%.2f m)" % wg91.rail_height())
+			# --- the consist ----------------------------------------------
+			var loco91: Node = sl91._loco
+			_check(loco91 != null, "locomotive built")
+			_check(sl91._cars.size() == 6, "mixed freight consist: 6 cars (%d)" % sl91._cars.size())
+			if loco91 != null:
+				_check(loco91.get_child_count() >= 5, "loco is body + livery + glass + headlight + marker + tail (%d parts)" % loco91.get_child_count())
+				var kinds91: Array = []
+				for c91 in sl91._cars:
+					kinds91.append((c91["node"] as Node).name)
+				_check(kinds91.size() == 6, "cars are individual nodes: %s" % str(kinds91))
+			# every rolling-stock mesh must be textured
+			var baduv91 := 0
+			var allmesh91: Array = []
+			if loco91 != null:
+				allmesh91.append_array(loco91.get_children())
+			for c91b in sl91._cars:
+				allmesh91.append_array((c91b["node"] as Node).get_children())
+			for ch91 in allmesh91:
+				if ch91 is MeshInstance3D and ch91.mesh != null:
+					for si91b in ch91.mesh.get_surface_count():
+						if ch91.mesh.surface_get_format(si91b) & Mesh.ARRAY_TEX_UV == 0:
+							baduv91 += 1
+			_check(baduv91 == 0, "locomotive + freight cars textured on every surface (%d bad)" % baduv91)
+			# --- it actually moves, and it wraps --------------------------
+			var x091: float = sl91._x
+			sl91._process(1.0)
+			_check(sl91._x > x091 + 15.0, "train runs the line (%.1f m in 1 s)" % (sl91._x - x091))
+			sl91._x = sl91._x1 + 1.0
+			sl91._process(0.016)
+			_check(sl91._x < sl91._x0 + 1.0, "train wraps back onto the western horizon instead of vanishing")
+			# --- the rumble swells as it closes ---------------------------
+			var rum91: AudioStreamPlayer3D = sl91._rumble
+			_check(rum91 != null and rum91.playing, "rumble bed is a live 3D emitter (Godot does the Doppler)")
+			sl91._x = 0.0
+			sl91._apply_positions()
+			var save91: Vector3 = _player.global_position
+			_player.global_position = Vector3(0, wg91.rail_height(), -30.0)
+			sl91._tick_audio(0.016)
+			var loud91: float = rum91.volume_db
+			_player.global_position = Vector3(0, 0.5, -30.0 + 190.0)
+			sl91._tick_audio(0.016)
+			var quiet91: float = rum91.volume_db
+			_check(loud91 > quiet91 + 6.0, "rumble swells with proximity (%.1f dB close vs %.1f dB far)" % [loud91, quiet91])
+			# --- the horn announces the train before it arrives ------------
+			_player.global_position = Vector3(0, 0.5, -30.0 + 40.0)
+			sl91._horn_cd = 0.01
+			sl91._tick_audio(0.02)
+			_check(sl91._horn_cd > 10.0, "horn fires and re-arms on a long timer when the player is near")
+			# --- headlight only burns after dark ---------------------------
+			var ws91 = root.get_node("WorldState")
+			var had91: float = ws91.game_hour
+			ws91.game_hour = 22.0
+			sl91._tick_lights()
+			var night91: float = sl91._head.light_energy
+			ws91.game_hour = 12.0
+			sl91._tick_lights()
+			var day91: float = sl91._head.light_energy
+			ws91.game_hour = had91
+			_check(night91 > 1.0, "headlight sweeps the deck at night (%.1f)" % night91)
+			_check(day91 == 0.0, "headlight off by day — it costs nothing it does not earn")
+			# --- standing on the viaduct is a choice the train collects on --
+			_revive_player()
+			var cc91 = _player.combat
+			var hp91: float = cc91.hp
+			_player.global_position = Vector3(0, wg91.rail_height(), -30.0)
+			sl91._x = 4.0
+			sl91._apply_positions()
+			sl91._hit_cd = 0.0
+			sl91._tick_hazard(0.016)
+			_check(cc91.hp < hp91, "a train hits you if you stand on the rails (hp %.0f -> %.0f)" % [hp91, cc91.hp])
+			_check(sl91._hit_cd > 0.0, "the hit is rate-limited so it cannot chain into an instant death")
+			# below the deck, on the street, you are perfectly safe
+			cc91.hp = hp91
+			sl91._hit_cd = 0.0
+			_player.global_position = Vector3(0, 0.5, -30.0)
+			sl91._tick_hazard(0.016)
+			_check(cc91.hp == hp91, "the train does not hit you through the deck from the street below")
+			cc91.hp = hp91
+			_player.global_position = save91
+			# --- the railway has a voice ----------------------------------
+			for sfx91 in ["train_horn", "train_rumble", "rail_clack", "train_brake"]:
+				_check(FileAccess.file_exists("res://assets/audio/sfx/%s.wav" % sfx91), "rail sound forged: %s" % sfx91)
+			var fa92 := FileAccess.get_file_as_string("res://tools/forge/forge_audio.py")
+			_check("def train_horn" in fa92 and "def train_rumble" in fa92, "rail audio is synthesized in the forge")
+			# --- the Overlook station: platform, canopy, stair from street --
+			var wgsrc91 := FileAccess.get_file_as_string("res://scripts/world/world_gen.gd")
+			_check("RAIL_PLATFORM_X" in wgsrc91, "Smoke Line Overlook station built on the viaduct")
+			_check("_build_rail" in wgsrc91 and "smoke_line" in wgsrc91, "rail is part of city generation, not bolted on")
+			# --- VOX INTEGRITY: an empty voice bank makes AudioDirector ask
+			# for vox/_0.wav and the line plays silent. Every bank named in
+			# characters.json must exist on disk, and no call site may emit
+			# dialogue with a literal empty voice.
+			var db91 = root.get_node("Db")
+			var missing91: Array = []
+			for cid91 in db91.characters:
+				var ch91: Dictionary = db91.characters[cid91]
+				var vb91: String = str(ch91.get("voice", ""))
+				if vb91 == "":
+					missing91.append(str(cid91) + " has no voice field")
+					continue
+				for k91 in 3:
+					if not FileAccess.file_exists("res://assets/audio/vox/%s_%d.wav" % [vb91, k91]):
+						missing91.append("%s -> %s_%d.wav" % [cid91, vb91, k91])
+			_check(missing91.is_empty(), "every character voice bank exists on disk (%d missing: %s)" % [missing91.size(), "; ".join(missing91.slice(0, 4))])
+			var emptyvox91: Array = []
+			var stack91: Array = ["res://scripts"]
+			var rev91 := RegEx.new()
+			rev91.compile("(dialogue_line\\.emit|AudioDirector\\.speak)\\([^)]*,\\s*\"\\s*\\)")
+			while not stack91.is_empty():
+				var d91: String = stack91.pop_back()
+				var da91 := DirAccess.open(d91)
+				if da91 == null:
+					continue
+				da91.list_dir_begin()
+				var fn91 := da91.get_next()
+				while fn91 != "":
+					if da91.current_is_dir():
+						stack91.append(d91.path_join(fn91))
+					elif fn91.ends_with(".gd"):
+						var src91 := FileAccess.get_file_as_string(d91.path_join(fn91))
+						for m91b in rev91.search_all(src91):
+							emptyvox91.append(d91.path_join(fn91) + ": " + m91b.get_string(0))
+					fn91 = da91.get_next()
+				da91.list_dir_end()
+			_check(emptyvox91.is_empty(), "no dialogue emitted with an empty voice bank (%d found)" % emptyvox91.size())
+			# the shopkeeper thanks you in their own voice, not in silence
+			var shsrc91 := FileAccess.get_file_as_string("res://scripts/ui/shop_ui.gd")
+			_check('get("voice", "ped_m")' in shsrc91, "shopkeeper thanks use their real voice bank")
+		92:
+			# WAVE 48 — the studio card must never ship a debug readout, and
+			# the world must never be silent where it claims to be alive.
+			var adsrc92 = root.get_node("AudioDirector")
+			for slot92 in ["rain", "traffic", "crowd", "interior", "fire", "siren", "harbour"]:
+				_check(adsrc92.ambient_players.has(slot92), "ambient bus slot present: %s" % slot92)
+			# every creature sound must actually resolve to a loaded stream
+			var ad92 = root.get_node("AudioDirector")
+			var dead92: Array = []
+			for sfx92 in ["bird_chirp_0", "gull_cry", "crow_caw", "wing_flutter", "rat_squeak", "rat_scuttle", "cat_meow", "dog_bark", "insect_buzz", "fish_splash", "water_lap", "train_horn", "train_rumble", "rail_clack", "train_brake", "studio_sting"]:
+				var p92 := ("res://assets/audio/music/%s.ogg" % sfx92) if sfx92 == "studio_sting" else ("res://assets/audio/sfx/%s.wav" % sfx92)
+				var st92: AudioStream = load(p92) if ResourceLoader.exists(p92) else null
+				if st92 == null:
+					dead92.append(sfx92)
+			_check(dead92.is_empty(), "every wave-48 sound loads as a real stream (%d dead: %s)" % [dead92.size(), ", ".join(dead92)])
+			# wildlife must be wired to the world's events, not free-running
+			var wlsrc92 := FileAccess.get_file_as_string("res://scripts/world/wildlife.gd")
+			_check("Bus.crime_committed.connect" in wlsrc92, "wildlife reacts to crime through the Bus")
+			_check("LIVE_RADIUS" in wlsrc92 and "DESPAWN_RADIUS" in wlsrc92, "wildlife is budgeted with hysteresis, not spawned forever")
+			_check(wlsrc92.count("MAX_") >= 5, "every creature type has a hard cap")
+			var slsrc92 := FileAccess.get_file_as_string("res://scripts/world/smoke_line.gd")
+			_check("_tick_hazard" in slsrc92, "the train is a hazard, not decoration")
+			_check("ATTENUATION_INVERSE_DISTANCE" in slsrc92, "train rumble uses 3D attenuation so the engine does the Doppler")
+		93:
+			# WAVE 48 — FILLING STATIONS AND A REAL FUEL ECONOMY. The user
+			# named filling stations explicitly. Before this the city had 11
+			# vehicles with hp, gears, rpm and skids — and no tank at all.
+			var wg93 = root.get_node("WorldGen")
+			var ws93 = root.get_node("WorldState")
+			var db93 = root.get_node("Db")
+			var wcfg93: Dictionary = db93.districts.get("world", {})
+			# --- the data drives the world --------------------------------
+			var stal93: Array = wcfg93.get("stations", [])
+			_check(stal93.size() == 6, "six filling stations authored in city.json (%d)" % stal93.size())
+			var notank93: Array = []
+			for vid93 in db93.vehicles:
+				var vd93: Dictionary = db93.vehicles[vid93]
+				if float(vd93.get("tank", 0)) <= 0.0:
+					notank93.append(str(vid93))
+			_check(notank93.is_empty(), "every vehicle def carries a tank size (%d missing: %s)" % [notank93.size(), ", ".join(notank93)])
+			# --- built geometry -------------------------------------------
+			_check(wg93.stations.size() == 6, "six forecourts built into the city (%d)" % wg93.stations.size())
+			var fsnode93 = wg93.root.get_node_or_null("filling_stations")
+			_check(fsnode93 != null, "filling_stations geometry committed")
+			if fsnode93 != null:
+				var tris93 := 0
+				var mauv93 := 0
+				for mi93 in fsnode93.get_children():
+					if mi93 is MeshInstance3D and mi93.mesh != null:
+						for si93 in mi93.mesh.get_surface_count():
+							tris93 += mi93.mesh.surface_get_array_index_len(si93) / 3
+							if mi93.mesh.surface_get_format(si93) & Mesh.ARRAY_TEX_UV == 0:
+								mauv93 += 1
+				_check(tris93 > 2500, "forecourts are real structure: pad, canopy, fascia, posts, pumps, kiosk, price totem (%d tris)" % tris93)
+				_check(mauv93 == 0, "every station surface is textured (%d without UVs)" % mauv93)
+			# --- one per district, inside it, off the roads -----------------
+			var seen93: Dictionary = {}
+			var bad93: Array = []
+			for sid93 in wg93.stations:
+				var st93: Dictionary = wg93.stations[sid93]
+				var did93: String = str(st93.get("district", ""))
+				var pos93: Vector3 = st93.get("pos", Vector3.ZERO)
+				seen93[did93] = true
+				var b93: Rect2 = wg93.district_bounds.get(did93, Rect2())
+				if b93.size == Vector2.ZERO or not b93.has_point(Vector2(pos93.x, pos93.z)):
+					bad93.append(str(sid93) + " outside " + did93)
+				for a93 in wcfg93.get("arterials", []):
+					var ad93: Dictionary = a93
+					var at93: float = float(ad93.get("at", 0))
+					var half93: float = float(ad93.get("width", 16)) * 0.5 + 5.0
+					var onroad93: bool = absf(pos93.x - at93) < half93 if str(ad93.get("axis", "x")) == "z" else absf(pos93.z - at93) < half93
+					if onroad93:
+						bad93.append(str(sid93) + " sitting on arterial " + str(at93))
+			_check(seen93.size() == 6, "one filling station per district (%d districts covered)" % seen93.size())
+			_check(bad93.is_empty(), "stations are inside their district and off the arterials (%s)" % str(bad93))
+			# --- canopies orient to the road they front --------------------
+			var alongz93 := 0
+			for sid93b in wg93.stations:
+				if wg93.stations[sid93b].get("along_z", false) == true:
+					alongz93 += 1
+			_check(alongz93 > 0 and alongz93 < wg93.stations.size(),
+				"canopies turn to face the arterial they front (%d of %d run north-south)" % [alongz93, wg93.stations.size()])
+			# --- pumps ----------------------------------------------------
+			var npump93 := 0
+			var badlbl93: Array = []
+			var offpad93 := 0
+			for sid93c in wg93.stations:
+				var st93c: Dictionary = wg93.stations[sid93c]
+				var pl93: Array = st93c.get("pumps", [])
+				npump93 += pl93.size()
+				var c93: Vector3 = st93c.get("pos", Vector3.ZERO)
+				for p93 in pl93:
+					var pn93 := p93 as Node3D
+					if not pn93.is_in_group("interact"):
+						badlbl93.append("not in interact group")
+					var lbl93: String = str(pn93.get("interact_label"))
+					if "$" not in lbl93:
+						badlbl93.append("no price in prompt: " + lbl93)
+					if absf(pn93.global_position.x - c93.x) > 19.0 or absf(pn93.global_position.z - c93.z) > 15.0:
+						offpad93 += 1
+			_check(npump93 == 22, "22 pumps built across the six forecourts (%d)" % npump93)
+			_check(badlbl93.is_empty(), "every pump offers a priced Refuel prompt (%s)" % str(badlbl93.slice(0, 3)))
+			_check(offpad93 == 0, "every pump stands on its own forecourt (%d off the pad)" % offpad93)
+			# --- the fuel model on a real vehicle --------------------------
+			var cl93 = _city.get_node_or_null("CityLife")
+			var veh93 = null
+			if cl93 != null and _player != null:
+				veh93 = cl93.give_player_vehicle("truck", _player.global_position + Vector3(9, 0, 9))
+			_check(veh93 != null, "test vehicle spawned for the fuel tests")
+			if veh93 == null:
+				_check(false, "step 93 vehicle prerequisites")
+				return false
+			var tdef93: Dictionary = db93.vehicle("truck")
+			_check(absf(float(veh93.tank_l) - float(tdef93.get("tank", 0))) < 0.01, "tank size comes from the vehicle def (%.0f L)" % float(veh93.tank_l))
+			_check(float(veh93.fuel) > 0.40 and float(veh93.fuel) <= 1.0, "a parked car is never guaranteed full — a stolen ride can be a short ride (%.2f)" % float(veh93.fuel))
+			var f093 := float(veh93.fuel)
+			for i in 120:
+				veh93._burn_fuel(1.0 / 60.0, 1.0, 90.0)
+			var hard93 := f093 - float(veh93.fuel)
+			var f193 := float(veh93.fuel)
+			for i in 120:
+				veh93._burn_fuel(1.0 / 60.0, 0.0, 0.0)
+			var idle93 := f193 - float(veh93.fuel)
+			_check(hard93 > 0.0, "hard throttle empties the tank (%.5f over 2 s)" % hard93)
+			_check(idle93 > 0.0, "idling still sips fuel (%.5f over 2 s)" % idle93)
+			_check(hard93 > idle93 * 2.0, "throttle costs far more than idling (%.5f vs %.5f)" % [hard93, idle93])
+			veh93.fuel = 0.0
+			veh93.fuel_dry = false
+			veh93._burn_fuel(0.016, 1.0, 40.0)
+			_check(veh93.fuel_dry == true, "an empty tank sets fuel_dry")
+			veh93.engine_force = 999.0
+			veh93.player_drive(0.016, Vector2(0, -1), false, false, false)
+			_check(absf(float(veh93.engine_force)) < 0.001, "a dry engine makes no torque — you are coasting (force %.2f)" % float(veh93.engine_force))
+			veh93.fuel = 0.05
+			veh93.fuel_dry = false
+			veh93._dry_warned = false
+			veh93._burn_fuel(0.016, 0.5, 30.0)
+			_check(veh93._dry_warned == true, "the fuel light warns before the tank is actually empty")
+			_check(veh93.fuel_is_low(), "fuel_is_low() reports the reserve line")
+			veh93.fuel = 0.90
+			veh93._burn_fuel(0.016, 0.0, 0.0)
+			_check(veh93._dry_warned == false, "the warning clears once the tank is healthy again")
+			# --- the pump -------------------------------------------------
+			var pump93 = null
+			for sid93e in wg93.stations:
+				var pl93e: Array = wg93.stations[sid93e].get("pumps", [])
+				if not pl93e.is_empty():
+					pump93 = pl93e[0]
+					break
+			_check(pump93 != null, "a pump is available to test against")
+			if pump93 == null:
+				_check(false, "step 93 pump prerequisites")
+				return false
+			_check(float(pump93.price_per_l) > 0.5, "the pump carries a per-litre price from data ($%.2f)" % float(pump93.price_per_l))
+			# price moves with street reputation, both directions
+			var rep93: Array = ws93.street_deeds.duplicate(true)
+			ws93.street_deeds.clear()
+			var pn93b: float = pump93.unit_price()
+			for i in 15:
+				ws93.street_deeds.append({"id": "t", "did": "x", "helped": true, "day": 1})
+			var pr93: float = pump93.unit_price()
+			ws93.street_deeds.clear()
+			for i in 15:
+				ws93.street_deeds.append({"id": "t", "did": "x", "helped": false, "day": 1})
+			var ph93: float = pump93.unit_price()
+			_check(pr93 < pn93b - 0.01, "the block's respect lowers the pump price ($%.2f -> $%.2f)" % [pn93b, pr93])
+			_check(ph93 > pn93b + 0.01, "a known thief pays a premium at the pump ($%.2f -> $%.2f)" % [pn93b, ph93])
+			# --- a real fill, from the driver's seat -----------------------
+			ws93.street_deeds = rep93
+			_player.enter_vehicle(veh93)
+			veh93.fuel = 0.10
+			veh93.fuel_dry = false
+			veh93.global_position = (pump93 as Node3D).global_position + Vector3(1.6, 0, 0)
+			ws93.money = 5000
+			var m093: int = ws93.money
+			pump93.interact(_player)
+			_check(pump93.filling == true, "the pump starts filling the car you arrived in — no climbing out")
+			_check(pump93._flow != null and pump93._flow.playing, "the hose loop plays while fuel flows")
+			pump93._process(0.5)
+			_check(float(veh93.fuel) > 0.101, "fuel actually goes into the tank (%.3f)" % float(veh93.fuel))
+			_check(ws93.money < m093, "money leaves the wallet as fuel goes in ($%d -> $%d)" % [m093, ws93.money])
+			_check(float(pump93.litres) > 0.0 and pump93.paid > 0, "the pump meters litres and dollars (%d L, $%d)" % [int(pump93.litres), pump93.paid])
+			veh93.fuel = 0.0
+			veh93.fuel_dry = true
+			pump93._process(0.4)
+			_check(veh93.fuel_dry == false, "fuel in the line clears the dry flag — the engine will turn over")
+			for i in 260:
+				pump93._process(0.1)
+			_check(float(veh93.fuel) > 0.995, "the tank fills to full (%.3f)" % float(veh93.fuel))
+			_check(pump93.filling == false, "the nozzle shuts itself off when the tank is full")
+			_check(pump93.paid > 0, "the visit was paid for ($%d for %d L)" % [pump93.paid, int(pump93.litres)])
+			# --- driving off mid-fill is theft, and forecourts are watched --
+			ws93.street_deeds.clear()
+			var rep093: int = ws93.street_rep()
+			var heat093: float = float(ws93.district_heat.get(str(pump93.district), 0.0))
+			veh93.fuel = 0.20
+			ws93.money = 5000
+			pump93.interact(_player)
+			_check(pump93.filling == true, "a second visit starts")
+			veh93.global_position = (pump93 as Node3D).global_position + Vector3(46, 0, 0)
+			pump93._process(0.016)
+			_check(pump93.stolen == true, "leaving the forecourt mid-fill is recorded as theft")
+			_check(pump93.filling == false, "the nozzle comes out")
+			_check(ws93.street_rep() < rep093, "the block's opinion of you drops (%d -> %d)" % [rep093, ws93.street_rep()])
+			_check(float(ws93.district_heat.get(str(pump93.district), 0.0)) > heat093, "the district heats up after a drive-off")
+			# --- running out of cash mid-fill ------------------------------
+			veh93.global_position = (pump93 as Node3D).global_position + Vector3(1.6, 0, 0)
+			veh93.fuel = 0.05
+			ws93.money = 3
+			pump93.interact(_player)
+			_check(pump93.filling == true, "a fill starts with only $3 in your pocket")
+			for i in 60:
+				pump93._process(0.1)
+			_check(pump93.broke == true, "the nozzle shuts off when the money runs out")
+			_check(pump93.filling == false, "the fill is over")
+			_check(ws93.money == 0, "every last dollar went into the tank ($%d left)" % ws93.money)
+			# --- the HUD reads it, and the speedo is finally on screen -----
+			var hud93 = _city.get("hud")
+			if hud93 != null:
+				_check(hud93.get("_fuel_gauge") != null and hud93.get("_fuel_lbl") != null, "fuel gauge and litre readout built into the HUD")
+				var vpr93: Rect2 = _city.get_viewport().get_visible_rect()
+				var sl93: Control = hud93.get("_speed_lbl")
+				var sr93: Rect2 = sl93.get_global_rect()
+				_check(sr93.position.y >= 0.0 and sr93.position.y < vpr93.size.y,
+					"speedometer is ON SCREEN (bug fixed: negative offsets with no bottom anchor put it above the top edge; y=%.0f of %d)" % [sr93.position.y, int(vpr93.size.y)])
+				var fg93: Control = hud93.get("_fuel_gauge")
+				var fr93: Rect2 = fg93.get_global_rect()
+				_check(fr93.position.y >= 0.0 and fr93.position.y < vpr93.size.y, "fuel gauge is on screen (y=%.0f of %d)" % [fr93.position.y, int(vpr93.size.y)])
+				_check(fr93.position.x >= 0.0 and fr93.position.x < vpr93.size.x, "fuel gauge is inside the right edge (x=%.0f of %d)" % [fr93.position.x, int(vpr93.size.x)])
+				hud93.set("_fuel_frac", 0.0)
+				hud93._process(0.016)
+				_check(float(hud93.get("_fuel_frac")) > 0.0, "the gauge tracks the tank you are sitting in (%.2f)" % float(hud93.get("_fuel_frac")))
+				_check(str(hud93.get("_fuel_lbl").text).begins_with("FUEL"), "the readout says how many litres are left (%s)" % str(hud93.get("_fuel_lbl").text))
+			var hsrc93 := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
+			_check("_draw_fuel" in hsrc93 and "reserve" in hsrc93, "the gauge marks the reserve line and pulses on it")
+			_check('"fuel": col = Color(0.95, 0.45, 0.25)' in hsrc93, "filling stations get their own colour on the minimap")
+			# --- the sounds ------------------------------------------------
+			for sfx93 in ["fuel_pump", "fuel_cap", "nozzle_off", "engine_sputter"]:
+				_check(FileAccess.file_exists("res://assets/audio/sfx/%s.wav" % sfx93), "fuel sound forged: %s" % sfx93)
+			var fa93 := FileAccess.get_file_as_string("res://tools/forge/forge_audio.py")
+			_check("def fuel_pump" in fa93 and "def engine_sputter" in fa93 and "def _place" in fa93, "fuel audio is synthesized in the forge")
+			# the flow loop must be genuinely seamless — the wobble periods
+			# have to divide the loop length into whole cycles
+			_check("1.0 / 1.5" in fa93 and "1.0 / 0.75" in fa93, "pump loop wobble is cyclic so it never clicks at the seam")
+		94:
+			# WAVE 48 — THE OPENING HAS TO TELL THE STORY. The user asked for
+			# an intro where the characters ACTUALLY CONVERSE so the player
+			# grabs the story. What shipped before was three spoken lines over
+			# one push-in: Eli narrated at the camera twice, Ruth said one
+			# thing, nobody answered anybody. This measures conversation, not
+			# runtime.
+			var cut94 = root.get_node("Cutscene")
+			var db94 = root.get_node("Db")
+			var scr94: Array = cut94._script("cs_intro")
+			_check(scr94.size() > 20, "the opening cinematic has a real script (%d steps)" % scr94.size())
+			var lines94: Array = []
+			var cams94: Array = []
+			var cards94: Array = []
+			var spawns94: Array = []
+			var total94 := 0.0
+			for st94 in scr94:
+				var d94: Dictionary = st94
+				total94 += float(d94.get("dur", 0.0))
+				match str(d94.get("v", "")):
+					"line": lines94.append(d94)
+					"cam": cams94.append(d94)
+					"card": cards94.append(str(d94.get("text", "")))
+					"spawn": spawns94.append(str(d94.get("char", "")))
+			_check(lines94.size() >= 15, "at least fifteen spoken lines (%d)" % lines94.size())
+			_check(total94 >= 70.0, "the opening runs like a scene, not a splash (%.0f s)" % total94)
+			# --- it is a CONVERSATION: speakers alternate and answer --------
+			var spk94: Dictionary = {}
+			var run94 := 1
+			var maxrun94 := 1
+			var prev94 := ""
+			for l94 in lines94:
+				var sp94: String = str(l94.get("spk", ""))
+				spk94[sp94] = int(spk94.get(sp94, 0)) + 1
+				if sp94 == prev94:
+					run94 += 1
+					maxrun94 = maxi(maxrun94, run94)
+				else:
+					run94 = 1
+				prev94 = sp94
+			_check(spk94.size() >= 3, "three distinct voices carry the opening (%s)" % str(spk94.keys()))
+			_check(maxrun94 <= 2, "nobody monologues: no speaker runs more than 2 lines unbroken (max run %d)" % maxrun94)
+			var eli94: int = int(spk94.get("eli", 0))
+			_check(float(eli94) / float(lines94.size()) <= 0.6,
+				"the player character is answered, not just heard (%d of %d lines are his)" % [eli94, lines94.size()])
+			_check(int(spk94.get("ruth", 0)) >= 5, "Mama Ruth is a participant, not a cameo (%d lines)" % int(spk94.get("ruth", 0)))
+			# --- every speaker is castable and VOICED -----------------------
+			var mute94: Array = []
+			for sp94b in spk94:
+				var c94: Dictionary = db94.character(str(sp94b))
+				var vb94: String = str(c94.get("voice", ""))
+				if vb94 == "" or not FileAccess.file_exists("res://assets/audio/vox/%s_0.wav" % vb94):
+					mute94.append(str(sp94b) + "->" + vb94)
+			_check(mute94.is_empty(), "every speaker in the opening has a real voice bank (%s)" % str(mute94))
+			# --- staging: Ruth is a body in the world, and the camera cuts ---
+			_check("ruth" in spawns94, "Ruth is spawned into the scene so the shot has two people in it")
+			var uniq94: Dictionary = {}
+			var degenerate94 := 0
+			for cm94 in cams94:
+				var pos94: Array = cm94.get("pos", [0, 0, 0])
+				var look94: Array = cm94.get("look", [0, 0, 0])
+				uniq94["%.1f,%.1f,%.1f" % [float(pos94[0]), float(pos94[1]), float(pos94[2])]] = true
+				var pv94 := Vector3(float(pos94[0]), float(pos94[1]), float(pos94[2]))
+				var lv94 := Vector3(float(look94[0]), float(look94[1]), float(look94[2]))
+				# Camera3D.look_at() THROWS when the target is on the camera
+				if pv94.distance_to(lv94) < 0.5:
+					degenerate94 += 1
+			_check(uniq94.size() >= 5, "shot/reverse-shot uses %d distinct camera positions" % uniq94.size())
+			_check(degenerate94 == 0, "no cutscene camera looks at its own position (%d degenerate)" % degenerate94)
+			_check(cams94.size() >= lines94.size(), "every line is framed by a camera move (%d cams, %d lines)" % [cams94.size(), lines94.size()])
+			# --- the thesis lands, and the studio card closes it ------------
+			var thesis94 := false
+			for l94b in lines94:
+				if "leverage" in str(l94b.get("text", "")).to_lower():
+					thesis94 = true
+			_check(thesis94, "the opening states the thesis of the game in dialogue")
+			var has_title94 := false
+			var has_studio94 := false
+			for cd94 in cards94:
+				if cd94.strip_edges() == "LEVERAGE":
+					has_title94 = true
+				if "D'Youngs" in cd94:
+					has_studio94 = true
+			_check(has_title94, "the title card lands at the end of the opening")
+			_check(has_studio94, "the studio credit closes the opening")
+			# --- INPUT FIXES: skip() and pause were both unreachable --------
+			var csrc94 := FileAccess.get_file_as_string("res://scripts/ui/cutscene.gd")
+			var gsrc94 := FileAccess.get_file_as_string("res://scripts/core/game.gd")
+			_check(InputMap.has_action("skip_cutscene"), "a skip input action exists (skip() was bound to nothing)")
+			var sk94: Array = InputMap.action_get_events("skip_cutscene") if InputMap.has_action("skip_cutscene") else []
+			var esc94 := 0
+			for e94 in sk94:
+				if e94 is InputEventKey and (e94 as InputEventKey).physical_keycode == KEY_ESCAPE:
+					esc94 += 1
+			_check(esc94 == 1, "Escape skips a cutscene")
+			_check(sk94.size() >= 3, "skip is bound on keyboard AND pad (%d bindings)" % sk94.size())
+			_check("is_action_pressed(\"skip_cutscene\")" in csrc94, "the cutscene actually listens for skip")
+			_check("_step_i >= _steps.size()" in csrc94, "skip is bounds-safe — it used to index past the last step")
+			var pk94 := -1
+			for e94b in InputMap.action_get_events("pause"):
+				if e94b is InputEventKey:
+					pk94 = int((e94b as InputEventKey).physical_keycode)
+			_check(pk94 == KEY_ESCAPE, "pause is bound to a real key (was 4194304 = KEY_SPECIAL, which no keyboard sends)" )
+			_check("is_action_pressed(\"pause\")" in gsrc94, "something finally READS the pause action — nothing did before")
+			# --- exercise the skip for real --------------------------------
+			var ws94 = root.get_node("WorldState")
+			var gh94: float = ws94.game_hour
+			var wv94: int = ws94.weather
+			var fired94: Array = []
+			# play() early-returns while a cutscene is already running, which
+			# would leave MY callback unregistered and make skip look broken.
+			# Finish anything in flight first — properly, so actors are freed.
+			if cut94.playing:
+				cut94.skip()
+				for i in 4:
+					cut94._process(0.5)
+			cut94.play("cs_intro", func(): fired94.append(true))
+			_check(cut94.playing, "the opening cinematic starts")
+			var hint94: Label = cut94.get("_skip_lbl")
+			cut94._process(0.05)
+			_check(hint94 != null and hint94.visible, "the player is TOLD the cinematic is skippable")
+			for i in 6:
+				cut94._process(0.5)
+			_check(cut94.playing, "the cinematic is still running mid-scene")
+			cut94.skip()
+			for i in 4:
+				cut94._process(0.5)
+			_check(not cut94.playing, "skip ends the cinematic immediately instead of trapping the player")
+			_check(fired94.size() == 1, "the skip still hands over to the prologue mission")
+			_check(ws94.game_hour >= 0.0, "the cinematic touched the clock without corrupting it")
+			ws94.game_hour = gh94
+			ws94.weather = wv94
+			if hint94 != null:
+				_check(not hint94.visible, "the skip hint hides once the cinematic is over")
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()
 			quit(0 if _fails == 0 else 1)
 			return true
 	return false
+
+
+## The harness is a gauntlet: hostile peds spawned by earlier steps keep
+## swinging for the rest of the run, so by step 87 the player can be down to
+## a few HP and damage assertions become a coin flip (and a dead player makes
+## take_hit() a no-op). Steps that assert on TAKING damage revive first —
+## they are testing the system, not survivability.
+func _revive_player() -> void:
+	if _player == null:
+		return
+	_player.dead = false
+	var cc = _player.combat
+	if cc == null:
+		return
+	cc.dead = false
+	cc.hp = cc.max_hp
+	cc.iframes = 0.0
+	cc.dodging = false
+	cc.blocking = false
+	cc.guard_broken_t = 0.0
 
 
 func _count_decals47(tex_name: String) -> int:
