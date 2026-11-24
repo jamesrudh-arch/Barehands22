@@ -20,6 +20,12 @@ var fov_base: float = 68.0
 var fov_kick: float = 0.0
 var cin_active := false
 var cin_transform: Transform3D = Transform3D()
+# HIT-DIRECTION PUNCH: getting hit shoves the FRAME, not just the body —
+# a short damped impulse opposite the blow direction (fight-game standard)
+var _punch_vec: Vector3 = Vector3.ZERO
+var _punch_t := 0.0
+# dynamic combat framing: the camera widens when you're outnumbered
+var _frame_wide := 0.0
 
 const PITCH_MIN := -55.0
 const PITCH_MAX := 35.0
@@ -35,6 +41,8 @@ func _ready() -> void:
 	add_to_group("cam_rig")
 	_apply_settings()
 	Bus.settings_changed.connect(_apply_settings)
+	Bus.player_damaged.connect(func(d: Vector3, amt: float):
+		kick_dir(d, clampf(amt / 30.0, 0.25, 1.0)))
 
 
 func _apply_settings() -> void:
@@ -59,6 +67,16 @@ func kick_fov(amount: float) -> void:
 	fov_kick = minf(fov_kick + amount, 18.0)
 
 
+func kick_dir(world_dir: Vector3, strength: float = 1.0) -> void:
+	## shove the frame along world_dir (already normalized by caller)
+	var d := world_dir
+	d.y = 0.0
+	if d.length_squared() < 0.001:
+		return
+	_punch_vec = d.normalized() * clampf(strength, 0.0, 1.0)
+	_punch_t = 1.0
+
+
 func start_cinematic() -> void:
 	cin_active = true
 
@@ -79,7 +97,33 @@ func _physics_process(delta: float) -> void:
 		dist_target = 4.2
 	else:
 		dist_target = 3.4
+	# DYNAMIC COMBAT FRAMING: outnumbered -> pull back so threats stay
+	# readable in frame (the reason fight cams in good games "breathe")
+	var threats := 0
+	var in_combat: bool = target.get("combat") != null and bool(target.combat.in_combat)
+	if in_combat:
+		for e in get_tree().get_nodes_in_group("enemy"):
+			if not is_instance_valid(e) or e.get("hostile") != true:
+				continue
+			var ec = e.get("combat")
+			if ec == null or bool(ec.dead):
+				continue
+			if (e.global_position - target.global_position).length() < 14.0:
+				threats += 1
+	var wide_goal := 0.0
+	if threats >= 3:
+		wide_goal = 1.5
+	elif threats == 2:
+		wide_goal = 0.8
+	elif threats == 1:
+		wide_goal = 0.35
+	_frame_wide = lerpf(_frame_wide, wide_goal, minf(1.0, delta * 3.0))
+	dist_target += _frame_wide
 	dist = lerpf(dist, dist_target, minf(1.0, delta * 5.0))
+	# hit-direction punch: damped spring back to neutral
+	if _punch_t > 0.0:
+		_punch_t = maxf(0.0, _punch_t - delta * 4.5)
+		focus -= _punch_vec * (sin(_punch_t * PI) * 0.22)
 	# desired orbit position
 	var dir := Vector3(
 		sin(yaw) * cos(pitch * PI / 180.0),

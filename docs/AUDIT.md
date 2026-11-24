@@ -102,3 +102,53 @@ drivers, epilogue mission + dialogue trees + flag gates, plus nine audit
 regression guards so the A1–A9 fixes and worldgen determinism can't silently
 rot). **Verified: 191 checks, 0 fails, 0 script errors — three consecutive
 headless runs** on the rebuilt Godot 4.7.2 engine binary.
+
+---
+
+## Wave-47 addendum: live-harness finds (B3)
+
+**B3 — every enemy flinch animation was dead (since wave 1).**
+`CombatController.take_hit` sets `anim.hit_t = 0.0` and `anim.hit_dir`, but
+only `player.gd` ever advanced `hit_t` (`+= delta * 4.0`, reset at >1.0).
+`npc.gd` never touched it, so for every NPC `_hit_pose` was sampled at
+`t = 0` forever — `k = sin(0·π) = 0`, i.e. the reaction pose contributed
+exactly zero bone rotation. Enemies absorbed punches, kicks, bullets and
+finishers with no body response whatsoever; the only hit feedback they ever
+showed was the 0.15 s `hit_flash` tint, knockback velocity and particles.
+This is the single largest contributor to the "floppy" feel rejected in
+review, and no static grep could catch it: the fields existed, were set,
+and were consumed — just never advanced.
+
+Fix: the reaction clock now lives inside `AnimDriver.tick` (single source
+of truth for player and NPCs alike); player.gd's private advance was
+removed to prevent double-speed player reactions. Regression-guarded by
+harness step 85 (`hit_t += delta * 4.0` in anim_driver + live tick test).
+
+Lesson recorded: for procedural animation, "field is set AND consumed" is
+not enough — verify the field is ADVANCED somewhere on the owner's tick
+path. Add to the audit checklist for future waves.
+
+**B4 — the harness was green while the engine printed 16,141 errors per run.**
+Every wave since 1 asserted on *gameplay state* (hp, flags, positions,
+source text) and never on *engine error output*. Four defects therefore
+survived dozens of "221 checks, 0 fails" runs:
+
+| Defect | Player-visible effect | Errors/run |
+|---|---|---|
+| `decal()` called `look_at()` before `add_child()` | decals on walls/ceilings lay flat on the floor; `+Z`-vs-`+Y` normal axis was also 90° wrong | 2 |
+| `_quad`/`_cap`/`_cap4` added vertices with no UV | car bodies, trim, glass, bumpers sampled UV (0,0) — no texture detail on any vehicle | 16,128 |
+| `StyleBoxTexture.margin_*` (property doesn't exist) | aborted `_build_choice_buttons`, so dialogue choices lost hover/pressed styles + font override | 2 |
+| `bool(Node.get("missing"))` → no `bool(null)` ctor in Godot 4 | witness loop died before `note_deed`, so protecting civilians never raised street rep; `str()` variant yields `"<null>"` and was read as a faction tag | 1 |
+
+**Process fix (now enforced):** the harness asserts on engine error output,
+not just gameplay state. Step 89 carries ten live regression guards —
+wall/ceiling decal basis alignment, per-surface `ARRAY_TEX_UV` on a spawned
+vehicle, stylebox property names, and a project-wide `RegEx` scan of every
+script under `res://scripts` that fails if an unguarded `bool()/float()/
+int()/str()` cast on a no-default `Node.get()` returns.
+
+**Lesson recorded:** "harness green" meant "no assertion failed", never
+"no errors". A verification loop that ignores the engine's own error stream
+will happily certify a broken build. Any future wave must report the
+`SCRIPT ERROR` and `^ERROR:` counts alongside checks/fails, and treat a
+nonzero count as a failure until explained.

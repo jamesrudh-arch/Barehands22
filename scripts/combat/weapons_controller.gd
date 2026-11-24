@@ -137,6 +137,7 @@ func try_fire(auto: bool, delta: float, from: Vector3, direction: Vector3, shoot
 	# sfx + fx
 	var muz := from + direction * 0.6
 	AudioDirector.sfx_at(w.get("sound", "shot_pistol"), muz, 1.0, 0.05)
+	AudioDirector.sfx_echo(w.get("sound", "shot_pistol"), muz, randf_range(0.18, 0.3), 0.22)
 	Effects.burst(muz, "muzzle", direction)
 	Effects.muzzle_flash_light(muz)
 	if shooter_is_player:

@@ -584,7 +584,7 @@ func _try_hop_in_car() -> void:
 		return
 	_hop_t = 1.0
 	for n in get_tree().get_nodes_in_group("vehicle"):
-		if not is_instance_valid(n) or not bool(n.get("is_traffic")) or n.get("_wrecked"):
+		if not is_instance_valid(n) or n.get("is_traffic") != true or n.get("_wrecked") == true:
 			continue
 		if (n.global_position - global_position).length() > 9.0:
 			continue
@@ -675,6 +675,8 @@ func _combat_state(dt: float, player: Node) -> void:
 			var muz := global_position + Vector3(0, 1.4, 0) + dir * 0.6
 			var w := Db.weapon(_weapon_id)
 			AudioDirector.sfx_at(w.get("sound", "shot_pistol"), muz)
+			if dist < 45.0:
+				AudioDirector.sfx_echo(w.get("sound", "shot_pistol"), muz, randf_range(0.2, 0.34), 0.18)
 			Effects.burst(muz, "muzzle", dir)
 			Effects.tracer(muz, muz + dir * 40.0)
 			# hit chance by distance
@@ -763,7 +765,10 @@ func _find_rival(radius: float) -> Node3D:
 	for n in get_tree().get_nodes_in_group("enemy"):
 		if n == self or not is_instance_valid(n):
 			continue
-		var nf: String = str(n.get("faction_tag"))
+		# unguarded str() on a missing property yields "<null>", which would
+		# read as a real (hostile) faction tag and start friendly fire
+		var ft89 = n.get("faction_tag")
+		var nf: String = str(ft89) if ft89 != null else ""
 		if nf == "" or nf == faction_tag:
 			continue
 		var c = n.get("combat")
@@ -979,7 +984,7 @@ func _on_died(_cause: String) -> void:
 			# THE BLOCK WATCHES: put down a predator while civilians see
 			# it and the street remembers who protected it
 			for n in get_tree().get_nodes_in_group("humanoid"):
-				if n == self or not is_instance_valid(n) or bool(n.get("hostile")):
+				if n == self or not is_instance_valid(n) or n.get("hostile") == true:
 					continue
 				if n.is_in_group("player") or not n.has_method("react"):
 					continue

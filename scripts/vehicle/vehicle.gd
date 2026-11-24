@@ -224,9 +224,17 @@ func _sec(z: float, hw: float, y0: float, y1: float, cabin: bool) -> PackedVecto
 		Vector3(rw, y1, z), Vector3(hw, ys, z), Vector3(hw, y0 + 0.16, z), Vector3(hw * 0.86, y0, z)])
 
 
+func _uv(st: SurfaceTool, uv: Vector2, v: Vector3) -> void:
+	# EVERY vertex must carry a UV: SurfaceTool latches ARRAY_FORMAT_TEX_UV on
+	# the first vertex and rejects set_uv afterwards. Missing UVs left whole
+	# vehicle surfaces sampling texture coord (0,0) — flat albedo, no detail.
+	st.set_uv(uv)
+	st.add_vertex(v)
+
+
 func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d2: Vector3) -> void:
-	st.add_vertex(a); st.add_vertex(b); st.add_vertex(c)
-	st.add_vertex(a); st.add_vertex(c); st.add_vertex(d2)
+	_uv(st, Vector2(0, 0), a); _uv(st, Vector2(1, 0), b); _uv(st, Vector2(1, 1), c)
+	_uv(st, Vector2(0, 0), a); _uv(st, Vector2(1, 1), c); _uv(st, Vector2(0, 1), d2)
 
 
 func _cap(st: SurfaceTool, ring: PackedVector3Array, front: bool) -> void:
@@ -234,38 +242,53 @@ func _cap(st: SurfaceTool, ring: PackedVector3Array, front: bool) -> void:
 	for p in ring:
 		c += p
 	c /= float(ring.size())
+	# planar-project the cap so its UVs span 0..1 across the ring
+	var rad := 0.001
+	for p in ring:
+		rad = maxf(rad, (p - c).length())
+	var uvs: Array = []
+	for p in ring:
+		var d := (p - c) / rad
+		uvs.append(Vector2(0.5 + d.x * 0.5, 0.5 + d.z * 0.5))
 	if front:
 		for i in ring.size():
 			var j := (i + 1) % ring.size()
-			st.add_vertex(c); st.add_vertex(ring[j]); st.add_vertex(ring[i])
+			_uv(st, Vector2(0.5, 0.5), c); _uv(st, uvs[j], ring[j]); _uv(st, uvs[i], ring[i])
 	else:
 		for i in ring.size():
 			var j := (i + 1) % ring.size()
-			st.add_vertex(c); st.add_vertex(ring[i]); st.add_vertex(ring[j])
+			_uv(st, Vector2(0.5, 0.5), c); _uv(st, uvs[i], ring[i]); _uv(st, uvs[j], ring[j])
 
 
 func _cap4(st: SurfaceTool, ring: PackedVector3Array, front: bool) -> void:
+	var u0 := Vector2(0, 0)
+	var u1 := Vector2(1, 0)
+	var u2 := Vector2(1, 1)
+	var u3 := Vector2(0, 1)
 	if front:
-		st.add_vertex(ring[0]); st.add_vertex(ring[2]); st.add_vertex(ring[1])
-		st.add_vertex(ring[0]); st.add_vertex(ring[3]); st.add_vertex(ring[2])
+		_uv(st, u0, ring[0]); _uv(st, u2, ring[2]); _uv(st, u1, ring[1])
+		_uv(st, u0, ring[0]); _uv(st, u3, ring[3]); _uv(st, u2, ring[2])
 	else:
-		st.add_vertex(ring[0]); st.add_vertex(ring[1]); st.add_vertex(ring[2])
-		st.add_vertex(ring[0]); st.add_vertex(ring[2]); st.add_vertex(ring[3])
+		_uv(st, u0, ring[0]); _uv(st, u1, ring[1]); _uv(st, u2, ring[2])
+		_uv(st, u0, ring[0]); _uv(st, u2, ring[2]); _uv(st, u3, ring[3])
 
 
 func _sb(st: SurfaceTool, center: Vector3, size: Vector3) -> void:
 	var h := size * 0.5
 	var c := center
+	# NOTE: no set_normal here. SurfaceTool rejects set_normal once vertices
+	# exist without ARRAY_FORMAT_NORMAL (the body/glass surfaces add quads
+	# first), and every caller ends with generate_normals() anyway — which
+	# derives the same flat per-face normals these boxes want.
 	var pts := [
-		[c + Vector3(-h.x, -h.y, h.z), c + Vector3(h.x, -h.y, h.z), c + Vector3(h.x, h.y, h.z), c + Vector3(-h.x, h.y, h.z), Vector3(0, 0, 1)],
-		[c + Vector3(h.x, -h.y, -h.z), c + Vector3(-h.x, -h.y, -h.z), c + Vector3(-h.x, h.y, -h.z), c + Vector3(h.x, h.y, -h.z), Vector3(0, 0, -1)],
-		[c + Vector3(h.x, -h.y, h.z), c + Vector3(h.x, -h.y, -h.z), c + Vector3(h.x, h.y, -h.z), c + Vector3(h.x, h.y, h.z), Vector3(1, 0, 0)],
-		[c + Vector3(-h.x, -h.y, -h.z), c + Vector3(-h.x, -h.y, h.z), c + Vector3(-h.x, h.y, h.z), c + Vector3(-h.x, h.y, -h.z), Vector3(-1, 0, 0)],
-		[c + Vector3(-h.x, h.y, h.z), c + Vector3(h.x, h.y, h.z), c + Vector3(h.x, h.y, -h.z), c + Vector3(-h.x, h.y, -h.z), Vector3(0, 1, 0)],
-		[c + Vector3(-h.x, -h.y, -h.z), c + Vector3(h.x, -h.y, -h.z), c + Vector3(h.x, -h.y, h.z), c + Vector3(-h.x, -h.y, h.z), Vector3(0, -1, 0)],
+		[c + Vector3(-h.x, -h.y, h.z), c + Vector3(h.x, -h.y, h.z), c + Vector3(h.x, h.y, h.z), c + Vector3(-h.x, h.y, h.z)],
+		[c + Vector3(h.x, -h.y, -h.z), c + Vector3(-h.x, -h.y, -h.z), c + Vector3(-h.x, h.y, -h.z), c + Vector3(h.x, h.y, -h.z)],
+		[c + Vector3(h.x, -h.y, h.z), c + Vector3(h.x, -h.y, -h.z), c + Vector3(h.x, h.y, -h.z), c + Vector3(h.x, h.y, h.z)],
+		[c + Vector3(-h.x, -h.y, -h.z), c + Vector3(-h.x, -h.y, h.z), c + Vector3(-h.x, h.y, h.z), c + Vector3(-h.x, h.y, -h.z)],
+		[c + Vector3(-h.x, h.y, h.z), c + Vector3(h.x, h.y, h.z), c + Vector3(h.x, h.y, -h.z), c + Vector3(-h.x, h.y, -h.z)],
+		[c + Vector3(-h.x, -h.y, -h.z), c + Vector3(h.x, -h.y, -h.z), c + Vector3(h.x, -h.y, h.z), c + Vector3(-h.x, -h.y, h.z)],
 	]
 	for q in pts:
-		st.set_normal(q[4])
 		st.set_uv(Vector2(0, 0))
 		st.add_vertex(q[0])
 		st.set_uv(Vector2(1, 0))

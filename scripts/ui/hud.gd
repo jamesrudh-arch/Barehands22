@@ -287,6 +287,22 @@ func _build_bars() -> void:
 	_focus_vignette.color = Color(0.35, 0.55, 0.95, 0.10)
 	_focus_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_focus_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# HURT VIGNETTE: at low HP the edges of the screen throb red on a
+	# heartbeat rhythm — the body failing, not a UI meter
+	_hurt_vignette = ColorRect.new()
+	_hurt_vignette.color = Color(0.55, 0.05, 0.05, 0.0)
+	_hurt_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_hurt_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hurt_vignette.visible = false
+	_root.add_child(_hurt_vignette)
+	# DAMAGE DIRECTION RING: red arcs flash at the screen edge toward
+	# whoever just hit you (FPS-standard spatial read, drawn in 2D)
+	_dmg_ring = Control.new()
+	_dmg_ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dmg_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dmg_ring.draw.connect(_draw_dmg_ring)
+	_root.add_child(_dmg_ring)
+	Bus.player_damaged.connect(_on_player_damaged)
 	_focus_vignette.visible = false
 	_root.add_child(_focus_vignette)
 	_lvl_lbl = Label.new()
@@ -575,10 +591,33 @@ func _process(delta: float) -> void:
 			_focus_bar.value = player.focus
 			_focus_bar.modulate = Color(1, 1, 1) if not player.focus_active else Color(1.4, 1.5, 2.0)
 	if _focus_vignette != null:
-		var fa: bool = bool(player.get("focus_active"))
+		var fa: bool = player.get("focus_active") == true
 		_focus_vignette.visible = fa
 		if fa:
 			_focus_vignette.color.a = 0.08 + 0.05 * sin(Time.get_ticks_msec() * 0.004)
+	# low-HP heartbeat vignette
+	if _hurt_vignette != null and player.combat != null and not player.combat.dead:
+		var hpfrac: float = player.combat.hp / maxf(1.0, player.combat.max_hp)
+		if hpfrac < 0.3 and not Game.cutscene_active:
+			_hurt_vignette.visible = true
+			var beat := absf(sin(_heart_t * 4.2)) * (1.0 - hpfrac / 0.3)
+			_hurt_vignette.color.a = 0.04 + 0.10 * beat
+			_heart_t += delta
+			# thumping heart, twice as loud as the vignette is red
+			if fmod(_heart_t, 0.9) < delta:
+				AudioDirector.sfx("land_thud", 0.0, 0.10 + 0.1 * beat)
+		else:
+			_hurt_vignette.visible = false
+			_heart_t = 0.0
+	# damage arcs decay (redraw every frame so the last arc's expiry
+	# actually clears the ring — no ghost arcs)
+	if _dmg_ring != null:
+		if not _dmg_arcs.is_empty():
+			for a in _dmg_arcs.duplicate():
+				a["t"] -= delta * 1.7
+				if a["t"] <= 0.0:
+					_dmg_arcs.erase(a)
+		_dmg_ring.queue_redraw()
 	# progression
 	if _xp_bar != null:
 		_xp_bar.value = float(Progression.xp) / float(Progression.xp_for_next()) * 100.0
@@ -653,9 +692,49 @@ func _process(delta: float) -> void:
 	_tick_toasts(delta)
 
 
+func _on_player_damaged(dir_world: Vector3, amount: float) -> void:
+	# convert the shove direction into a screen-edge angle relative to camera
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or _dmg_ring == null:
+		return
+	var to_attacker := -dir_world
+	to_attacker.y = 0.0
+	if to_attacker.length_squared() < 0.001:
+		to_attacker = -cam.global_transform.basis.z
+	var local: Vector3 = cam.global_transform.basis.inverse() * to_attacker.normalized()
+	var ang := atan2(local.x, -local.z)          # 0 = screen up, cw
+	_dmg_arcs.append({"ang": ang, "t": 1.0, "amt": clampf(amount / 30.0, 0.25, 1.0)})
+	if _dmg_arcs.size() > 6:
+		_dmg_arcs.pop_front()
+	_dmg_ring.queue_redraw()
+
+
+func _draw_dmg_ring() -> void:
+	if _dmg_ring == null or _dmg_arcs.is_empty():
+		return
+	var sz: Vector2 = _dmg_ring.size
+	if sz.x < 10.0:
+		sz = _dmg_ring.get_viewport_rect().size
+	var c := sz * 0.5
+	var rad := minf(sz.x, sz.y) * 0.34
+	for a in _dmg_arcs:
+		var t: float = a["t"]
+		var amt: float = a["amt"]
+		var col := Color(0.95, 0.18, 0.14, 0.75 * t)
+		var ang: float = a["ang"] - PI * 0.5    # draw_arc: 0 = +x axis
+		# arc grows outward slightly as it fades (reads as a shove)
+		var r2 := rad + (1.0 - t) * 14.0
+		_dmg_ring.draw_arc(c, r2, ang - 0.28 - 0.1 * amt, ang + 0.28 + 0.1 * amt,
+			14, col, 5.0 + 5.0 * amt, true)
+
+
 var _lock_screen := Vector2.ZERO
 var _posture_bar: ProgressBar = null
 var _street_lbl: Label = null
+var _dmg_ring: Control = null          # directional damage arcs
+var _dmg_arcs: Array = []              # [{ang, t, amt}]
+var _hurt_vignette: ColorRect = null   # low-HP heartbeat pulse
+var _heart_t := 0.0
 
 
 func _update_lock_pos(player: Node) -> void:

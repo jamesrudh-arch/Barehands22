@@ -7,6 +7,9 @@ extends Node3D
 var env: Environment
 var sun: DirectionalLight3D
 var rain: GPUParticles3D
+var splash: GPUParticles3D = null    # ground-level rain splash crown
+var _puddle_cd := 3.0
+var _neon_dip := 0.0                 # sign dropout timer (buzz/flicker)
 var player: Node = null
 var city_life: Node = null
 var hud: CanvasLayer = null
@@ -134,6 +137,34 @@ func _setup_rain() -> void:
 	rain.draw_pass_1 = qm
 	rain.emitting = false
 	add_child(rain)
+	# RAIN SPLASH: tiny upward crowns across a box at the player's feet —
+	# the single cheapest cue that makes rain feel like it touches the world
+	splash = GPUParticles3D.new()
+	splash.name = "RainSplash"
+	splash.amount = 90
+	splash.lifetime = 0.26
+	splash.local_coords = true
+	var sm := ParticleProcessMaterial.new()
+	sm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	sm.emission_box_extents = Vector3(13, 0.04, 13)
+	sm.direction = Vector3(0, 1, 0)
+	sm.spread = 14.0
+	sm.gravity = Vector3(0, -9.0, 0)
+	sm.initial_velocity_min = 1.1
+	sm.initial_velocity_max = 2.4
+	sm.scale_min = 0.25
+	sm.scale_max = 0.7
+	splash.process_material = sm
+	var sqm := QuadMesh.new()
+	sqm.size = Vector2(0.035, 0.035)
+	var smat := StandardMaterial3D.new()
+	smat.albedo_color = Color(0.66, 0.74, 0.88, 0.3)
+	smat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sqm.material = smat
+	splash.draw_pass_1 = sqm
+	splash.emitting = false
+	add_child(splash)
 
 
 func _process(delta: float) -> void:
@@ -144,6 +175,13 @@ func _process(delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam:
 		rain.global_position = cam.global_position + Vector3(0, 12, 0)
+	# splash crown hugs the player's ground plane
+	if splash != null:
+		splash.emitting = rain.emitting and player != null
+		if splash.emitting:
+			splash.global_position = player.global_position + Vector3(0, 0.05, 0)
+			_puddle_tick(delta)
+	_neon_flicker(delta)
 	# thunder
 	if WorldState.weather == WorldState.Weather.RAIN:
 		_thunder_cd -= delta
@@ -215,6 +253,17 @@ func _day_night() -> void:
 		road.roughness = lerpf(1.0, 0.18, wet)
 		road.metallic = lerpf(0.0, 0.12, wet)
 		road.albedo_color = Color(1, 1, 1).lerp(Color(0.55, 0.57, 0.62), wet)
+		# WET SHEEN: soaked asphalt at night throws the district's neon
+		# color back as a faint emission — the streets glow after rain
+		if WorldState.is_night() and wet > 0.25:
+			road.emission_enabled = true
+			var sheen := Color(0.5, 0.55, 0.7)
+			if tint.size() == 3:
+				sheen = Color(tint[0], tint[1], tint[2])
+			road.emission = sheen
+			road.emission_energy_multiplier = 0.06 * wet
+		else:
+			road.emission_enabled = false
 
 
 func _on_weather(kind: String, _wet: float) -> void:
@@ -224,12 +273,58 @@ func _on_weather(kind: String, _wet: float) -> void:
 func _apply_weather(kind: String) -> void:
 	rain.emitting = kind == "rain"
 	if rain.emitting:
-		AudioDirector.ambient("rain", "res://assets/audio/sfx/rain_loop.wav", 0.35)
+		# storm body: the loop swells as the streets soak through
+		AudioDirector.ambient("rain", "res://assets/audio/sfx/rain_loop.wav",
+			0.2 + clampf(WorldState.wetness, 0.0, 1.0) * 0.25)
 	else:
 		AudioDirector.ambient_off("rain")
 
 
 # ---------------------------------------------------------------- activities --
+func _puddle_tick(delta: float) -> void:
+	## While it rains, fresh puddles keep appearing on the street near the
+	## player (ground-raycast, real decal texture). They fade with the rain
+	## footfall — permanence without a permanent cost.
+	if player == null:
+		return
+	_puddle_cd -= delta
+	if _puddle_cd > 0.0:
+		return
+	_puddle_cd = randf_range(1.4, 3.0)
+	var ang := randf() * TAU
+	var r := randf_range(4.0, 20.0)
+	var from: Vector3 = player.global_position + Vector3(cos(ang) * r, 8.0, sin(ang) * r)
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.new()
+	q.from = from
+	q.to = from + Vector3(0, -16, 0)
+	q.collision_mask = 1
+	var hit := space.intersect_ray(q)
+	if hit.is_empty():
+		return
+	Effects.decal(hit["position"] + Vector3(0, 0.02, 0), hit["normal"], "puddle", randf_range(0.7, 1.9))
+
+
+func _neon_flicker(delta: float) -> void:
+	## NEON THAT BUZZES: the shared neon material breathes on two detuned
+	## sines, and every so often a sign drops out for a tenth of a second —
+	## the subliminal "bad electricity" of noir streets. At night only.
+	var neon: StandardMaterial3D = WorldGen.mat("neon_white")
+	if neon == null:
+		return
+	if not WorldState.is_night():
+		neon.emission_energy_multiplier = 3.0
+		return
+	var t := Time.get_ticks_msec() * 0.001
+	_neon_dip = maxf(0.0, _neon_dip - delta)
+	if _neon_dip <= 0.0 and randf() < 0.006:
+		_neon_dip = randf_range(0.06, 0.16)
+	var f := 0.9 + 0.1 * sin(t * 9.1) * sin(t * 2.3 + 1.7)
+	if _neon_dip > 0.0:
+		f *= 0.25
+	neon.emission_energy_multiplier = 3.0 * f
+
+
 func _start_gamble() -> void:
 	var bets := [50, 100, 250]
 	var opts := []

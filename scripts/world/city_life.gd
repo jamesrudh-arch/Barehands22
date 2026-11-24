@@ -340,7 +340,7 @@ func _on_crime(crime: String, severity: int, pos: Vector3) -> void:
 			if not n.has_method("react") or n.state == n.State.DEAD:
 				continue
 			# combatants don't spook at their own war
-			if bool(n.get("hostile")) or n.state == n.State.COMBAT:
+			if n.get("hostile") == true or n.state == n.State.COMBAT:
 				continue
 			n.react(event, pos)
 	if severity >= 2:
@@ -1167,7 +1167,7 @@ var gossip_pair: Array = []
 
 
 func _gossip_tick(delta: float, player: Node) -> void:
-	if player.in_vehicle != null or bool(Game.get("cutscene_active")):
+	if player.in_vehicle != null or Game.get("cutscene_active") == true:
 		return
 	# 1) maintain a live pair
 	if _gossip_until > 0.0:
@@ -1208,7 +1208,7 @@ func _gossip_tick(delta: float, player: Node) -> void:
 	_gossip_t = randf_range(18.0, 34.0)
 	var near: Array = []
 	for n in get_tree().get_nodes_in_group("humanoid"):
-		if not is_instance_valid(n) or bool(n.get("hostile")) or n.char_id != "":
+		if not is_instance_valid(n) or n.get("hostile") == true or n.char_id != "":
 			continue
 		if n.state != n.State.ROUTINE or n.get("_chat_idle") == true:
 			continue
@@ -1258,7 +1258,7 @@ var _event_helped := false
 
 func _intervene_tick(delta: float, player: Node) -> void:
 	_intervene_cd -= delta
-	if player.in_vehicle != null or bool(Game.get("cutscene_active")):
+	if player.in_vehicle != null or Game.get("cutscene_active") == true:
 		return
 	if _event_kind == "" or player.global_position.distance_to(_intervene_pos) > 7.0:
 		return

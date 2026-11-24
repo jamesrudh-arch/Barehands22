@@ -226,13 +226,13 @@ func _build_paint() -> void:
 
 func _find_paint_target() -> Node:
 	var p := _player()
-	if p != null and p.in_vehicle != null and not bool(p.in_vehicle.get("_wrecked")):
+	if p != null and p.in_vehicle != null and p.in_vehicle.get("_wrecked") != true:
 		return p.in_vehicle
 	var best = null
 	var bd := 10.0
 	if p != null:
 		for n in get_tree().get_nodes_in_group("vehicle"):
-			if not is_instance_valid(n) or bool(n.get("_wrecked")) or bool(n.get("is_traffic")):
+			if not is_instance_valid(n) or n.get("_wrecked") == true or n.get("is_traffic") == true:
 				continue
 			var d: float = (n.global_position - p.global_position).length()
 			if d < bd:
@@ -283,9 +283,9 @@ func _find_repair_target() -> Node:
 	var bd := 10.0
 	if p != null:
 		for n in get_tree().get_nodes_in_group("vehicle"):
-			if not is_instance_valid(n) or bool(n.get("_wrecked")):
+			if not is_instance_valid(n) or n.get("_wrecked") == true:
 				continue
-			if float(n.get("hp")) >= 100.0 and not bool(n.get("tires_flat")):
+			if float(n.get("hp") if n.get("hp") != null else 0.0) >= 100.0 and n.get("tires_flat") != true:
 				continue
 			var d: float = (n.global_position - p.global_position).length()
 			if d < bd:
