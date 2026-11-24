@@ -23,7 +23,107 @@
     "at": -350,
     "width": 12
    }
-  ]
+  ],
+  "stations": [
+   {
+    "id": "sta_kiln",
+    "name": "Ember & Ash Fuel",
+    "at": [
+     -322,
+     100
+    ],
+    "district": "kiln_row",
+    "brand": "Ember & Ash",
+    "price": 2.1,
+    "diesel": false,
+    "pumps": 3,
+    "note": "Family forecourt. Cheap enough that half Kiln Row fills here.",
+    "kind": "fuel"
+   },
+   {
+    "id": "sta_docks",
+    "name": "Dockside Petroleum",
+    "at": [
+     -322,
+     -200
+    ],
+    "district": "ashfall_docks",
+    "brand": "Dockside",
+    "price": 1.85,
+    "diesel": true,
+    "pumps": 4,
+    "note": "Forklift diesel and long-haul tanks. Nobody counts the litres twice.",
+    "kind": "fuel"
+   },
+   {
+    "id": "sta_furnace",
+    "name": "Halcyon Auto Fuel",
+    "at": [
+     -2,
+     -200
+    ],
+    "district": "the_furnace",
+    "brand": "Halcyon",
+    "price": 2.65,
+    "diesel": false,
+    "pumps": 4,
+    "note": "Halcyon-branded, spotless, and priced like the view from the tower.",
+    "kind": "fuel"
+   },
+   {
+    "id": "sta_neon",
+    "name": "Neon Mile 24H",
+    "at": [
+     -58,
+     150
+    ],
+    "district": "neon_mile",
+    "brand": "Neon Mile",
+    "price": 2.4,
+    "diesel": false,
+    "pumps": 3,
+    "note": "Open all night. The canopy is the brightest thing on the Mile.",
+    "kind": "fuel"
+   },
+   {
+    "id": "sta_slag",
+    "name": "Slag Diesel Yard",
+    "at": [
+     250,
+     -140
+    ],
+    "district": "slagworks",
+    "brand": "Slag Yard",
+    "price": 1.75,
+    "diesel": true,
+    "pumps": 5,
+    "note": "Cheapest fuel in Cinder City, sold by people who do not ask questions.",
+    "kind": "fuel"
+   },
+   {
+    "id": "sta_crown",
+    "name": "Crown Premium Fuels",
+    "at": [
+     300,
+     162
+    ],
+    "district": "crown_heights",
+    "brand": "Crown",
+    "price": 3.05,
+    "diesel": false,
+    "pumps": 3,
+    "note": "Attended. They wash the windscreen whether you want it or not.",
+    "kind": "fuel"
+   }
+  ],
+  "fuel": {
+   "start": 1.0,
+   "reserve": 0.12,
+   "burn_base": 0.0016,
+   "idle_burn": 0.00035,
+   "rep_discount_max": 0.15,
+   "rep_discount_at": -25
+  }
  },
  "kiln_row": {
   "name": "Kiln Row",

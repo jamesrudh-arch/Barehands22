@@ -38,6 +38,12 @@ var _prompt_lbl: Label
 var _ammo_lbl: Label
 var _style_lbl: Label
 var _speed_lbl: Label
+var _fuel_gauge: Control         # drawn bar: tank level + reserve tick
+var _fuel_lbl: Label
+var _fuel_frac := 1.0
+var _fuel_reserve := 0.12
+var _fuel_l := 0.0
+var _fuel_dry := false
 var _minimap: Control
 var _toasts: VBoxContainer
 var _toast_q: Array = []
@@ -235,13 +241,19 @@ func _build_top() -> void:
 	_speed_lbl = _lbl(22, Color(0.85, 0.85, 0.8))
 	_speed_lbl.anchor_left = 1.0
 	_speed_lbl.anchor_right = 1.0
+	# BUG FIXED: these are negative offsets, so the anchors must be the BOTTOM
+	# edge. With anchor_top left at 0 the whole readout sat 200 px above the
+	# top of the screen and the speedometer was never drawn once.
+	_speed_lbl.anchor_top = 1.0
+	_speed_lbl.anchor_bottom = 1.0
 	_speed_lbl.offset_left = -240
 	_speed_lbl.offset_right = -150
-	_speed_lbl.offset_top = -200
-	_speed_lbl.offset_bottom = -170
+	_speed_lbl.offset_top = -186
+	_speed_lbl.offset_bottom = -156
 	_speed_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_speed_lbl.visible = false
 	_root.add_child(_speed_lbl)
+	_build_fuel_gauge()
 	# crosshair (aim mode)
 	_crosshair = TextureRect.new()
 	_crosshair.texture = load("res://assets/textures/ui/crosshair.png")
@@ -327,6 +339,64 @@ func _build_minimap() -> void:
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(frame)
+
+
+func _build_fuel_gauge() -> void:
+	## Fuel is a real resource now (filling stations, money, theft), so it gets
+	## a real readout: a bar with the reserve line marked on it, a litre count,
+	## and a red pulse when the tank is on the reserve.
+	_fuel_lbl = _lbl(13, Color(0.80, 0.80, 0.76))
+	_fuel_lbl.anchor_left = 1.0
+	_fuel_lbl.anchor_right = 1.0
+	_fuel_lbl.anchor_top = 1.0
+	_fuel_lbl.anchor_bottom = 1.0
+	_fuel_lbl.offset_left = -240
+	_fuel_lbl.offset_right = -110
+	_fuel_lbl.offset_top = -236
+	_fuel_lbl.offset_bottom = -218
+	_fuel_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fuel_lbl.visible = false
+	_root.add_child(_fuel_lbl)
+	_fuel_gauge = Control.new()
+	_fuel_gauge.anchor_left = 1.0
+	_fuel_gauge.anchor_right = 1.0
+	_fuel_gauge.anchor_top = 1.0
+	_fuel_gauge.anchor_bottom = 1.0
+	_fuel_gauge.offset_left = -240
+	_fuel_gauge.offset_right = -110
+	_fuel_gauge.offset_top = -214
+	_fuel_gauge.offset_bottom = -196
+	_fuel_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fuel_gauge.visible = false
+	_fuel_gauge.draw.connect(_draw_fuel)
+	_root.add_child(_fuel_gauge)
+
+
+func _draw_fuel() -> void:
+	var w := _fuel_gauge.size.x
+	var h := _fuel_gauge.size.y
+	var lvl := clampf(_fuel_frac, 0.0, 1.0)
+	# backing + hairline frame
+	_fuel_gauge.draw_rect(Rect2(0, 4, w, h - 8), Color(0.04, 0.05, 0.06, 0.82))
+	_fuel_gauge.draw_rect(Rect2(0, 4, w, h - 8), Color(0.30, 0.32, 0.34, 0.85), false, 1.0)
+	# the fill itself, coloured by how much trouble you are in
+	var col := Color(0.23, 0.91, 0.69)                  # teal: plenty
+	if lvl < 0.30:
+		col = Color(0.95, 0.72, 0.25)                   # amber: plan a stop
+	if _fuel_dry:
+		col = Color(0.55, 0.10, 0.09)                   # dead red
+	elif lvl < _fuel_reserve:
+		# pulsing red on the reserve line — it must pull the eye
+		var pulse := 0.5 + 0.5 * absf(sin(Time.get_ticks_msec() / 210.0))
+		col = Color(0.95, 0.26, 0.20).lerp(Color(0.50, 0.10, 0.08), 1.0 - pulse)
+	var inner_w := (w - 4.0) * lvl
+	if inner_w > 0.5:
+		_fuel_gauge.draw_rect(Rect2(2, 6, inner_w, h - 12), col)
+		# a lighter top edge so the fuel reads as liquid, not a progress bar
+		_fuel_gauge.draw_rect(Rect2(2, 6, inner_w, 1.5), Color(col.r + 0.18, col.g + 0.18, col.b + 0.18, 0.55))
+	# the reserve tick: where the light comes on
+	var tx := 2.0 + (w - 4.0) * clampf(_fuel_reserve, 0.0, 1.0)
+	_fuel_gauge.draw_line(Vector2(tx, 2), Vector2(tx, h - 2), Color(0.92, 0.92, 0.88, 0.5), 1.0)
 
 
 func _build_objective() -> void:
@@ -642,9 +712,21 @@ func _process(delta: float) -> void:
 	if mm:
 		_mission_lbl.text = mm.mission_title().to_upper()
 		_objective_lbl.text = mm.objective_text()
-	# speed
+	# speed + fuel
 	if player.in_vehicle:
 		_speed_lbl.text = "%d km/h" % int(player.in_vehicle.speed_kmh())
+		var v = player.in_vehicle
+		# Node.get() takes one argument, so read into a Variant and test it
+		var vf: Variant = v.get("fuel")
+		var vr: Variant = v.get("_reserve")
+		var vt: Variant = v.get("tank_l")
+		_fuel_frac = clampf(1.0 if vf == null else float(vf), 0.0, 1.0)
+		_fuel_reserve = clampf(0.12 if vr == null else float(vr), 0.02, 0.5)
+		_fuel_dry = v.get("fuel_dry") == true
+		_fuel_l = (62.0 if vt == null else float(vt)) * _fuel_frac
+		_fuel_lbl.text = "FUEL %d L%s" % [int(_fuel_l), "  DRY" if _fuel_dry else ""]
+		_fuel_lbl.modulate = Color(1, 0.55, 0.5) if _fuel_dry else Color(1, 1, 1)
+		_fuel_gauge.queue_redraw()
 	# minimap & lock marker
 	_minimap.queue_redraw()
 	if player.lock_target and is_instance_valid(player.lock_target):
@@ -770,6 +852,8 @@ func _update_visibility() -> void:
 	_buttons["horn"].visible = driving
 	_buttons["radio"].visible = driving
 	_speed_lbl.visible = driving
+	_fuel_gauge.visible = driving
+	_fuel_lbl.visible = driving
 	for bn in ["btn_x", "btn_y", "btn_a", "block", "lock_on", "sprint", "crouch", "jump"]:
 		_buttons[bn].visible = not driving
 	_buttons["btn_b"].visible = true  # B stays: interact when out of combat
@@ -822,6 +906,7 @@ func _draw_minimap() -> void:
 				"shop": col = Color(0.95, 0.75, 0.3)
 				"home": col = Color(0.5, 0.75, 0.95)
 				"law": col = Color(0.55, 0.6, 0.95)
+				"fuel": col = Color(0.95, 0.45, 0.25)
 			_minimap.draw_circle(c + rel, 2.5, col)
 	# mission target
 	var mm := get_node_or_null("/root/MissionManager")

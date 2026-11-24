@@ -139,6 +139,19 @@ func _save_extra() -> Dictionary:
 	return extra
 
 
+func _unhandled_input(ev: InputEvent) -> void:
+	## BUG FIXED: the "pause" action existed in project.godot but nothing ever
+	## read it, and its key was bound to KEY_SPECIAL (4194304) rather than
+	## KEY_ESCAPE (4194305) — so on a keyboard there was no way to pause at
+	## all. The pad's START worked only because the touch button shared the
+	## same call. Cutscenes get Escape first, and they mark the event handled.
+	if ev.is_action_pressed("pause"):
+		if cutscene_active or state == State.CINEMATIC:
+			return
+		pause_toggle()
+		get_viewport().set_input_as_handled()
+
+
 func pause_toggle() -> void:
 	if state == State.PLAYING:
 		set_state(State.PAUSED)

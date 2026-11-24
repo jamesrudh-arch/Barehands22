@@ -32,7 +32,8 @@
     108
    ]
   ],
-  "price": 0
+  "price": 0,
+  "tank": 62
  },
  "muscle": {
   "name": "Ember GT",
@@ -62,7 +63,8 @@
     26
    ]
   ],
-  "price": 14000
+  "price": 14000,
+  "tank": 78
  },
  "van": {
   "name": "Hauler Panel Van",
@@ -92,7 +94,8 @@
     40
    ]
   ],
-  "price": 6000
+  "price": 6000,
+  "tank": 88
  },
  "sports": {
   "name": "Vesper S",
@@ -122,7 +125,8 @@
     130
    ]
   ],
-  "price": 26000
+  "price": 26000,
+  "tank": 70
  },
  "bike": {
   "name": "Kiln Runner 600",
@@ -152,7 +156,8 @@
     60
    ]
   ],
-  "price": 5200
+  "price": 5200,
+  "tank": 14
  },
  "taxi": {
   "name": "Cinder Cab",
@@ -172,7 +177,8 @@
     40
    ]
   ],
-  "price": 0
+  "price": 0,
+  "tank": 62
  },
  "police": {
   "name": "CCPD Cruiser",
@@ -192,7 +198,8 @@
     32
    ]
   ],
-  "price": 0
+  "price": 0,
+  "tank": 74
  },
  "truck": {
   "name": "Voss Flatbed",
@@ -217,7 +224,8 @@
     70
    ]
   ],
-  "price": 9000
+  "price": 9000,
+  "tank": 150
  },
  "bus": {
   "name": "CCPD Transit Bus",
@@ -242,7 +250,8 @@
     80
    ]
   ],
-  "price": 0
+  "price": 0,
+  "tank": 260
  },
  "ambulance": {
   "name": "St. Voss Ambulance",
@@ -262,7 +271,8 @@
     228
    ]
   ],
-  "price": 0
+  "price": 0,
+  "tank": 90
  },
  "pickup": {
   "name": "Kiln Row Pickup",
@@ -292,6 +302,7 @@
     110
    ]
   ],
-  "price": 4200
+  "price": 4200,
+  "tank": 96
  }
 }

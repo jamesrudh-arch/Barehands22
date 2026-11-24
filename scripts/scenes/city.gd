@@ -12,6 +12,8 @@ var _puddle_cd := 3.0
 var _neon_dip := 0.0                 # sign dropout timer (buzz/flicker)
 var player: Node = null
 var city_life: Node = null
+var wildlife: Node = null           # birds, rats, strays, fish, moths
+var smoke_line: Node = null         # the freight train on the viaduct
 var hud: CanvasLayer = null
 var _thunder_cd := 0.0
 var _news_cd := 120.0
@@ -29,6 +31,14 @@ func _ready() -> void:
 	city_life = preload("res://scripts/world/city_life.gd").new()
 	city_life.name = "CityLife"
 	add_child(city_life)
+	# the living layer: the city had traffic and crowds and not one creature
+	wildlife = preload("res://scripts/world/wildlife.gd").new()
+	wildlife.name = "Wildlife"
+	add_child(wildlife)
+	# the Smoke Line: freight working the viaduct over the z=-30 arterial
+	smoke_line = preload("res://scripts/world/smoke_line.gd").new()
+	smoke_line.name = "SmokeLine"
+	add_child(smoke_line)
 	# player
 	var spawn: Array = WorldGen.pois.get("poi_home", {}).get("data", {}).get("at", [-240, 46])
 	player = CharacterBody3D.new()
@@ -182,6 +192,7 @@ func _process(delta: float) -> void:
 			splash.global_position = player.global_position + Vector3(0, 0.05, 0)
 			_puddle_tick(delta)
 	_neon_flicker(delta)
+	_harbour_ambience()
 	# thunder
 	if WorldState.weather == WorldState.Weather.RAIN:
 		_thunder_cd -= delta
@@ -281,6 +292,22 @@ func _apply_weather(kind: String) -> void:
 
 
 # ---------------------------------------------------------------- activities --
+## The harbour wash fades in with proximity, so walking the quay is a place
+## you can hear before you can see. Distance-mixed, never a flat loop.
+func _harbour_ambience() -> void:
+	if player == null:
+		return
+	var w: Dictionary = Db.districts.get("world", {})
+	var wz: float = float(w.get("water_z", -380.0))
+	# the harbour sheet is centred 130 m seaward of water_z (see _build_water)
+	var d: float = absf(player.global_position.z - (wz - 130.0))
+	if d > 210.0:
+		AudioDirector.ambient_off("harbour")
+		return
+	var near := 1.0 - clampf((d - 24.0) / 170.0, 0.0, 1.0)
+	AudioDirector.ambient("harbour", "res://assets/audio/sfx/water_lap.wav", 0.10 + 0.42 * near)
+
+
 func _puddle_tick(delta: float) -> void:
 	## While it rains, fresh puddles keep appearing on the street near the
 	## player (ground-raycast, real decal texture). They fade with the rain

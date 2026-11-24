@@ -446,7 +446,10 @@ func _make_buy(id: String, price: int) -> void:
 	var kthanks: Array = Db.barks.get("thank", [])
 	if _keeper_id != "" and not kthanks.is_empty() and WorldState.street_rep() >= 0:
 		var kname: String = Db.character(_keeper_id).get("short", Db.character(_keeper_id).get("name", "Keeper"))
-		Bus.dialogue_line.emit(kname, kthanks[randi() % kthanks.size()], "")
+		# an empty voice bank makes AudioDirector ask for vox/_0.wav — the
+		# keeper has a real bank in characters.json, so use it
+		var kvoice: String = str(Db.character(_keeper_id).get("voice", "ped_m"))
+		Bus.dialogue_line.emit(kname, kthanks[randi() % kthanks.size()], kvoice)
 	_refresh_money()
 
 

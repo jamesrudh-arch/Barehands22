@@ -1,5 +1,224 @@
 # LEVERAGE — Changelog
 
+## 2026-11-24 — DEPTH WAVE 48: a living world, and a product that ships
+
+Wave 47 made the game *feel* right. The audit that followed said the honest
+thing: feel is not the whole product. Named gaps the user asked for by name —
+trains, filling stations, rivers/water, wildlife, the studio logo, and a story
+intro where the characters actually talk — were all either absent or vestigial.
+This wave closes them, and fixes seven defects found on the way, four of which
+were in shipping code paths nobody had ever exercised.
+
+Harness: **314 → 445 checks, 0 fails across 5 consecutive runs**, 0 `SCRIPT
+ERROR`, 4 engine `ERROR:` (all after the `DONE` line — shutdown RID leaks from
+the moth swarms and creature meshes being torn down with the tree). 42
+GDScript files, 17,490 lines. 1,545 of those lines are new this wave.
+
+### 1. The living world — `scripts/world/wildlife.gd` (931 lines, new)
+
+Before this the city had traffic and crowds and **not one creature**. `events.json`
+even promised a dock cat that did not exist.
+
+- **Birds** (cap 14): gulls over the harbour, crows and pigeons inland. States
+  `perch | hop | circle | flee`, with two mirrored wing meshes driven per-state.
+- **Rats** (cap 8), **stray cats and dogs** (cap 5), **fish** (cap 6) that break
+  the surface on a timer, and **moth swarms** (6 sites) — pooled `GPUParticles3D`
+  re-sited onto the nearest lamp positions, emitting only after dark.
+- Budgeted with hysteresis: `LIVE_RADIUS` 58 m, `DESPAWN_RADIUS` 78 m, ticked at
+  1.1 s. Nothing spawns forever; nothing pops at the edge of view.
+- `Bus.crime_committed` startles birds and rats — gunfire empties a rooftop.
+- Every creature mesh sets `set_normal`/`set_uv` on **every** vertex (the
+  `ARRAY_TEX_UV` latch bug from wave 47 does not get to come back).
+- **Harbour water rebuilt**: one static quad → three sheets (`HarbourWater`
+  base, `HarbourChop` scrolling *against* it at 1.9× UV scale, `HarbourFoam`
+  surging on a 0.55 rad/s sine) plus a `StaticBody3D`. `WorldGen._process` now
+  scrolls them. Two sheets moving in opposite directions is what reads as chop.
+- 14 new synthesized sounds: 3 bird chirps, gull, crow, wing flutter, rat
+  squeak/scuttle, cat, dog, insect buzz (3.0 s loop), fish splash, water lap
+  (4.0 s loop).
+
+### 2. The Smoke Line — `scripts/world/smoke_line.gd` (363 lines, new)
+
+Two missions (`m10_smoke_line`), a safehouse (`Smokeline Bolt-Hole`) and a POI
+(`Smoke Line Overlook`) all named a railway that **did not exist**. Grepping
+`data/*.json` for rail/train/locomotive/freight returned only "Yard" hits.
+
+- **920 m of viaduct** along the existing east-west arterial at `z = -30`
+  (`x = -560 … 360`), deck at 7.2 m, railhead 8.25 m: tapered piers with
+  capitals and plinths every 24 m, segmented deck/ballast/girders with X
+  cross-bracing, parapets, sleepers every 2 m, rails laid in 20 m lengths,
+  gantry lamps every 60 m, and an **Overlook station** at `x = 300` — 52 m
+  platform, canopy, and a stair down to the street, 90 m from the POI it was
+  named after. Walkable: 46 m `StaticBody3D` segments on layer 1.
+- **A moving freight consist**: diesel locomotive (body, cab, nose, roof-walk,
+  radiator, horn stacks, exhaust, bogies, coupler, amber livery stripe, glass)
+  pulling six mixed cars — boxcar, tank, flat, gondola, boxcar, flat — at
+  17.5 m/s (63 km/h), wrapping on a ±220 m horizon margin so it is audible from
+  four districts.
+- Headlight (range 95 m, energy 3.2) burns **only after dark**; an always-lit
+  marker and a red tail lamp do not.
+- **Audio is a live 3D emitter** parented to the locomotive — `unit_size` 26,
+  `max_distance` 230, `ATTENUATION_INVERSE_DISTANCE` — so *Godot* does the
+  Doppler and the pass-by. The sample is written flat on purpose. Rumble swells
+  with proximity, `rail_clack` fires every 20 m inside 120 m, and the horn rolls
+  on a 16–34 s timer inside 170 m.
+- **It is a hazard, not decoration**: standing on the deck (±2.2 m y, ±3.4 m z)
+  takes 34 damage through `take_hit(..., "train", null)`, shakes the camera
+  0.55, plays `slam`, and throws the player clear via `velocity`. Rate-limited so
+  it cannot chain into an instant death. Standing on the street *under* the
+  viaduct is perfectly safe — asserted both ways.
+- 4 new synthesized sounds: `train_horn` (Bb3/D4 minor-third pair, two detuned
+  doubles, bandpassed, 1.2 % pitch sag, 0.22 s breath burst, 0.75 s reverb so it
+  comes off a viaduct), `train_rumble` (4.0 s loop: low-passed rolling noise at
+  0.37 Hz + 260–900 Hz steel resonance + **8 evenly spaced joint clacks so the
+  loop point is seamless**), `rail_clack`, `train_brake`.
+
+### 3. Filling stations and a real fuel economy — `scripts/world/fuel_pump.gd` (251 lines, new)
+
+The user named filling stations. There were none, and 11 vehicles had `hp`,
+`_speed`, `_rpm` and `_gear` but **no tank**.
+
+- **Six forecourts, one per district**, data-driven from `city.json`
+  (`world.stations`). Each: 30 × 20 m pad, canopy with fascia band and three
+  emissive soffit panels, four posts on plinths, pump islands with bodies,
+  glass heads, hoses, nozzels and yellow bollards, painted bay lines, a kiosk
+  with a glass front and door, and a **5.6 m price totem** lit from both sides —
+  the thing you actually spot from down the road. 22 pumps total.
+- Canopies **turn to face the arterial they front** (`_station_along_z`), so the
+  same authored geometry reads correctly on an east-west and a north-south road.
+- **Prices differ on purpose**: Slag Yard $1.75 and Dockside $1.85 (diesel,
+  industrial) up to Crown Premium $3.05. Cheap fuel is in the rough districts.
+  Where you fill is a small economic decision the city already understands.
+- Price also moves with `street_rep`: respected (≥ +8) earns up to 15 % off;
+  at or below −25 you pay a 25 % premium — which is exactly the incentive to
+  steal instead.
+- **Fuel model**: per-vehicle `tank_l` from `vehicles.json` (bike 14 L … bus
+  260 L). Burn = idle + base × (0.35 + throttle × 1.35) × (1 + km/h ÷ 260), so
+  load matters more than road speed — sitting in traffic at high revs is what
+  empties a tank. Hard throttle costs >2× idling (asserted).
+- Parked cars spawn at **0.42–1.0** of a tank. A stolen ride is sometimes a
+  short ride; that is the entire point of a fuel economy.
+- Below the 12 % reserve line the engine **starves audibly** — the note breaks
+  up under load and coughs on a 2.4–5.5 s random timer — before it dies. Dry
+  means zero torque: you are coasting, and the starter hunts for a rev it
+  cannot hold.
+- **You are billed by the litre as it flows**, not up front. Running out of cash
+  mid-fill shuts the nozzle off (`broke`). You can fill from the driver's seat —
+  nobody should have to climb out in the rain for a menu.
+- **Driving off mid-fill is theft**: `note_deed("fuel_theft", district, false)`,
+  +6 district heat, and the world's existing witness/snitch system notices.
+- Fuel stations get their own colour on the minimap and the phone's big map, and
+  they register in `WorldGen.pois`, so tap-to-route works.
+- 4 new synthesized sounds: `fuel_pump` (3.0 s seamless loop — hose bed, 50 Hz
+  pump hum, six evenly spaced gurgles so the seam falls *between* bubbles, and
+  wobble periods that divide the loop into whole cycles so it never clicks),
+  `fuel_cap` (thread ratchet + hollow clink), `nozzle_off` (auto-shutoff clunk),
+  `engine_sputter` (starter whir, four uneven firing pulses that die).
+- **HUD**: a real fuel gauge — bar with the reserve line ticked on it, litre
+  count, amber under 30 %, pulsing red on the reserve, dead red when dry.
+
+### 4. The opening now tells the story
+
+`cs_intro` was **3 spoken lines over one push-in**: Eli narrated at the camera
+twice, Ruth said one thing, nobody answered anybody. ~14 s.
+
+It is now **61 steps, 19 spoken lines, 3 speakers, 22 camera moves, 97 s** —
+Ruth (5+ lines), Eli, and Crowe's man Gunnar on the phone. Four beats: Ruth
+comes to find him in the rain; the phone call delivers the number and the day;
+Eli decides not to pay it; pull out to the title. Shot on **shot/reverse-shot**
+grammar — Cam A sits on Ruth's far side looking past her at Eli, Cam B on Eli's
+far side looking past him at Ruth, ~7 m apart so every cut genuinely reverses
+the angle. Ruth is spawned as a body in the world, so the frame has two people
+in it. The last line is the closest the camera ever gets to him.
+
+The thesis now lands *in dialogue*: "Everyone in this city has leverage on
+somebody, Mama. That is the whole economy." → "And when they find out you have
+been reading their books?" → "Then I will have leverage too."
+
+Asserted structurally, not by vibes: no speaker runs more than 2 lines
+unbroken, the player character is ≤ 60 % of the lines, every speaker resolves to
+a real voice bank on disk, every camera looks at something ≥ 0.5 m away
+(`Camera3D.look_at` throws otherwise), and the skip still hands over to the
+prologue mission.
+
+### 5. Studio identity
+
+`boot.gd` rewritten around a forged **3.90 s stereo `studio_sting`** (peak
+0.880): 0–0.95 s breath (bandpassed air swell + 62→31 Hz sub-drop), a strike at
+0.95 s (kick + F-minor pad + highpassed crack), then bells at 1.15/1.34/1.53 s
+(F4/A4/C5) with an F5 shimmer resolving to F major-7th, through 1.15 s reverb.
+The card is timed to it — `STRIKE` 0.95, `NAME_IN` 1.15, `TAG_IN` 1.78,
+`FADE_OUT` 3.20, `HANDOFF` 4.25 — with a radial bloom, an inverted vignette, a
+smoothstep rise that pushes 1.07 → 1.00 and overshoots, a flash scaled by f², a
+hairline rule, and "D'YOUNGS GAMES / presents". Any input skips it. The dev
+overlay is now F3-only instead of shipping on screen.
+
+### 6. Seven defects found and fixed
+
+- **Fuel pumps were silent.** `_build_flow()` created the `AudioStreamPlayer3D`
+  and never called `add_child`, so it was outside the scene tree and Godot
+  refused to play it ("Playback can only happen when a node is inside the scene
+  tree" ×3). Every tank in the city would have filled in silence. Caught by
+  step 93, not by reading the code.
+- **The speedometer was never visible.** `_speed_lbl` used negative offsets
+  (`offset_top = -200`) with `anchor_top` left at 0, so it sat 200 px *above*
+  the top of the screen. Found while placing the fuel gauge. Both are now
+  bottom-anchored, and step 93 asserts their rects are actually on screen.
+- **There was no way to pause on a keyboard.** The `pause` input action existed
+  in `project.godot` bound to physical keycode **4194304 = `KEY_SPECIAL`**,
+  which no keyboard sends (`KEY_ESCAPE` is 4194305) — *and* nothing in 42
+  scripts ever read the action. `Game._unhandled_input` now handles it, and the
+  binding points at a real key. Pad START already worked, which is why nobody
+  noticed.
+- **The intro could not be skipped.** `Cutscene.skip()` existed from day one and
+  was bound to **no input action at all**. Now `skip_cutscene` (Escape / Space /
+  Enter / pad B), plus an on-screen "ESC — skip" hint while a cinematic runs —
+  a 97 s opening the player cannot leave is a hostage situation.
+- **Skipping would have crashed.** `skip()` set `_step_i = _steps.size()` while
+  `_process` indexed `_steps[_step_i]` unguarded — out of bounds on the very
+  first keypress. Bounds-guarded now, and asserted.
+- **Shopkeepers thanked you in silence.** `shop_ui.gd` emitted
+  `dialogue_line` with an **empty voice bank**, so `AudioDirector.speak` asked
+  for `res://assets/audio/vox/_0.wav` — 8 missing-file warnings per run, now 0.
+  Characters carry a `voice` field; it is used. Step 92 now asserts every
+  character's bank exists on disk and that **no** call site anywhere emits
+  dialogue with an empty voice.
+- **The audio forge could not reproduce its own output.** `footstep()` seeded
+  from `hash((surface, variant))` and `district_track()` from `hash(kind)` —
+  Python salts `hash()` per process (`PYTHONHASHSEED`), so every run produced
+  different footsteps and different music. Replaced with a stable `zlib.crc32`.
+  Separately, 9 of this wave's new synths consumed the module-level
+  `R = default_rng(4242)`, so *adding a sound silently re-rolled every sound
+  after it* — 100 tracked audio files changed bytes. All 20 new synths now own
+  a private seeded RNG. Verified: two consecutive runs are byte-identical for
+  all 138 `.wav`. (The 16 `.ogg` still differ in 488 container bytes — the Ogg
+  bitstream serial number at offset 14, a libsndfile property; **decoded PCM is
+  identical**, so it is inaudible and not ours to fix.)
+
+### 7. Harness honesty
+
+- Steps 90–94 added: **314 → 445 checks**. Step 90 wildlife/water/studio, 91
+  the Smoke Line, 92 ambient-bus and asset integrity, 93 the fuel economy, 94
+  the opening cinematic and the input fixes.
+- **Three real bugs step 90 caught** that a green-but-shallow harness had
+  waved through: wildlife treated `world.water_z` as the harbour sheet's
+  *centre* when `_build_water` puts the centre 130 m seaward (fish were
+  spawning **on the docks**); `_update_moths()` trusted a `_night` flag only
+  `_process` refreshes, so calling it directly silently did nothing; and birds
+  spawned *only* on fire-escape rooftops, so any street without one had zero
+  birds. Rules learned: a spawn system must not depend on one optional landmark
+  type, and a tick method must not trust a flag another method owns.
+- **Two flaky tests made deterministic.** The harness is a gauntlet — hostile
+  peds from earlier steps keep swinging, so by step 87 the player was down to
+  **3 HP** and `take_hit` no-ops on a dead player; damage assertions were a coin
+  flip. Added `_revive_player()` for the steps that test *taking* damage. And
+  step 83's intervention test did not control any of the four conditions
+  `_intervene_tick` bails on (`in_vehicle`, `cutscene_active`, distance,
+  cooldown), so adding world content — which shifts `randf()` everywhere —
+  broke it intermittently. Both now pin their preconditions.
+- Test-design rule reinforced: assertions that measure a randomized spawn must
+  anchor to the spawned entity, or they pass and fail by luck.
+
 ## 2026-11-24 — DEPTH WAVE 47: felt, not seen (top-tier quality pass, part 2 — game feel)
 
 The anti-flop wave. Research spine: Nijman's "Art of Screenshake"

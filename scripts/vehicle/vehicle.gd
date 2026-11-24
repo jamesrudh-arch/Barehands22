@@ -6,6 +6,15 @@ extends VehicleBody3D
 var vehicle_def_id: String = "sedan"
 var vehicle_type: String = "car"
 var hp: float = 100.0
+# ---- fuel: a tank you have to fill, at a station, with money --------------
+var fuel := 1.0                  ## 0..1 fraction of the tank
+var tank_l := 62.0               ## litres, from the vehicle def
+var fuel_dry := false            ## ran dry: the engine will not pull
+var _burn_base := 0.0016
+var _burn_idle := 0.00035
+var _reserve := 0.12
+var _sputter_t := 0.0
+var _dry_warned := false
 var driver: Node = null          # player node when occupied
 var is_traffic: bool = false
 var is_police: bool = false
@@ -45,6 +54,17 @@ func setup(def_id: String, col: Color = Color(0.3, 0.32, 0.36), police: bool = f
 	color = col
 	is_police = police
 	mass = d.get("mass", 1400)
+	tank_l = float(d.get("tank", 62))
+	var wcfg: Dictionary = Db.districts.get("world", {})
+	var fcfg: Dictionary = wcfg.get("fuel", {})
+	_burn_base = float(fcfg.get("burn_base", 0.0016))
+	_burn_idle = float(fcfg.get("idle_burn", 0.00035))
+	_reserve = float(fcfg.get("reserve", 0.12))
+	# nobody leaves a car parked with a guaranteed full tank. A stolen ride
+	# is sometimes a short ride — that is the entire point of a fuel economy.
+	fuel = clampf(randf_range(0.42, 1.0), 0.05, 1.0)
+	fuel_dry = false
+	_dry_warned = false
 	_build_mesh(d)
 	_build_wheels(d)
 	_engine_player = AudioStreamPlayer.new()
@@ -430,6 +450,8 @@ func player_drive(delta: float, mv: Vector2, brake: bool, handbrake: bool, horn:
 	# LIMP MODE: a badly hurt drivetrain only gives you half the engine,
 	# and everyone on the street can see the smoke. Get to Dex's.
 	var power_mult := 0.55 if hp < 40.0 and not _wrecked else 1.0
+	if fuel_dry:
+		power_mult = 0.0          # no fuel, no combustion — you are coasting
 	engine_force = throttle * float(d.get("power", 100)) * 22.0 * power_mult
 	_set_brake(8.0 if brake else 1.0)
 	_reversing = throttle < -0.05 and sp_kmh_for_reverse() < 8.0
@@ -455,7 +477,43 @@ func player_drive(delta: float, mv: Vector2, brake: bool, handbrake: bool, horn:
 		AudioDirector.sfx_at("veh_horn", global_position)
 		_horn_t = 0.7
 	_horn_t -= delta
+	_burn_fuel(delta, absf(throttle), speed_kmh())
 	_update_audio_and_lights(delta, true)
+
+
+func _burn_fuel(delta: float, throttle: float, kmh: float) -> void:
+	if fuel <= 0.0:
+		fuel = 0.0
+		if not fuel_dry:
+			fuel_dry = true
+			AudioDirector.sfx_at("engine_sputter", global_position, 0.9)
+			Bus.notification.emit("Out of fuel — the tank is dry.", "warn")
+		return
+	# idling sips, hard throttle drinks. Load matters more than road speed,
+	# which is why sitting in traffic at high revs is what empties a tank.
+	var burn: float = _burn_idle + _burn_base * (0.35 + throttle * 1.35) * (1.0 + kmh / 260.0)
+	fuel = clampf(fuel - burn * delta, 0.0, 1.0)
+	if fuel >= _reserve:
+		_dry_warned = false
+		return
+	# below the reserve line the engine starves and coughs at random — you
+	# hear the tank going before the tank actually goes
+	_sputter_t -= delta
+	if _sputter_t <= 0.0:
+		_sputter_t = randf_range(2.4, 5.5)
+		var starve: float = 1.0 - clampf(fuel / maxf(0.001, _reserve), 0.0, 1.0)
+		AudioDirector.sfx_at("engine_sputter", global_position, 0.38 + 0.30 * starve)
+	if not _dry_warned:
+		_dry_warned = true
+		Bus.notification.emit("Fuel light's on. Find a forecourt.", "warn")
+
+
+func fuel_litres() -> float:
+	return fuel * tank_l
+
+
+func fuel_is_low() -> bool:
+	return fuel < _reserve
 
 
 static var _driver_mesh: CapsuleMesh = null
@@ -660,6 +718,17 @@ func _update_audio_and_lights(delta: float, night: bool) -> void:
 		_engine_pitch *= 1.0 - _shift_dip * 1.2
 	_engine_player.pitch_scale = _engine_pitch
 	_engine_player.volume_db = linear_to_db((0.42 + _rpm * 0.22) if driver else 0.22)
+	if fuel_dry:
+		# no combustion: the starter still turns it over, so the note drops to
+		# a hollow idle and hunts for a rev it cannot hold
+		_engine_pitch = 0.34 + 0.10 * sin(Time.get_ticks_msec() / 90.0)
+		_engine_player.pitch_scale = _engine_pitch
+		_engine_player.volume_db = linear_to_db(0.20 if driver else 0.10)
+	elif fuel < _reserve and _rpm > 0.2:
+		# starving under load: the note breaks up gently before it dies
+		var st: float = 1.0 - clampf(fuel / maxf(0.001, _reserve), 0.0, 1.0)
+		_engine_player.volume_db -= st * 7.0
+		_engine_player.pitch_scale *= 1.0 - st * 0.10
 	var lights_on := WorldState.is_night() or WorldState.weather == WorldState.Weather.RAIN
 	if _tail_mi and _tail_mi.material_override:
 		var tm: StandardMaterial3D = _tail_mi.material_override
