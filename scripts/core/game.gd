@@ -21,6 +21,41 @@ var _scene_root: Node = null
 var _fade: CanvasLayer = null
 
 
+func _notification(what: int) -> void:
+	## Mobile app lifecycle. On iOS/iPadOS -- the XOGOT target -- the OS driver
+	## sends this when the app goes to background:
+	## `OS_AppleEmbedded::on_enter_background()` notifies the MainLoop with
+	## NOTIFICATION_APPLICATION_PAUSED and only then calls `on_focus_out()`,
+	## which stops the audio driver and invalidates the CADisplayLink that drives
+	## the frame loop. `SceneTree::_notification` propagates PAUSED to every node,
+	## so this autoload sees it.
+	##
+	## The engine already handles the parts that are the engine's job, and this
+	## deliberately does not duplicate them: rendering halts (display link
+	## invalidated, so _process/_physics_process stop and no mission timer runs
+	## blind), audio stops (audio_driver.stop()), held inputs are released
+	## (Input::release_pressed_events() also clears sticky action_press state,
+	## which is what the touch buttons use), and touches are cleared
+	## (clearTouches). What nothing in the engine does is protect the SAVE.
+	##
+	## iOS terminates backgrounded apps routinely under memory pressure, and
+	## every existing autosave trigger is a discrete achievement -- mission
+	## complete, safehouse rest, hidden stash, property purchase, manual save.
+	## So a player forty minutes into a mission who takes a phone call can have
+	## XOGOT killed with nothing written since the last mission they finished.
+	## PAUSED is the "we may be terminated" moment and it arrives before
+	## rendering and audio are torn down, so the write can still complete.
+	##
+	## Not FOCUS_OUT: that also fires for a transient interruption such as a
+	## notification banner or Control Center, where the app is not at risk, and
+	## saving on every banner is write churn for no benefit.
+	##
+	## request_autosave() already no-ops when player == null, so this is safe
+	## from the menu, the boot scene or a game-over screen.
+	if what == MainLoop.NOTIFICATION_APPLICATION_PAUSED:
+		request_autosave()
+
+
 func _ready() -> void:
 	_load_settings()
 	AudioDirector.settings = {

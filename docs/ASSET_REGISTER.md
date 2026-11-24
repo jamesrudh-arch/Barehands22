@@ -35,7 +35,26 @@ All generators are deterministic and live in `tools/forge/`:
 | Particles | particle_spark, particle_blood, particle_smoke, particle_debris, particle_muzzle | forge_world_tex | billboard albedos |
 | Signage | signs atlas, posters atlas, neon | forge_world_tex | district street furniture |
 
-All ≤1024², power-of-two, tileable where tiling (mobile GPU discipline).
+**Dimensions (audited, not assumed):** all 96 are power-of-two and all of them
+tile in 3D via `uv1_scale`. 69 are 512², 43 are 256², 2 are 1024²
+(`windows_atlas`, `road_marks`) and 2 are 2048² (`signs_atlas`,
+`posters_atlas`). An earlier revision of this line claimed "all ≤1024²"; that
+was wrong, and it was only wrong because the rule it was checking against was
+also wrong — see D-05. `Manual/3d/3d_rendering_limitations.md` says avoid
+textures larger than **4096²** and use power-of-two **if the texture needs to
+repeat**. Both conditions hold here, so the set is compliant as shipped.
+The 24 non-POT images in the project are all UI-only and never repeat.
+
+**Import settings (D-25 — changed at wave 49):** these 96 textures are the
+project's entire 3D texture set and they import as **VRAM Compressed with
+mipmaps** (`compress/mode=2`, `mipmaps/generate=true`). The 23 `*_n.png` normal
+maps additionally set `compress/normal_map=1` (Enable, not Detect) and the 18
+`*_r.png` roughness maps set `roughness/mode=6` (Gray) with
+`roughness/src_normal` pointed at their matching normal map. `detect_3d/compress_to`
+is `0` because the automatic upgrade cannot fire here: every material in this
+project is built procedurally at runtime, so no `.tres` or `.tscn` references
+any texture and the editor's 3D-detection scan never sees one. Effect: world
+texture VRAM **112.8 MB → 9.4 MB**, and repeating surfaces stop aliasing.
 
 ## 2. Textures — UI (`assets/textures/ui/`, 29 PNG)
 
@@ -110,5 +129,5 @@ code-generated ArrayMesh/PrimitiveMesh geometry (`world_gen.gd`,
 | Poly Pizza / OpenGameArt | CC0/CC-BY models | Attribution overhead + generic look → declined |
 | Godot AssetLib | addons/tools | XOGOT bans compiled addons; GDScript-only constraint |
 | godotengine/godot releases | 4.7.2-stable binaries | Release CDN unreachable from sandbox → built from codeload source |
-| xibbon/XogotDocs | official XOGOT docs | GDScript-only, touch UI guidance, 4.5-era API surface → adopted |
+| xibbon/XogotDocs | official XOGOT docs, re-cloned at wave 49 (`4a5a22c`, pushed 2026-11-16; current App Store release **1.7.12**) | GDScript-only and touch-UI guidance → adopted. **Corrected:** the *runtime engine* is Godot **4.7** (App Store 1.7.2 upgraded from 4.6), while the Godot *manual bundled with the docs* is a **4.5-era snapshot** (`Manual/migrating/` stops at `upgrading_to_godot_4.5.md`, no `classes/` reference). The earlier note read that snapshot age as the engine's version and restricted the project to "4.5-documented features" — a limit with no basis. See D-02, D-02a, D-25, D-26, D-27 |
 | docs/gameplay_concept.png | docs/concept | 1170×2532 PNG | procedural (tools/concept/render_concept.py, numpy+Pillow) | Original, © 2026 project | Art-direction target frame; NOT engine output (K-08) |

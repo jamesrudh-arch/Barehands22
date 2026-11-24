@@ -2,8 +2,17 @@
 
 Engine: **Godot 4.7.2-stable**, renderer: **Mobile**
 (`renderer/rendering_method="mobile"`), target device: **iPhone via XOGOT**
-(GDScript only — no C#, no compiled addons; API surface restricted to
-features documented in the Godot 4.5-era manual that XOGOT mirrors).
+(GDScript only — no C#, no compiled addons/GDExtension).
+
+The API surface is the **full Godot 4.7** one, not a subset. XOGOT's App Store
+runtime has been Godot 4.7 since release **1.7.2**; this project develops
+against **1.7.12** (D-27). The *manual bundled inside* XogotDocs is a 4.5-era
+snapshot (`Manual/migrating/` stops at `upgrading_to_godot_4.5.md`, no
+`classes/` reference), so it is read for concepts only and is **never** treated
+as the authority on what exists (D-02a). An earlier revision of this line
+inherited that snapshot's age as an engine restriction — a limit with no basis,
+since the engine binary is 4.7.2-stable. Verified against
+`xibbon/XogotDocs@4a5a22c` (K-16).
 
 ---
 
@@ -11,11 +20,16 @@ features documented in the Godot 4.5-era manual that XOGOT mirrors).
 
 ```
 SceneTree root
-├── 14 autoloads (project.godot, load order matters)
-│   Bus            global signal hub (73 signals) — all cross-system events
-│   Db             loads 15 JSONs once; typed accessors; single source of truth
+├── 19 autoloads (project.godot, load order matters)
+│   Bus            global signal hub (53 signals) — all cross-system events
+│   Db             loads 16 JSONs once; typed accessors; single source of truth
+│   Type           typography: 3 families × regular/bold, role presets, theme
+│   Difficulty     3 presets (street 0.72 / ledger 1.00 / crowe 1.34), threat(),
+│   │              scale_count(), police_cap()
+│   Progression    xp/level, per-style xp, unlock gating
+│   Cinematics     hitstop, slowmo, fov_punch
 │   WorldState     clock/day, weather, money, wanted, factions, relationships,
-│   │              memory, flags, stats, inventory, weapons, saves serialize v3
+│   │              memory, flags, stats, inventory, weapons, saves serialize v5
 │   SaveSystem     user://save_slot_%d.json, 3 slots + meta
 │   AudioDirector  5 buses (master/music/sfx/vox/ambient), pooled 2D/3D SFX
 │   │              players, crossfaded music A/B, vox blip queue, radio
@@ -25,9 +39,10 @@ SceneTree root
 │   │              trimesh StaticBody collision, landmarks, furniture, lamps,
 │   │              traffic lights, 109 lane loops, POI doors; spatial queries
 │   InteriorManager 19 procedural room defs, one interior at a time, return pos
-│   Cutscene       letterbox/cards/cam moves/actor staging; 4 scripted scenes
+│   Cutscene       letterbox/cards/cam moves/actor staging; 5 scripted scenes
 │   DialogueUI     typewriter boxes, portraits, voiced lines, choice menus
-│   MissionManager 20 missions as stage machines (16 stage types), story chain,
+│   CallManager    inbound/outbound phone calls during play
+│   MissionManager 29 missions as stage machines (125 stages, 22 types), chain,
 │   │              rewards, bust/death recovery, save/apply
 │   ShopUI         buy/sell/vehicles/clinic-heal full-screen shop
 │   PhoneUI        9 apps incl. live-drawn city map

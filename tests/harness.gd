@@ -169,9 +169,27 @@ func _process(_delta: float) -> bool:
 			var hud = _city.get("hud")
 			_check(hud != null and hud._buttons.has("jump"), "HUD has touch JUMP button")
 			var mm = root.get_node("MissionManager")
-			if mm.active_id != "":
-				var sv: Dictionary = mm.save_state()
-				_check(sv.has("stage") and sv["stage"] >= 0, "mission save includes stage idx")
+			# This guard had no else branch, so whenever the prologue job had
+			# already completed or failed by step 46 the assertion was silently
+			# SKIPPED. That is a flaky suite, not a small one: the same code
+			# reported 584 checks on a plain run and 583 under --verbose, so a
+			# green run could not be trusted to have tested the same things.
+			# begin_prologue() is the wrong fix — it returns early after only
+			# refreshing offers when m01 is already complete, so it does not
+			# guarantee a live job either, and it can spawn actors. save_state()
+			# reads nothing but plain vars (no nodes, no signals), so pinning
+			# the id directly exercises the real payload and leaves nothing
+			# behind once restored in the same frame.
+			var had46: String = mm.active_id
+			var hadi46: int = mm.active_stage_i
+			if mm.active_id == "":
+				mm.active_id = "m01_last_call"
+				mm.active_stage_i = 0
+			_check(mm.active_id != "", "a job is live before its save payload is asserted (%s)" % mm.active_id)
+			var sv: Dictionary = mm.save_state()
+			_check(sv.has("stage") and sv["stage"] >= 0, "mission save includes stage idx (%s)" % str(sv.get("stage")))
+			mm.active_id = had46
+			mm.active_stage_i = hadi46
 		47:
 			# responsive UI clamp math (XOGOT portrait fix)
 			var fitc := Control.new()
@@ -2511,6 +2529,339 @@ func _process(_delta: float) -> bool:
 				var usedroles97: Array = ty97.roles_in_use()
 				_check(usedroles97.has("display") and usedroles97.has("body") and usedroles97.has("mono"),
 					"all three primary roles were requested by the UI this run (%s)" % str(usedroles97))
+		98:
+			# ============ XOGOT / iPHONE ASSET COMPLIANCE ===================
+			# Every material in this project is built procedurally at runtime,
+			# so NO .tres or .tscn references any texture. That means Godot's
+			# automatic detect_3d upgrade — which fires only when the EDITOR
+			# sees a texture used by a 3D material — can never run here. All
+			# 149 textures therefore shipped at the 2D import default:
+			# Lossless RGBA8, no mipmaps. 144.1 MB of VRAM, aliasing on every
+			# repeating surface. Invisible on a desktop; the dominant texture
+			# cost on a phone. These assertions read the .import files
+			# directly so the params cannot silently revert.
+			var wdir := DirAccess.open("res://assets/textures/world")
+			var wnames: Array = []
+			for nv98 in wdir.get_files():
+				var nm98 := str(nv98)
+				if nm98.ends_with(".png.import"):
+					wnames.append(nm98)
+			wnames.sort()
+			_check(wnames.size() == 96, "96 world textures have import files (%d)" % wnames.size())
+			var badmode98: Array = []
+			var badmip98: Array = []
+			var baddet98: Array = []
+			var badnrm98: Array = []
+			var badrgh98: Array = []
+			var nnorm98 := 0
+			var nrough98 := 0
+			for nv98b in wnames:
+				var nm98b := str(nv98b)
+				var cf := ConfigFile.new()
+				if cf.load("res://assets/textures/world/" + nm98b) != OK:
+					badmode98.append(nm98b + " (unreadable)")
+					continue
+				# compress/mode: 0 Lossless, 1 Lossy, 2 VRAM Compressed,
+				# 3 VRAM Uncompressed, 4 Basis Universal. Godot's own 3D import
+				# preset defaults this to 2; the 2D preset defaults it to 0.
+				if int(cf.get_value("params", "compress/mode", -1)) != 2:
+					badmode98.append(nm98b)
+				if not bool(cf.get_value("params", "mipmaps/generate", false)):
+					badmip98.append(nm98b)
+				# Stated explicitly, so the auto-detect path is turned off —
+				# this is what the engine itself does after a successful detect.
+				if int(cf.get_value("params", "detect_3d/compress_to", -1)) != 0:
+					baddet98.append(nm98b)
+				var base98 := nm98b.substr(0, nm98b.length() - ".png.import".length())
+				if base98.ends_with("_n"):
+					nnorm98 += 1
+					# compress/normal_map: 0 Detect, 1 Enable, 2 Disabled.
+					# "Detect" is inert here for the same reason as above.
+					if int(cf.get_value("params", "compress/normal_map", -1)) != 1:
+						badnrm98.append(nm98b)
+				elif base98.ends_with("_r"):
+					nrough98 += 1
+					# roughness/mode: 0 Detect, 1 Disabled, 2-5 R/G/B/A, 6 Gray.
+					# All 18 roughness maps were verified grayscale by decoding
+					# them (max inter-channel difference 0).
+					if int(cf.get_value("params", "roughness/mode", -1)) != 6:
+						badrgh98.append(nm98b)
+					else:
+						var src98 := str(cf.get_value("params", "roughness/src_normal", ""))
+						if src98 == "" or not ResourceLoader.exists(src98):
+							badrgh98.append(nm98b + " (src_normal %s)" % src98)
+			_check(badmode98.is_empty(),
+				"all 96 world textures import VRAM Compressed, not Lossless RGBA8 (%s)" % str(badmode98))
+			_check(badmip98.is_empty(),
+				"all 96 generate mipmaps — without them every repeating surface shimmers and the mobile texture cache thrashes (%s)" % str(badmip98))
+			_check(baddet98.is_empty(),
+				"detect_3d/compress_to disabled on all 96, so it cannot overwrite the explicit mode (%s)" % str(baddet98))
+			_check(nnorm98 == 23 and badnrm98.is_empty(),
+				"all %d normal maps set compress/normal_map=1 (Enable), not Detect (%s)" % [nnorm98, str(badnrm98)])
+			_check(nrough98 == 18 and badrgh98.is_empty(),
+				"all %d roughness maps set roughness/mode=6 (Gray) with a real src_normal pair (%s)" % [nrough98, str(badrgh98)])
+			# ---- the invariant that makes those params load-bearing ---------
+			var refs98 := 0
+			for ext98 in ["tres", "tscn"]:
+				var d98 := DirAccess.open("res://")
+				var stack98: Array = ["res://"]
+				while not stack98.is_empty():
+					var dir98: String = stack98.pop_back()
+					var dd98 := DirAccess.open(dir98)
+					if dd98 == null:
+						continue
+					for sub98 in dd98.get_directories():
+						var s98 := str(sub98)
+						if s98 == ".godot" or s98 == ".git":
+							continue
+						stack98.append(dir98.path_join(s98))
+					for f98 in dd98.get_files():
+						if str(f98).ends_with("." + ext98):
+							var txt98 := FileAccess.get_file_as_string(dir98.path_join(str(f98)))
+							if "assets/textures" in txt98:
+								refs98 += 1
+			_check(refs98 == 0,
+				"no .tres/.tscn references any texture — this is WHY detect_3d cannot fire and the params above must be explicit (%d)" % refs98)
+			# ---- and the imported result is really compressed ---------------
+			# NOTE: Texture2D.has_mipmaps() is USELESS here — the base
+			# implementation only calls the _has_mipmaps GDScript virtual and
+			# CompressedTexture2D does not override it (only the 3D and Layered
+			# variants do), so it returns false no matter what is in the file.
+			# Read the ctex header instead: magic "GST2", then uint32 version,
+			# width, height, data-format. FORMAT_BIT_HAS_MIPMAPS is 1<<23 and
+			# the low bits are the DataFormat enum, where 0 = DATA_FORMAT_IMAGE
+			# (raw VRAM blocks) versus 1/2 = PNG/WEBP (lossless).
+			# Assert the ETC2 artefact specifically: that is the format an
+			# iPhone actually uploads, and the one an x86-only import would
+			# never have produced (the second reason for D-28).
+			var cf98 := ConfigFile.new()
+			cf98.load("res://assets/textures/world/asphalt.png.import")
+			var nofmt98: Array = []
+			var nomip98: Array = []
+			var noloss98: Array = []
+			for keyv98 in ["path.s3tc", "path.etc2"]:
+				var key98: String = keyv98
+				var pth98 := str(cf98.get_value("remap", key98, ""))
+				if pth98 == "":
+					nofmt98.append(key98)
+					continue
+				var f98 := FileAccess.open(pth98, FileAccess.READ)
+				if f98 == null:
+					nofmt98.append(key98 + " (unopenable)")
+					continue
+				var magic98 := f98.get_buffer(4).get_string_from_ascii()
+				f98.get_32()                       # version
+				f98.get_32()                       # width
+				f98.get_32()                       # height
+				var df98 := f98.get_32()           # data format + bit flags
+				f98.close()
+				if magic98 != "GST2":
+					nofmt98.append(key98 + " (bad magic " + magic98 + ")")
+					continue
+				if (df98 & (1 << 23)) == 0:
+					nomip98.append(key98)
+				if (df98 & 0xFF) != 0:
+					noloss98.append("%s df=0x%x" % [key98, df98])
+			_check(nofmt98.is_empty(),
+				"asphalt imported to BOTH s3tc_bptc and etc2_astc artefacts — the iPhone-readable one is the point (%s)" % str(nofmt98))
+			_check(nomip98.is_empty(),
+				"and both carry a real mip chain in the file header, not just the import param (%s)" % str(nomip98))
+			_check(noloss98.is_empty(),
+				"and both are raw VRAM blocks (DATA_FORMAT_IMAGE), not PNG/WEBP lossless (%s)" % str(noloss98))
+			var ct98: CompressedTexture2D = load("res://assets/textures/world/asphalt.png")
+			_check(ct98 != null and ct98.get_format() != Image.FORMAT_RGBA8,
+				"the loaded texture reports a compressed GPU format, not FORMAT_RGBA8")
+			# The UI set must stay lossless and mip-free — a deliberate split,
+			# so assert it rather than letting it drift into the world settings.
+			var cfu98 := ConfigFile.new()
+			cfu98.load("res://assets/textures/ui/menu_bg.png.import")
+			_check(int(cfu98.get_value("params", "compress/mode", -1)) == 0
+				and not bool(cfu98.get_value("params", "mipmaps/generate", true)),
+				"UI textures deliberately stay Lossless with no mipmaps — 2D, mostly smooth gradients where block compression bands")
+			# ---- D-05: power-of-two wherever it repeats, and under 4096 -----
+			var badpot98: Array = []
+			for nv98c in wnames:
+				var nm98c := str(nv98c).substr(0, str(nv98c).length() - ".import".length())
+				var t98: Texture2D = load("res://assets/textures/world/" + nm98c)
+				if t98 == null:
+					badpot98.append(nm98c + " (unloadable)")
+					continue
+				var w98 := t98.get_width()
+				var h98 := t98.get_height()
+				if (w98 & (w98 - 1)) != 0 or (h98 & (h98 - 1)) != 0 or maxi(w98, h98) > 4096:
+					badpot98.append("%s %dx%d" % [nm98c, w98, h98])
+			_check(badpot98.is_empty(),
+				"every world texture is power-of-two and ≤4096² — they all repeat, which is the condition the manual attaches (%s)" % str(badpot98))
+			# ---- XOGOT's own overlay must not double up on ours -------------
+			_check(ProjectSettings.has_setting("input_devices/virtual_controller/enable")
+				and ProjectSettings.get_setting("input_devices/virtual_controller/enable") == false,
+				"XOGOT's iOS Virtual Controller is disabled in project.godot, so its gamepad overlay does not draw on top of this game's own touch layer")
+			var feats98: PackedStringArray = ProjectSettings.get_setting("application/config/features", PackedStringArray())
+			_check(feats98.has("4.7"),
+				"config/features declares 4.7 — the XOGOT App Store runtime has been Godot 4.7 since release 1.7.2 (%s)" % str(feats98))
+			# ---- the two flags that make VRAM compression usable at all -----
+			# Both default to FALSE in the engine, and the importer only falls
+			# back to the HOST OS preference when they are off — ARM returns
+			# ETC2/ASTC, x86 returns S3TC/BPTC. Off means each machine imports
+			# only its own format, so a project imported on a desktop (or on
+			# Xogot for Mac) and run on an iPhone has no texture data the iPhone
+			# GPU can read. That is precisely the "Texture ... is not a valid
+			# texture / Failed to create uniform set for batch" failure Xogot's
+			# own faq.md tells users to fix by enabling both.
+			_check(ProjectSettings.get_setting("rendering/textures/vram_compression/import_etc2_astc", false) == true,
+				"import_etc2_astc enabled — without it the iPhone has no readable data for any VRAM-compressed texture")
+			_check(ProjectSettings.get_setting("rendering/textures/vram_compression/import_s3tc_bptc", false) == true,
+				"import_s3tc_bptc enabled — and it is what lets THIS x86 sandbox import exercise the same path")
+			# ---- Xogot's "Auto" scale mode zooms/stretches games -------------
+			# faq.md: set Display > Window > Scale Mode to Fractional. Godot's
+			# own default is already "fractional"; Xogot overrides it, so the
+			# project states it explicitly.
+			_check(str(ProjectSettings.get_setting("display/window/stretch/scale_mode", "")) == "fractional",
+				"stretch scale_mode is fractional, not Xogot's zooming 'Auto' default")
+			_check(str(ProjectSettings.get_setting("display/window/stretch/mode", "")) == "canvas_items",
+				"stretch mode is canvas_items — faq.md's fix for a game showing more canvas than it should")
+			# ---- every literal audio name in the codebase must exist --------
+			# fuel_pump.gd played "engine_start", a file that has never existed;
+			# sfx_at() returns early on a null stream, so the moment the player
+			# had just paid for landed in silence. Third instance of this class
+			# (after the missing music_finale and the silent fuel pumps), so
+			# this cross-references the whole codebase instead of the one call.
+			# The pattern requires the closing quote to be followed by "," or
+			# ")" so that dynamic names like sfx_at("imp_" + mat, ...) are not
+			# mistaken for literals — all four imp_* targets do exist.
+			var gds98: Array = []
+			var stack98c: Array = ["res://scripts", "res://tests"]
+			while not stack98c.is_empty():
+				var dir98c: String = stack98c.pop_back()
+				var d98c := DirAccess.open(dir98c)
+				if d98c == null:
+					continue
+				for sub98c in d98c.get_directories():
+					stack98c.append(dir98c.path_join(str(sub98c)))
+				for f98c in d98c.get_files():
+					if str(f98c).ends_with(".gd"):
+						gds98.append(dir98c.path_join(str(f98c)))
+			var re_sfx := RegEx.new()
+			re_sfx.compile("sfx(?:_at)?\\(\\s*\"([a-z0-9_]+)\"\\s*[,)]")
+			var re_mus := RegEx.new()
+			re_mus.compile("(?:play_music|sting)\\(\\s*\"([a-z0-9_]+)\"\\s*[,)]")
+			var deadsfx98: Array = []
+			var deadmus98: Array = []
+			var nsfx98 := 0
+			var nmus98 := 0
+			var seensfx98 := {}
+			var seenmus98 := {}
+			for pv98 in gds98:
+				var src98 := FileAccess.get_file_as_string(str(pv98))
+				for mv98 in re_sfx.search_all(src98):
+					var nm98d := str(mv98.get_string(1))
+					nsfx98 += 1
+					if seensfx98.has(nm98d):
+						continue
+					seensfx98[nm98d] = true
+					if not ResourceLoader.exists("res://assets/audio/sfx/%s.wav" % nm98d):
+						deadsfx98.append(nm98d)
+				for mv98b in re_mus.search_all(src98):
+					var nm98e := str(mv98b.get_string(1))
+					nmus98 += 1
+					if seenmus98.has(nm98e):
+						continue
+					seenmus98[nm98e] = true
+					if not ResourceLoader.exists("res://assets/audio/music/%s.ogg" % nm98e):
+						deadmus98.append(nm98e)
+			_check(deadsfx98.is_empty(),
+				"all %d sfx() calls across %d scripts name a file that exists (%d distinct, dead: %s)" % [nsfx98, gds98.size(), seensfx98.size(), str(deadsfx98)])
+			_check(deadmus98.is_empty(),
+				"all %d play_music()/sting() calls name a track that exists (%d distinct, dead: %s)" % [nmus98, seenmus98.size(), str(deadmus98)])
+			# ---- vox banks: speak() cycles %s_0..2, so all three must exist --
+			var db98 = root.get_node("Db")
+			var novox98: Array = []
+			var nchar98 := 0
+			for cid98 in db98.characters:
+				var v98 := str(db98.characters[cid98].get("voice", ""))
+				if v98 == "":
+					continue
+				nchar98 += 1
+				for i98d in 3:
+					if not ResourceLoader.exists("res://assets/audio/vox/%s_%d.wav" % [v98, i98d]):
+						novox98.append("%s/%s_%d" % [str(cid98), v98, i98d])
+			_check(novox98.is_empty(),
+				"every voiced character has a complete vox bank (_0,_1,_2) for speak()'s cycle (%d characters, gaps: %s)" % [nchar98, str(novox98)])
+			# ---- iOS app lifecycle: the OS can take the app away ------------
+			# Every other autosave trigger is a discrete achievement, so a
+			# player killed in the background mid-mission lost everything since
+			# the last job they finished. game.gd::_notification now writes on
+			# NOTIFICATION_APPLICATION_PAUSED. Slot 0 is deleted first so the
+			# assertion has something to observe; step 98 is the last step
+			# before DONE, so nothing downstream depends on it.
+			var sv98 = root.get_node("SaveSystem")
+			var gm98 = root.get_node("Game")
+			if sv98 != null and gm98 != null and _city != null:
+				sv98.delete_save(0)
+				_check(not sv98.has_save(0), "autosave slot cleared before the lifecycle test")
+				# FOCUS_OUT must NOT save: it also fires for a transient
+				# interruption (notification banner, Control Center) where the
+				# app is not at risk, and writing on every banner is churn.
+				gm98._notification(MainLoop.NOTIFICATION_APPLICATION_FOCUS_OUT)
+				_check(not sv98.has_save(0),
+					"a transient focus-out does NOT write a save — only real backgrounding does")
+				gm98._notification(MainLoop.NOTIFICATION_APPLICATION_PAUSED)
+				_check(sv98.has_save(0),
+					"backgrounding the app autosaves — iOS kills backgrounded apps under memory pressure and every other trigger was a discrete achievement")
+				if sv98.has_save(0):
+					var saved98: Dictionary = sv98.load_game(0)
+					_check(not saved98.is_empty() and saved98.has("world"),
+						"and the background save is a real payload, not an empty file (%d keys)" % saved98.size())
+			else:
+				_check(false, "SaveSystem/Game/city not reachable for the lifecycle test")
+			# ---- the touch layer drives the Input Map, as the docs require --
+			# hud._buttons is keyed three different ways, so "every key is an
+			# action" is the wrong invariant and this test asserted it first
+			# time round: _touch_btn() keys by the action itself (sprint, fire,
+			# ...), the PAD cluster keys by POSITION (btn_x/btn_y/btn_a/btn_b)
+			# while carrying the action in a separate slot, and _sys_btn() keys
+			# UI callbacks that legitimately have no action at all ("radio").
+			# The real invariant is that the only non-action keys are exactly
+			# those two declared groups, and that the pad's own actions exist.
+			var hud98 = _city.get("hud")
+			if hud98 != null:
+				var btns98: Dictionary = hud98.get("_buttons")
+				var padkeys98 := {"btn_x": "punch", "btn_y": "heavy_attack", "btn_a": "kick", "btn_b": "dodge"}
+				var syskeys98 := {"radio": true}
+				var real98 := 0
+				var stray98: Array = []
+				for k98 in btns98:
+					var ks98 := str(k98)
+					if InputMap.has_action(ks98):
+						real98 += 1
+					elif padkeys98.has(ks98):
+						if not InputMap.has_action(padkeys98[ks98]):
+							stray98.append(ks98 + "->" + str(padkeys98[ks98]))
+					elif not syskeys98.has(ks98):
+						stray98.append(ks98)
+				_check(stray98.is_empty() and real98 >= 16,
+					"all %d touch buttons drive real Input Map actions (%d keyed by action, 4 pad keys verified against their own actions, 1 declared UI callback) — the same actions a gamepad or XOGOT's emulated pad fires, which is why both overlays must not run at once (%s)" % [btns98.size(), real98, str(stray98)])
+			# ---- no compiled anything: XOGOT is GDScript-only ---------------
+			var compiled98: Array = []
+			for ext98b in ["gdextension", "dll", "so", "dylib", "a", "cs"]:
+				var dd98b := DirAccess.open("res://")
+				var stack98b: Array = ["res://"]
+				while not stack98b.is_empty():
+					var dir98b: String = stack98b.pop_back()
+					var d98b := DirAccess.open(dir98b)
+					if d98b == null:
+						continue
+					for sub98b in d98b.get_directories():
+						var s98b := str(sub98b)
+						if s98b == ".godot" or s98b == ".git":
+							continue
+						stack98b.append(dir98b.path_join(s98b))
+					for f98b in d98b.get_files():
+						if str(f98b).ends_with("." + ext98b):
+							compiled98.append(dir98b.path_join(str(f98b)))
+			var addons98 := DirAccess.dir_exists_absolute("res://addons")
+			_check(compiled98.is_empty() and not addons98,
+				"no compiled addons, GDExtension or C# anywhere — XOGOT on iPhone is GDScript-only (%s, addons/=%s)" % [str(compiled98), str(addons98)])
 		99:
 			print("HARNESS: DONE — checks=%d fails=%d" % [_checks, _fails])
 			_city.queue_free()

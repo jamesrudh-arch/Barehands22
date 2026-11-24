@@ -2,7 +2,20 @@
 ; LEVERAGE — Everyone has leverage on you.
 ; Third-person open-world crime-action drama. Cinder City.
 ; Target: Godot 4.7 (Mobile renderer) / XOGOT on iPhone.
-; API surface restricted to Godot 4.5-stable-documented features for XOGOT compatibility.
+;
+; XOGOT version floor: 1.7.2 (the first App Store release whose internal engine
+; is Godot 4.7; current at time of writing is 1.7.12). Verified against
+; github.com/xibbon/XogotDocs @ 4a5a22c, Releases/AppStore.md.
+;
+; API surface = Godot 4.7. NOTE the split in Xogot's own documentation: the
+; RUNTIME engine is 4.7, but the Godot manual BUNDLED with XogotDocs is a
+; 4.5-era snapshot (its migrating/ folder stops at upgrading_to_godot_4.5.md,
+; with no 4.6 or 4.7 guide). The bundled manual is therefore a guide to
+; concepts, NOT an authority on whether a given class or method exists. When an
+; API question matters, answer it from the running engine (ClassDB) and not from
+; the bundled manual -- restricting this project to 4.5-documented features, as
+; an earlier revision of this header instructed, was based on mistaking the
+; manual's snapshot age for the engine's version.
 
 config_version=5
 
@@ -53,6 +66,14 @@ window/size/mode=0
 window/size/resizable=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep_height"
+; Xogot's faq.md: "Recent Xogot updates introduce a new default Scale Mode
+; called Auto ... this can cause the game to appear zoomed in or stretched. To
+; restore the expected appearance, open Project Settings and set Display >
+; Window > Scale Mode to Fractional." Godot's own default for this key is
+; already "fractional" (core/config/project_settings.cpp:1790), but Xogot
+; overrides it, so state it explicitly and let the value travel with the
+; project instead of depending on a per-device setting.
+window/stretch/scale_mode="fractional"
 window/handheld/orientation="sensor_landscape"
 
 [gui]
@@ -240,6 +261,16 @@ horn={
 
 [input_devices]
 
+; Xogot-only setting (not present in Godot 4.7 core -- verified: zero hits for
+; "virtual_controller" in core/config/project_settings.cpp). Xogot's iOS Virtual
+; Controller emulates a hardware gamepad and draws its own onscreen controls.
+; This project ships a complete in-scene touch interface (hud.gd: virtual stick
+; plus RUN/CRCH/JMP/BLK/LOCK/CAR/BRK/AIM/FIRE/RLD/FOCUS buttons, all driving the
+; same Input Map actions via Input.action_press), so Xogot's Onscreen Controls
+; doc instructs turning this off "to avoid displaying both interfaces". Set
+; explicitly here rather than left to a per-device toggle, so it travels with
+; the project. Desktop Godot ignores the unknown key harmlessly.
+virtual_controller/enable=false
 pointing/emulate_touch_from_mouse=true
 pointing/emulate_mouse_from_touch=true
 
@@ -249,6 +280,25 @@ environment/defaults/default_clear_color=Color(0.03, 0.03, 0.045, 1)
 
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
+; Required by the VRAM-compressed world textures (D-25). Both keys default to
+; FALSE in the engine (servers/rendering/rendering_server.cpp:3659-3660), and
+; ResourceImporterTextureSettings::should_import_etc2_astc() only falls back to
+; the HOST OS preference when the setting is off -- core/os/os.cpp:749 returns
+; ETC2_ASTC "by rule, ARM hardware", x86 returns S3TC_BPTC. Leaving them off
+; means each machine imports only its own format, so a project imported on a
+; desktop or on Xogot for Mac and then run on an iPhone has no texture data the
+; iPhone GPU can read. That is exactly the failure Xogot's faq.md documents
+; ("Texture (binding: 0, index 0) is not a valid texture. / Failed to create
+; uniform set for batch." -> "enable importing S3TC BPTC and ETC2 ASTC", then
+; "close and reopen the project so that these imports will run" -- these are
+; GLOBAL_DEF_RST, i.e. restart-required). Enabling BOTH also makes sandbox
+; verification meaningful: an x86 import would otherwise never produce the
+; ASTC data the device actually uses, so an ASTC-only defect would be invisible
+; to the harness. Runtime cost is nil -- Godot uploads only the format the GPU
+; supports; the extra format lives in the .godot/ import cache, which is
+; gitignored and regenerated per device.
+textures/vram_compression/import_etc2_astc=true
+textures/vram_compression/import_s3tc_bptc=true
 anti_aliasing/quality/use_debanding=true
 lights_and_shadows/directional_shadow/size=2048
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
