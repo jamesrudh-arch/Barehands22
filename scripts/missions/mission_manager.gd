@@ -21,9 +21,17 @@ var _race_laps := 0
 var _stealth_alarm := false
 var _last_objective := ""
 
+## Every track a mission can name. side_race2 asked for "race_furnace" from
+## the day it was authored and it was never here, so the .get() fallback sent
+## the "Furnace Loop" around Ashfall Docks instead — wrong district, wrong
+## lanes, wrong music, and nothing ever said so.
 const RACE_TRACKS := {
 	"race_quay": {"district": "ashfall_docks", "laps": 2},
 	"race_neon": {"district": "neon_mile", "laps": 2},
+	"race_furnace": {"district": "the_furnace", "laps": 2},
+	"race_slag": {"district": "slagworks", "laps": 2},
+	"race_crown": {"district": "crown_heights", "laps": 1},
+	"race_kiln": {"district": "kiln_row", "laps": 2},
 }
 
 
@@ -171,6 +179,11 @@ func _setup_stage() -> void:
 			if at == Vector3.ZERO and player:
 				at = player.global_position + Vector3(2.0, 0, 2.0)
 			var n := _spawn_char(cid, at)
+			# Owned by the stage, so _cleanup_stage() frees it. Before this the
+			# talk NPC was parented to the city and never in `actors`, so every
+			# conversation in the game left its speaker standing on the street
+			# forever — 18 talk stages meant 18 permanent ghosts by the finale.
+			actors.append(n)
 			rt["npc"] = n
 			rt["done"] = false
 			n.set_meta("mission_dialogue", stage.get("dialogue", ""))
@@ -226,6 +239,18 @@ func _setup_stage() -> void:
 			rt["pos"] = _poi_pos(stage.get("poi", ""))
 			_spawn_guards(rt["pos"])
 			_stealth_alarm = false
+		"survive":
+			_setup_survive()
+		"chase":
+			_setup_chase()
+		"plant":
+			_setup_plant()
+		"defend":
+			_setup_defend()
+		"rail_cross":
+			_setup_rail_cross()
+		"observe":
+			_setup_observe()
 		"phone":
 			rt["call_t"] = 2.0
 
@@ -363,6 +388,18 @@ func _tick_stage(delta: float, player: Node) -> void:
 				else:
 					AudioDirector.sfx("phone_ring", 0.5)
 					Bus.notification.emit("INCOMING CALL — answer via Phone (touch: PHONE)", "info")
+		"survive":
+			_tick_survive(delta, player)
+		"chase":
+			_tick_chase(delta, player)
+		"plant":
+			_tick_plant(delta, player)
+		"defend":
+			_tick_defend(delta, player)
+		"rail_cross":
+			_tick_rail_cross(delta, player)
+		"observe":
+			_tick_observe(delta, player)
 		"cutscene", "choice":
 			pass
 		_:
@@ -380,6 +417,13 @@ func _on_choice_picked(opt: Dictionary) -> void:
 		WorldState.add_faction_rep(e["faction"][0], float(e["faction"][1]))
 	if e.has("rel"):
 		WorldState.add_relationship(e["rel"][0], float(e["rel"][1]))
+	# A second relationship delta on one option. m06_the_shelter has been
+	# authoring "rel2" since it was written and nothing ever read it, so
+	# spiriting the witness out claimed to cost Okoro 15 and cost her nothing.
+	if e.has("rel2"):
+		WorldState.add_relationship(e["rel2"][0], float(e["rel2"][1]))
+	if e.has("faction_rep"):
+		WorldState.add_faction_rep(e["faction_rep"][0], float(e["faction_rep"][1]))
 	if e.has("flag"):
 		WorldState.set_flag(e["flag"], true)
 	if e.has("wanted"):
@@ -508,7 +552,10 @@ func _setup_race() -> void:
 	var player := _player()
 	if player == null:
 		return
-	var track: Dictionary = RACE_TRACKS.get(stage.get("track", "race_quay"), RACE_TRACKS["race_quay"])
+	var want: String = stage.get("track", "race_quay")
+	if not RACE_TRACKS.has(want):
+		push_warning("MissionManager: unknown race track '%s' — falling back to race_quay" % want)
+	var track: Dictionary = RACE_TRACKS.get(want, RACE_TRACKS["race_quay"])
 	var did: String = track["district"]
 	var loops := []
 	for i in WorldGen.lanes.size():
@@ -676,6 +723,7 @@ func _on_world_event(event_id: String, payload: Dictionary) -> void:
 				var player := _player()
 				if player:
 					n = _spawn_char(stage.get("char", ""), player.global_position + Vector3(1.5, 0, -1.5))
+					actors.append(n)
 					rt["npc"] = n
 
 
@@ -794,6 +842,574 @@ func _spawn_char(cid: String, at: Vector3) -> Node:
 func rand_pick_ped() -> String:
 	var keys := Db.peds.keys()
 	return keys[randi() % keys.size()]
+
+
+# ============================== WAVE 49: LONGER MISSIONS ====================
+## Six new stage verbs. Act 3 used to be four dialogue boxes and a cutscene —
+## a "mission" with nothing in it but reading. Each verb below has a real
+## clock, a real failure condition, and something the player has to DO.
+
+func _hold_center() -> Vector3:
+	## Waves ring a fixed point, so a hold is about defending GROUND rather
+	## than chasing spawns across a district. Falls back to where you stand.
+	var pid: String = stage.get("poi", "")
+	if pid != "":
+		var p := _poi_pos(pid)
+		if p != Vector3.ZERO:
+			return p
+	var pl := _player()
+	return pl.global_position if pl != null else Vector3.ZERO
+
+
+func _spawn_wave() -> void:
+	## One wave of a `survive` stage. Difficulty.scale_count does the scaling,
+	## so holding the line genuinely tightens as the story progresses.
+	rt["wave"] = int(rt.get("wave", 0)) + 1
+	var w: int = rt["wave"]
+	var kind: String = stage.get("enemy", "thug_light")
+	if kind == "thug_random":
+		kind = ["thug_light", "thug_grappler", "thug_heavy"][randi() % 3]
+	var n: int = Difficulty.scale_count(int(stage.get("count", 3)) + w)
+	var base: Vector3 = rt.get("center", Vector3.ZERO)
+	for i in n:
+		var a := randf() * TAU
+		var d := randf_range(13.0, 19.0)
+		var e := _spawn_npc()
+		e.setup_enemy(kind, base + Vector3(cos(a) * d, 0.02, sin(a) * d), "mission")
+		actors.append(e)
+	rt["spawned"] = true
+	AudioDirector.sfx("ui_notify", 0.35)
+
+
+# ------------------------------------------------------------------ survive --
+func _setup_survive() -> void:
+	rt["time"] = float(stage.get("time", 45))
+	rt["wave"] = 0
+	rt["wave_t"] = 0.0
+	rt["off_t"] = 0.0
+	rt["off_warned"] = false
+	rt["shown_t"] = -1
+	rt["center"] = _hold_center()
+	AudioDirector.play_music("music_combat", 0.7)
+	_spawn_wave()
+	_apply_pursuit()
+
+
+func _tick_survive(delta: float, player: Node) -> void:
+	rt["time"] = float(rt.get("time", 0.0)) - delta
+	var left := maxf(0.0, float(rt["time"]))
+	if int(left) != int(rt.get("shown_t", -1)):
+		rt["shown_t"] = left
+		Bus.objective_updated.emit(active_id, "%s — %ds" % [stage.get("text", "Hold the line"), int(left)])
+	if left <= 0.0:
+		WorldState.stats["holds_kept"] = WorldState.stats.get("holds_kept", 0) + 1
+		_advance_stage()
+		return
+	# stray off the ground you were holding and it stops being yours
+	var away: float = (player.global_position - rt.get("center", Vector3.ZERO)).length()
+	if away > float(stage.get("leash", 46.0)):
+		rt["off_t"] = float(rt.get("off_t", 0.0)) + delta
+		if not rt.get("off_warned", false):
+			rt["off_warned"] = true
+			Bus.notification.emit("Get back to the line!", "warn")
+		if float(rt["off_t"]) > 8.0:
+			_complete(false)
+			return
+	else:
+		rt["off_t"] = 0.0
+		rt["off_warned"] = false
+	# the next wave comes whether or not you finished the last one
+	rt["wave_t"] = float(rt.get("wave_t", 0.0)) + delta
+	var period := float(stage.get("wave_every", 18.0))
+	if rt["wave_t"] >= period and left > period * 0.5:
+		rt["wave_t"] = 0.0
+		Bus.notification.emit("Wave %d — they're coming again." % int(rt.get("wave", 0) + 1), "warn")
+		_spawn_wave()
+
+
+# -------------------------------------------------------------------- chase --
+func _setup_chase() -> void:
+	## Someone who knows exactly what you are and will not stand still for the
+	## conversation. FLEE runs at 5.2 m/s and the player sprints at 6.4, so it
+	## is winnable on foot — but only just, and only if you don't lose the line.
+	var pl := _player()
+	var at := _poi_pos(stage.get("poi", ""))
+	if at == Vector3.ZERO and pl:
+		at = pl.global_position + Vector3(9.0, 0.02, 9.0)
+	var cid: String = stage.get("char", "")
+	var n: Node
+	if cid != "" and Db.characters.has(cid):
+		n = _spawn_char(cid, at)
+	else:
+		n = _spawn_npc()
+		n.setup_ped(rand_pick_ped(), WorldGen.district_at(at), at)
+		n.display_name = String(stage.get("name", "Runner"))
+		n.global_position = at + Vector3(0, 0.02, 0)
+		n.state = n.State.IDLE_ACT
+	actors.append(n)
+	rt["npc"] = n
+	rt["time"] = float(stage.get("time", 75))
+	rt["start"] = at
+	rt["shown_t"] = -1
+	rt["caught"] = false
+	n.set_meta("chase_target", true)
+	Bus.notification.emit("They're running — after them!", "warn")
+	AudioDirector.play_music("music_chase", 0.6)
+	AudioDirector.sfx("ui_notify", 0.45)
+
+
+func _tick_chase(delta: float, player: Node) -> void:
+	var n = rt.get("npc")
+	if n == null or not is_instance_valid(n):
+		_complete(false)
+		return
+	rt["time"] = float(rt.get("time", 0.0)) - delta
+	var left := maxf(0.0, float(rt["time"]))
+	if int(left) != int(rt.get("shown_t", -1)):
+		rt["shown_t"] = left
+		Bus.objective_updated.emit(active_id, "%s — %ds" % [stage.get("text", "Catch them"), int(left)])
+	# keep the pressure on: a runner that stops being chased stops running
+	if n.state != n.State.DEAD and n.state != n.State.DOWN:
+		n.state = n.State.FLEE
+		n.set("_flee_from", player.global_position)
+		n.anim.sprint = true
+	# They tire. Without this a chase is a coin flip against a 5.2 m/s
+	# constant that never slows: the player sprints at 6.4 but only while
+	# stamina lasts, so a fresh runner is genuinely hard to run down.
+	# flee_speed decays toward `tired_speed` over `tire_after` seconds.
+	rt["tire"] = float(rt.get("tire", 0.0)) + delta
+	var tire_after := float(stage.get("tire_after", 12.0))
+	var tired := float(stage.get("tired_speed", 3.9))
+	var k := clampf(float(rt["tire"]) / maxf(tire_after, 0.001), 0.0, 1.0)
+	n.set("flee_speed", lerpf(5.2, tired, k))
+	if k >= 1.0 and not rt.get("tired_msg", false):
+		rt["tired_msg"] = true
+		Bus.notification.emit("They're tiring. Close it out.", "info")
+	var gone: float = (n.global_position - rt.get("start", Vector3.ZERO)).length()
+	var d: float = (player.global_position - n.global_position).length()
+	if d <= float(stage.get("reach", 2.8)):
+		rt["caught"] = true
+		WorldState.stats["runners_caught"] = WorldState.stats.get("runners_caught", 0) + 1
+		_advance_stage()
+		return
+	if n.state == n.State.DEAD:
+		# putting them down counts, but the city bills you for it
+		rt["caught"] = true
+		WorldState.stats["runners_lost"] = WorldState.stats.get("runners_lost", 0) + 1
+		Bus.notification.emit("They won't be talking now.", "warn")
+		_advance_stage()
+		return
+	if gone > float(stage.get("escape", 210.0)):
+		Bus.notification.emit("They got away.", "warn")
+		_complete(false)
+		return
+	if left <= 0.0:
+		Bus.notification.emit("Too slow. They're gone.", "warn")
+		_complete(false)
+
+
+# -------------------------------------------------------------------- plant --
+func _setup_plant() -> void:
+	## N charges, N marked spots, and a clock that only starts once the first
+	## one is down. Sabotage as a routing problem, not a fetch quest.
+	var pts: Array = stage.get("points", [])
+	var marks: Array = []
+	var base := _hold_center()
+	if pts.is_empty():
+		var n_pts: int = int(stage.get("count", 3))
+		for i in n_pts:
+			var a := TAU * float(i) / float(maxi(n_pts, 1)) + 0.4
+			marks.append({"pos": base + Vector3(cos(a) * 13.0, 0.0, sin(a) * 13.0), "done": false})
+	else:
+		for pt in pts:
+			var pid: String = String(pt.get("poi", ""))
+			var p := _poi_pos(pid) if pid != "" else Vector3(pt.get("at", [0, 0])[0], 0.0, pt.get("at", [0, 0])[1])
+			marks.append({"pos": p, "done": false})
+	rt["marks"] = marks
+	rt["armed"] = 0
+	rt["fuse"] = float(stage.get("fuse", 0.0))
+	rt["blown"] = false
+	_build_plant_markers()
+	AudioDirector.play_music("music_tension", 1.0)
+
+
+func _build_plant_markers() -> void:
+	## Visible pylons so the objective is a place you can SEE, not a minimap
+	## dot you hunt. Cheap: one emissive box + a light column per mark.
+	# Same root the pickups use, and the same name — two roots with two names
+	# would leave one of them orphaned when a stage cleans up.
+	if _pickup_root == null or not is_instance_valid(_pickup_root):
+		_pickup_root = Node3D.new()
+		_pickup_root.name = "mission_pickups"
+		var sc := _scene()
+		if sc:
+			sc.add_child(_pickup_root)
+	var marks: Array = rt.get("marks", [])
+	for i in marks.size():
+		var m: Dictionary = marks[i]
+		var pos: Vector3 = m["pos"]
+		var py := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.55, 2.6, 0.55)
+		py.mesh = bm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.95, 0.72, 0.25)
+		mat.emission_enabled = true
+		mat.emission = Color(0.95, 0.62, 0.18)
+		mat.emission_energy_multiplier = 2.2
+		py.material_override = mat
+		py.position = pos + Vector3(0, 1.3, 0)
+		py.set_meta("plant_mark", i)
+		_pickup_root.add_child(py)
+		m["node"] = py
+
+
+func _tick_plant(delta: float, player: Node) -> void:
+	var marks: Array = rt.get("marks", [])
+	if marks.is_empty() or bool(rt.get("blown", false)):
+		return
+	var armed: int = int(rt.get("armed", 0))
+	# --- phase 1: arm every mark -------------------------------------------
+	if not bool(rt.get("all_armed", false)):
+		for i in marks.size():
+			var m: Dictionary = marks[i]
+			if bool(m.get("done", false)):
+				continue
+			var pos: Vector3 = m["pos"]
+			if (player.global_position - pos).length() < 3.2:
+				m["done"] = true
+				armed += 1
+				rt["armed"] = armed
+				AudioDirector.sfx_at("ui_notify", pos, 0.6, 0.0)
+				if is_instance_valid(m.get("node")):
+					(m["node"] as Node3D).queue_free()
+					m["node"] = null
+				Bus.objective_updated.emit(active_id, "%s (%d/%d)" % [stage.get("text", "Plant the charges"), armed, marks.size()])
+		if armed < marks.size():
+			return
+		# LATCH. Without this the block below re-entered on every single tick
+		# and reset rt["fuse"] to its authored value, so the countdown never
+		# reached zero and a planted charge could never actually detonate.
+		rt["all_armed"] = true
+		var fuse := float(stage.get("fuse", 0.0))
+		rt["fuse"] = fuse
+		if fuse <= 0.0:
+			_detonate_plant()
+			return
+		Bus.notification.emit("Charges set. %d seconds — CLEAR THE BLAST." % int(fuse), "warn")
+		AudioDirector.sfx("alarm_loop", 0.5)
+		return
+	# --- phase 2: the fuse burns -------------------------------------------
+	rt["fuse"] = float(rt.get("fuse", 0.0)) - delta
+	var f := int(maxf(0.0, float(rt["fuse"])))
+	if f != int(rt.get("shown_f", -1)):
+		rt["shown_f"] = f
+		Bus.objective_updated.emit(active_id, "GET CLEAR — %ds" % f)
+	if float(rt["fuse"]) <= 0.0:
+		_detonate_plant()
+
+
+func _detonate_plant() -> void:
+	## Sabotage goes off. There is no explosion.wav in the bank — a wreck uses
+	## veh_crash_heavy + fire_crackle, and so does this, because it IS a wreck.
+	var c: Vector3 = _hold_center()
+	Effects.burst(c + Vector3(0, 1.0, 0), "muzzle", Vector3.UP, 2.4)
+	Effects.burst(c + Vector3(0, 1.2, 0), "smoke", Vector3.UP, 2.0)
+	Effects.add_shake(1.1)
+	Effects.decal(c + Vector3(0, 0.04, 0), Vector3.UP, "scorch", 3.4)
+	AudioDirector.sfx_at("veh_crash_heavy", c, 1.0, 0.02)
+	AudioDirector.sfx_at("fire_crackle", c, 0.85, 0.0)
+	Cinematics.fov_punch(8.0)
+	# humanoids take damage through their combat controller, never directly
+	for e in actors:
+		if not is_instance_valid(e) or e.state == e.State.DEAD:
+			continue
+		var cc = e.get("combat")
+		if cc == null or cc.dead:
+			continue
+		var d: float = (e.global_position - c).length()
+		if d < 18.0:
+			var away: Vector3 = (e.global_position - c).normalized()
+			cc.take_hit(46.0 * (1.0 - d / 18.0), away, "explosion", null)
+			cc.apply_stagger(58.0, away)
+	var pl := _player()
+	if pl != null:
+		var pcc = pl.get("combat")
+		if pcc != null and not pcc.dead:
+			var pd: float = (pl.global_position - c).length()
+			if pd < 14.0:
+				pcc.take_hit(28.0 * (1.0 - pd / 14.0), (pl.global_position - c).normalized(), "explosion", null)
+			if pd < 22.0:
+				Cinematics.slowmo(0.3, 0.45)
+	WorldState.stats["sabotages"] = WorldState.stats.get("sabotages", 0) + 1
+	# Getting clear is the whole point of a fuse, so it pays: standing inside
+	# 14 m costs up to 28 HP, and being outside the blast earns the bonus.
+	var pl2 := _player()
+	if pl2 != null and (pl2.global_position - c).length() >= 16.0:
+		var bonus: int = int(stage.get("clean_xp", 90))
+		Progression.add_xp(bonus, "clean detonation")
+		Bus.notification.emit("CLEAN BLAST — +%d XP" % bonus, "mission")
+		WorldState.stats["clean_blasts"] = WorldState.stats.get("clean_blasts", 0) + 1
+	# blowing up a freight yard is not a quiet, victimless act
+	Bus.crime_committed.emit("explosion", 3, c)
+	rt["blown"] = true
+	_advance_stage()
+
+
+# ------------------------------------------------------------------- defend --
+func _setup_defend() -> void:
+	## Protect a named body while the other side tries to remove them. Distinct
+	## from `survive`: here the failure condition walks around on two legs.
+	var pl := _player()
+	var at := _poi_pos(stage.get("poi", ""))
+	if at == Vector3.ZERO and pl:
+		at = pl.global_position + Vector3(3.0, 0.02, 3.0)
+	var cid: String = stage.get("char", "")
+	var ward: Node
+	if cid != "" and Db.characters.has(cid):
+		ward = _spawn_char(cid, at)
+	else:
+		ward = _spawn_npc()
+		ward.setup_ped(rand_pick_ped(), WorldGen.district_at(at), at)
+		# an unnamed ward still needs a name in the objective line, or the HUD
+		# reads "Keep Citizen alive" for somebody the player was told about
+		ward.display_name = String(stage.get("name", "them"))
+		ward.global_position = at + Vector3(0, 0.02, 0)
+		ward.state = ward.State.IDLE_ACT
+	ward.set_meta("defend_ward", true)
+	actors.append(ward)
+	rt["ward"] = ward
+	rt["ward_hp0"] = _ward_hp(ward)
+	rt["time"] = float(stage.get("time", 60))
+	rt["wave"] = 0
+	rt["wave_t"] = 0.0
+	rt["shown_t"] = -1
+	rt["center"] = at
+	AudioDirector.play_music("music_combat", 0.7)
+	_spawn_wave()
+	_apply_pursuit()
+
+
+func _ward_name(w: Node) -> String:
+	## The ward's own label, or the stage's, or a neutral fallback — never
+	## str(null), which renders as the literal string "<null>" in the HUD.
+	var dn = w.get("display_name")
+	if dn != null and String(dn).strip_edges() != "":
+		return String(dn)
+	var nm: String = stage.get("name", "")
+	return nm if nm != "" else "them"
+
+
+func _ward_hp(w: Node) -> float:
+	if w == null or not is_instance_valid(w):
+		return 0.0
+	var c = w.get("combat")
+	if c != null:
+		var h = c.get("hp")
+		if h != null:
+			return float(h)
+	var h2 = w.get("hp")
+	return float(h2) if h2 != null else 100.0
+
+
+func _tick_defend(delta: float, player: Node) -> void:
+	var w = rt.get("ward")
+	if w == null or not is_instance_valid(w):
+		Bus.notification.emit("They're dead. It's over.", "warn")
+		_complete(false)
+		return
+	var hp := _ward_hp(w)
+	if w.state == w.State.DEAD or hp <= 0.0:
+		Bus.notification.emit("You were supposed to keep them ALIVE.", "warn")
+		_complete(false)
+		return
+	# The ward holds the objective rather than wandering off it.
+	if w.state != w.State.COMBAT and w.state != w.State.DOWN and w.state != w.State.DEAD:
+		w.state = w.State.IDLE_ACT
+		w.velocity = Vector3.ZERO
+	# PRESSURE. Rival AI only ever sees the `enemy` group, and putting a
+	# friendly ward in that group would make the player's own hostile_to()
+	# predicate treat the person they are protecting as a target. So the threat
+	# is applied here instead: every living attacker inside `ward_reach` works
+	# on the ward, per second, and killing them is how you stop it.
+	var reach := float(stage.get("ward_reach", 7.0))
+	var dps := float(stage.get("ward_dps", 4.5))
+	var pressing := 0
+	var nearest: Vector3 = w.global_position + Vector3(1, 0, 0)
+	for e in actors:
+		if not is_instance_valid(e) or e == w:
+			continue
+		var ecc = e.get("combat")
+		if ecc == null or ecc.dead or e.state == e.State.DEAD:
+			continue
+		var d: float = (e.global_position - w.global_position).length()
+		if d <= reach:
+			pressing += 1
+			if d < (nearest - w.global_position).length():
+				nearest = e.global_position
+	if pressing > 0:
+		rt["press_t"] = float(rt.get("press_t", 0.0)) + delta
+		if float(rt["press_t"]) >= 1.0:
+			rt["press_t"] = 0.0
+			var wcc = w.get("combat")
+			if wcc != null and not wcc.dead:
+				var dir: Vector3 = (w.global_position - nearest)
+				dir.y = 0.0
+				if dir.length_squared() < 0.01:
+					dir = Vector3(1, 0, 0)
+				wcc.take_hit(dps * float(mini(pressing, 4)), dir.normalized(), "mission", null)
+				AudioDirector.sfx_at("punch_hit", w.global_position + Vector3(0, 1.3, 0), 0.5, 0.1)
+			if not rt.get("press_warned", false):
+				rt["press_warned"] = true
+				Bus.notification.emit("They're going for %s — get between!" % _ward_name(w), "warn")
+	else:
+		rt["press_t"] = 0.0
+		rt["press_warned"] = false
+	rt["time"] = float(rt.get("time", 0.0)) - delta
+	var left := maxf(0.0, float(rt["time"]))
+	if int(left) != int(rt.get("shown_t", -1)):
+		rt["shown_t"] = left
+		Bus.objective_updated.emit(active_id, "Keep %s alive — %ds" % [_ward_name(w), int(left)])
+	if left <= 0.0:
+		WorldState.stats["wards_kept"] = WorldState.stats.get("wards_kept", 0) + 1
+		_advance_stage()
+		return
+	rt["wave_t"] = float(rt.get("wave_t", 0.0)) + delta
+	if rt["wave_t"] >= float(stage.get("wave_every", 20.0)):
+		rt["wave_t"] = 0.0
+		_spawn_wave()
+		Bus.notification.emit("More of them. Hold.", "warn")
+
+
+# --------------------------------------------------------------- rail_cross --
+func _setup_rail_cross() -> void:
+	## Wave 48 put a freight train on a 920 m viaduct. This makes it a CLOCK:
+	## reach the far side before the consist sweeps the crossing. Standing on
+	## the deck is not a shortcut — _tick_hazard throws you off for 34 damage.
+	var to := _poi_pos(stage.get("to", ""))
+	var from := _poi_pos(stage.get("from", ""))
+	var pl := _player()
+	if to == Vector3.ZERO and pl:
+		to = pl.global_position + Vector3(60.0, 0, 0)
+	if from == Vector3.ZERO and pl:
+		from = pl.global_position
+	rt["to"] = to
+	rt["from"] = from
+	rt["sl"] = _smoke_line()
+	rt["done"] = false
+	# On foot this is unwinnable: the consist runs at 17.5 m/s and the player
+	# sprints at 6.4, so a crossing more than ~80 m wide cannot be beaten.
+	# The stage is a DRIVE against a train, so it supplies the car.
+	if bool(stage.get("vehicle", true)):
+		_spawn_mission_vehicle()
+	var sl = rt["sl"]
+	if sl != null and sl.has_method("seconds_to_crossing"):
+		# The consist wraps, so a train that has already gone past gives you
+		# the NEXT one — a deadline that is never negative and never unwinnable.
+		# `sl` is typed Node, so these reads are Variant and `:=` cannot infer.
+		var raw: float = float(sl.seconds_to_crossing(to.x))
+		var grace := float(stage.get("grace", 9.0))
+		var floor_t := float(stage.get("min_time", 34.0))
+		rt["deadline"] = maxf(floor_t, raw + grace)
+	else:
+		rt["deadline"] = float(stage.get("time", 40))
+	rt["time"] = float(rt["deadline"])
+	rt["shown_t"] = -1
+	AudioDirector.play_music("music_tension", 0.8)
+	Bus.notification.emit("The freight's coming. Beat it across.", "warn")
+
+
+func _smoke_line() -> Node:
+	## city.gd keeps the consist on a named member; the group is the fallback
+	## for the harness, which boots the scene without going through city.gd.
+	var sc := _scene()
+	if sc != null:
+		var direct = sc.get("smoke_line")
+		if direct != null and is_instance_valid(direct):
+			return direct
+	var g := get_tree().get_nodes_in_group("smoke_line")
+	return g[0] if g.size() > 0 else null
+
+
+func _tick_rail_cross(delta: float, player: Node) -> void:
+	rt["time"] = float(rt.get("time", 0.0)) - delta
+	var left := maxf(0.0, float(rt["time"]))
+	if int(left) != int(rt.get("shown_t", -1)):
+		rt["shown_t"] = left
+		Bus.objective_updated.emit(active_id, "%s — %ds" % [stage.get("text", "Cross before the freight"), int(left)])
+	var to: Vector3 = rt.get("to", Vector3.ZERO)
+	if (player.global_position - to).length() < float(stage.get("reach", 6.0)):
+		rt["done"] = true
+		WorldState.stats["rail_crossings"] = WorldState.stats.get("rail_crossings", 0) + 1
+		_advance_stage()
+		return
+	if left <= 0.0:
+		# the train does not stop for the objective. It runs you down instead.
+		Bus.notification.emit("The freight got there first.", "warn")
+		_complete(false)
+
+
+# ------------------------------------------------------------------ observe --
+func _setup_observe() -> void:
+	## Stand still and WATCH: stakeouts, hearings, handovers. The tension is
+	## that moving or being seen ends it early, so patience is the mechanic.
+	var at := _poi_pos(stage.get("poi", ""))
+	var pl := _player()
+	if at == Vector3.ZERO and pl:
+		at = pl.global_position
+	rt["pos"] = at
+	rt["held"] = 0.0
+	rt["need"] = float(stage.get("time", 12))
+	rt["blown"] = false
+	rt["shown_t"] = -1
+	# Spawn the people being watched. Without a subject the `concealed` rule
+	# iterates an empty `actors` list, so "don't be seen" can never trigger and
+	# the stakeout is just a timer with extra words.
+	var ng: int = int(stage.get("guards", 0))
+	for i in ng:
+		var a := i * TAU / float(maxi(ng, 1))
+		var w := _spawn_npc()
+		var kind: String = stage.get("enemy", "halcyon_guard")
+		w.setup_enemy(kind, at + Vector3(cos(a) * 11.0, 0.02, sin(a) * 11.0), "corp")
+		w.hostile = false           # they patrol; they do not attack unprovoked
+		w.state = w.State.GUARD
+		w.set_meta("hostile", false)
+		actors.append(w)
+	AudioDirector.play_music("music_tension", 1.2)
+	Bus.notification.emit("Stay put. Don't be seen. Just watch.", "info")
+
+
+func _tick_observe(delta: float, player: Node) -> void:
+	var at: Vector3 = rt.get("pos", Vector3.ZERO)
+	var d: float = (player.global_position - at).length()
+	var radius := float(stage.get("radius", 7.0))
+	if d > radius:
+		rt["held"] = maxf(0.0, float(rt.get("held", 0.0)) - delta * 2.0)
+		if not rt.get("warned", false):
+			rt["warned"] = true
+			Bus.notification.emit("You wandered off the spot.", "warn")
+	else:
+		rt["warned"] = false
+		rt["held"] = float(rt.get("held", 0.0)) + delta
+	# being made ends the stakeout — the guards' real suspicion meters drive it
+	if bool(stage.get("concealed", true)):
+		for g in actors:
+			if not is_instance_valid(g):
+				continue
+			var susp = g.get("suspicion")
+			if susp != null and float(susp) >= 100.0 and not bool(rt.get("blown", false)):
+				rt["blown"] = true
+				Bus.notification.emit("They've made you. The meet is off.", "warn")
+				_complete(false)
+				return
+	var need := float(rt.get("need", 12.0))
+	var left := maxf(0.0, need - float(rt.get("held", 0.0)))
+	if int(left) != int(rt.get("shown_t", -1)):
+		rt["shown_t"] = left
+		Bus.objective_updated.emit(active_id, "%s — %ds" % [stage.get("text", "Watch"), int(left)])
+	if left <= 0.0:
+		WorldState.stats["stakeouts"] = WorldState.stats.get("stakeouts", 0) + 1
+		_advance_stage()
 
 
 func _check_objective(expr: String) -> bool:

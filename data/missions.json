@@ -91,7 +91,7 @@
   "act": 1,
   "giver": "ruth",
   "district": "kiln_row",
-  "summary": "Crowe's ledger is the only language he respects. Find what Marcus owes \u2014 and to whom.",
+  "summary": "Crowe's ledger is the only language he respects. Find what Marcus owes — and to whom.",
   "stages": [
    {
     "id": "talk_mags",
@@ -647,8 +647,14 @@
   "act": 3,
   "giver": "ruth",
   "district": "kiln_row",
-  "summary": "Halcyon's bulldozers idle at the Kiln Row line. The city holds its breath.",
+  "summary": "Halcyon's bulldozers idle at the Kiln Row line. Count them, take their order, kill their plant, and hold the alley until they run out of people to send.",
   "stages": [
+   {
+    "id": "go_ruths",
+    "type": "goto",
+    "text": "Get to Ruth's. The word is going round the row.",
+    "poi": "poi_ruths"
+   },
    {
     "id": "rally_family",
     "type": "talk",
@@ -664,11 +670,53 @@
     "dialogue": "dlg_m10_roz"
    },
    {
+    "id": "watch_line",
+    "type": "observe",
+    "text": "Watch the bulldozer line. Count the crew before you commit.",
+    "poi": "poi_ruths_alley",
+    "enemy": "halcyon_guard",
+    "time": 14,
+    "guards": 2,
+    "radius": 8.0,
+    "concealed": true
+   },
+   {
     "id": "rally_law",
     "type": "talk",
     "text": "Okoro, if the badge still fits.",
     "char": "okoro",
     "dialogue": "dlg_m10_okoro"
+   },
+   {
+    "id": "chase_surveyor",
+    "type": "chase",
+    "text": "A Halcyon surveyor is running with the demolition order. Get it back.",
+    "poi": "poi_ruths_alley",
+    "name": "Halcyon Surveyor",
+    "time": 85,
+    "reach": 2.8,
+    "escape": 230.0,
+    "tire_after": 13.0
+   },
+   {
+    "id": "kill_plant",
+    "type": "plant",
+    "text": "Kill the bulldozers. Three charges on the plant line, then clear the blast.",
+    "poi": "poi_ruths_alley",
+    "count": 3,
+    "fuse": 20.0,
+    "clean_xp": 110
+   },
+   {
+    "id": "hold_line",
+    "type": "survive",
+    "text": "Hold the line until Halcyon's muscle runs out of people.",
+    "poi": "poi_ruths_alley",
+    "enemy": "halcyon_guard",
+    "count": 3,
+    "time": 75,
+    "wave_every": 22.0,
+    "leash": 48.0
    },
    {
     "id": "choice_plan",
@@ -706,7 +754,7 @@
    "flags": [
     "finale_set"
    ],
-   "xp": 620
+   "xp": 900
   }
  },
  "m11_the_leverage": {
@@ -714,13 +762,34 @@
   "act": 3,
   "giver": "none",
   "district": "the_furnace",
-  "summary": "Founders Plaza. Every debt in one room.",
+  "summary": "Founders Plaza. Every debt in one room — and a freight train between you and it. Beat the smoke line, count the room, then keep the badge breathing.",
   "stages": [
    {
-    "id": "go_plaza",
+    "id": "go_precinct",
     "type": "goto",
-    "text": "Founders Plaza, noon.",
-    "poi": "poi_plaza"
+    "text": "Okoro wants a word before you walk into that room.",
+    "poi": "poi_precinct"
+   },
+   {
+    "id": "beat_freight",
+    "type": "rail_cross",
+    "text": "Beat the freight across the smoke line to the Furnace.",
+    "from": "poi_safehouse_furnace",
+    "to": "poi_plaza",
+    "reach": 7.0,
+    "grace": 9.0,
+    "min_time": 38.0
+   },
+   {
+    "id": "count_room",
+    "type": "observe",
+    "text": "Count Vivian's people from the tower steps. Know the room before you enter it.",
+    "poi": "poi_plaza",
+    "enemy": "halcyon_guard",
+    "time": 16,
+    "guards": 3,
+    "radius": 9.0,
+    "concealed": true
    },
    {
     "id": "cin_finale",
@@ -733,6 +802,31 @@
     "text": "Whatever's left of Julian's people.",
     "enemy": "crowe_gunman",
     "count": 5
+   },
+   {
+    "id": "chase_julian",
+    "type": "chase",
+    "text": "Julian is going up the tower with the shredder keys.",
+    "poi": "poi_plaza",
+    "char": "crowe_jr",
+    "time": 90,
+    "reach": 2.8,
+    "escape": 250.0,
+    "tire_after": 14.0
+   },
+   {
+    "id": "keep_okoro",
+    "type": "defend",
+    "text": "Keep Okoro alive long enough to read the warrants.",
+    "poi": "poi_plaza",
+    "char": "okoro",
+    "name": "Det. Okoro",
+    "enemy": "crowe_gunman",
+    "count": 3,
+    "time": 60,
+    "ward_reach": 7.5,
+    "ward_dps": 4.5,
+    "wave_every": 24.0
    },
    {
     "id": "choice_final",
@@ -761,7 +855,7 @@
    "flags": [
     "finale_done"
    ],
-   "xp": 660
+   "xp": 980
   }
  },
  "m12_everyone": {
@@ -769,13 +863,94 @@
   "act": 3,
   "giver": "none",
   "district": "crown_heights",
-  "summary": "After. The smoke line from above, with your brother beside you.",
+  "summary": "After. Count the trains from the overlook with your brother, eat too much at Ruth's, and decide what happens to every debt in Cinder City.",
   "stages": [
    {
     "id": "go_overlook",
     "type": "goto",
     "text": "Smoke Line Overlook. One last walk.",
     "poi": "poi_overlook"
+   },
+   {
+    "id": "talk_eli",
+    "type": "talk",
+    "text": "Your brother is already up there.",
+    "poi": "poi_overlook",
+    "char": "eli",
+    "dialogue": "dlg_m12_eli"
+   },
+   {
+    "id": "count_trains",
+    "type": "observe",
+    "text": "Count them, like you did when you were eight.",
+    "poi": "poi_overlook",
+    "time": 18,
+    "radius": 10.0,
+    "concealed": false
+   },
+   {
+    "id": "go_row",
+    "type": "goto",
+    "text": "Back down to the row. Ruth made too much food again.",
+    "poi": "poi_ruths"
+   },
+   {
+    "id": "talk_ruth",
+    "type": "talk",
+    "text": "Sit down. Eat. Be told the truth about your brother.",
+    "poi": "poi_ruths",
+    "char": "ruth",
+    "dialogue": "dlg_m12_ruth"
+   },
+   {
+    "id": "choice_ledger",
+    "type": "choice",
+    "text": "Crowe's ledger is in your coat. What kind of person does that make you on Thursday?",
+    "dialogue": "dlg_m12_choice",
+    "options": [
+     {
+      "id": "burn",
+      "label": "Burn it. Nobody owes anybody.",
+      "effects": {
+       "flag": "ledger_burned",
+       "faction": [
+        "family",
+        15
+       ],
+       "rel": [
+        "ruth",
+        20
+       ]
+      }
+     },
+     {
+      "id": "keep",
+      "label": "Keep it. Someone has to hold the book.",
+      "effects": {
+       "flag": "ledger_kept",
+       "money": 4000,
+       "rel": [
+        "ruth",
+        -10
+       ]
+      }
+     },
+     {
+      "id": "law",
+      "label": "Give it to Okoro. Daylight, on the record.",
+      "effects": {
+       "flag": "ledger_law",
+       "rel": [
+        "okoro",
+        30
+       ],
+       "faction": [
+        "law_want",
+        10
+       ]
+      }
+     }
+    ]
    },
    {
     "id": "cin_ending",
@@ -787,7 +962,8 @@
    "flags": [
     "game_complete"
    ],
-   "xp": 700
+   "xp": 1100,
+   "money": 1500
   }
  },
  "side_courier": {
@@ -809,9 +985,26 @@
     "id": "drive",
     "type": "drive_timed",
     "text": "Deliver in under 90 seconds.",
+    "time": 90,
     "from": "poi_garage",
-    "to": "poi_noodle_row",
-    "time": 90
+    "to": "poi_noodle_row"
+   },
+   {
+    "id": "chase_consignee",
+    "type": "chase",
+    "text": "The consignee just ran off with the package.",
+    "poi": "poi_noodle_row",
+    "name": "Consignee",
+    "time": 75,
+    "reach": 2.8,
+    "escape": 200.0,
+    "tire_after": 11.0
+   },
+   {
+    "id": "go_back",
+    "type": "goto",
+    "text": "Back to Dex. He will not ask, but he will look.",
+    "poi": "poi_garage"
    }
   ],
   "rewards": {
@@ -826,6 +1019,19 @@
   "district": "ashfall_docks",
   "summary": "Four checkpoints along the quay. Pride is the purse.",
   "stages": [
+   {
+    "id": "go_garage",
+    "type": "goto",
+    "text": "Dex is holding a car at the garage.",
+    "poi": "poi_garage"
+   },
+   {
+    "id": "talk_dex",
+    "type": "talk",
+    "text": "Take the briefing. All two sentences of it.",
+    "char": "dex",
+    "dialogue": "dlg_side_race_dex"
+   },
    {
     "id": "race",
     "type": "race",
@@ -851,10 +1057,25 @@
   "summary": "Through the towers, against traffic, allegedly legal.",
   "stages": [
    {
+    "id": "go_pawn",
+    "type": "goto",
+    "text": "Meet at Pawn 24H. Nobody asks why.",
+    "poi": "poi_pawn"
+   },
+   {
     "id": "race",
     "type": "race",
     "text": "Win the Furnace Loop.",
     "track": "race_furnace",
+    "pursuit": 3
+   },
+   {
+    "id": "cool_down",
+    "type": "drive_timed",
+    "text": "Lose the heat and be back at the garage in 95 seconds.",
+    "time": 95,
+    "from": "poi_plaza",
+    "to": "poi_garage",
     "pursuit": 3
    }
   ],
@@ -887,6 +1108,26 @@
     "type": "escort",
     "text": "Get two patients home safely.",
     "count": 2
+   },
+   {
+    "id": "keep_nia",
+    "type": "defend",
+    "text": "Someone followed the last one home. Keep Nia standing.",
+    "poi": "poi_clinic",
+    "char": "nia",
+    "name": "Dr. Okonkwo",
+    "enemy": "thug_light",
+    "count": 2,
+    "time": 50,
+    "ward_reach": 7.0,
+    "ward_dps": 4.0,
+    "wave_every": 22.0
+   },
+   {
+    "id": "go_clinic",
+    "type": "goto",
+    "text": "Walk Nia back to the clinic door.",
+    "poi": "poi_clinic"
    }
   ],
   "rewards": {
@@ -906,6 +1147,19 @@
   "district": "ashfall_docks",
   "summary": "Move eight crates before the manifest deadline.",
   "stages": [
+   {
+    "id": "go_berth7",
+    "type": "goto",
+    "text": "Berth 7. The manifest closes at six.",
+    "poi": "poi_berth7"
+   },
+   {
+    "id": "talk_gunnar",
+    "type": "talk",
+    "text": "Gunnar has instructions and he will repeat them.",
+    "char": "gunnar",
+    "dialogue": "dlg_side_dock_gunnar"
+   },
    {
     "id": "crates",
     "type": "carry",
@@ -927,10 +1181,35 @@
   "summary": "Yard 4 takes bets on anyone with hands.",
   "stages": [
    {
+    "id": "go_yard4",
+    "type": "goto",
+    "text": "Fight night at Yard 4.",
+    "poi": "poi_yard4"
+   },
+   {
+    "id": "talk_mags",
+    "type": "talk",
+    "text": "Mags does the wraps and the briefing.",
+    "char": "mags",
+    "dialogue": "dlg_side_fight_mags"
+   },
+   {
     "id": "fight",
     "type": "combat",
     "text": "Win an open-ring bout.",
-    "enemy": "thug_random"
+    "enemy": "thug_random",
+    "style_hint": "any"
+   },
+   {
+    "id": "second_round",
+    "type": "survive",
+    "text": "The ring wants a second round. Give it one.",
+    "poi": "poi_yard4",
+    "enemy": "thug_random",
+    "count": 2,
+    "time": 45,
+    "wave_every": 18.0,
+    "leash": 40.0
    }
   ],
   "rewards": {
@@ -947,11 +1226,24 @@
   "summary": "Crowe's ledger pages surface all over. Mags buys silence.",
   "stages": [
    {
+    "id": "go_gunsmith",
+    "type": "goto",
+    "text": "Mags buys silence out the back.",
+    "poi": "poi_gunsmith"
+   },
+   {
+    "id": "talk_mags",
+    "type": "talk",
+    "text": "Hear the rate. It never changes.",
+    "char": "mags",
+    "dialogue": "chat_mags"
+   },
+   {
     "id": "collect",
     "type": "collect",
     "text": "Recover ledger pages (0/12).",
-    "item": "ledger_page",
-    "count": 12
+    "count": 12,
+    "item": "ledger_page"
    }
   ],
   "rewards": {
@@ -971,11 +1263,24 @@
   "summary": "Twenty tokens of goodwill keep a neighborhood breathing.",
   "stages": [
    {
+    "id": "go_ruths",
+    "type": "goto",
+    "text": "Ruth keeps the row's books in a kitchen.",
+    "poi": "poi_ruths"
+   },
+   {
+    "id": "talk_ruth",
+    "type": "talk",
+    "text": "Take the list. Sit down first.",
+    "char": "ruth",
+    "dialogue": "chat_ruth"
+   },
+   {
     "id": "collect",
     "type": "collect",
     "text": "Collect favor tokens (0/20).",
-    "item": "favor_token",
-    "count": 20
+    "count": 20,
+    "item": "favor_token"
    }
   ],
   "rewards": {
@@ -993,12 +1298,12 @@
   "giver": "dex",
   "repeatable": true,
   "district": "ashfall_docks",
-  "summary": "Dex knows a warehouse patrol that never should have seen the ledger. Clear it quiet \u2014 no alarms, no bodies found. Payment scales with silence.",
+  "summary": "Dex knows a warehouse patrol that never should have seen the ledger. Clear it quiet — no alarms, no bodies found. Payment scales with silence.",
   "stages": [
    {
     "id": "g1",
     "type": "goto",
-    "text": "Reach Warehouse 12 \u2014 the patrol works the aisle behind it.",
+    "text": "Reach Warehouse 12 — the patrol works the aisle behind it.",
     "poi": "poi_berth7"
    },
    {
@@ -1037,7 +1342,7 @@
   "giver": "nia",
   "repeatable": true,
   "district": "neon_mile",
-  "summary": "Nia runs messages above the street \u2014 fire escapes, rooftops, no cameras. Prove you can climb.",
+  "summary": "Nia runs messages above the street — fire escapes, rooftops, no cameras. Prove you can climb.",
   "stages": [
    {
     "id": "r1",
@@ -1048,7 +1353,7 @@
    {
     "id": "r2",
     "type": "drive_timed",
-    "text": "Courier run across the Mile \u2014 beat the clock.",
+    "text": "Courier run across the Mile — beat the clock.",
     "from": "poi_noir_lounge",
     "to": "poi_casino",
     "time": 100,
@@ -1122,7 +1427,7 @@
    {
     "id": "rp2",
     "type": "objective",
-    "text": "Steal a car \u2014 any car. Lockpick or window, Dex doesn't judge.",
+    "text": "Steal a car — any car. Lockpick or window, Dex doesn't judge.",
     "check": "stat:thefts>=1"
    },
    {
@@ -1150,7 +1455,7 @@
   "giver": "ruth",
   "repeatable": false,
   "district": "kiln_row",
-  "summary": "Mama Ruth wants your money working, not sitting. Buy into a local business \u2014 she's watching where you invest before she trusts you with more.",
+  "summary": "Mama Ruth wants your money working, not sitting. Buy into a local business — she's watching where you invest before she trusts you with more.",
   "stages": [
    {
     "id": "sp1",
@@ -1161,8 +1466,17 @@
    {
     "id": "sp2",
     "type": "objective",
-    "text": "Buy into Aunt Adaeze's Noodle Stall (phone \u2192 BIZ).",
+    "text": "Buy into Aunt Adaeze's Noodle Stall (phone → BIZ).",
     "check": "prop:noodle_stall"
+   },
+   {
+    "id": "sp3",
+    "type": "observe",
+    "text": "Ruth is watching how you spend an afternoon. Sit in the market and be seen sitting.",
+    "poi": "poi_market",
+    "time": 16,
+    "radius": 9.0,
+    "concealed": false
    }
   ],
   "rewards": {
@@ -1192,10 +1506,27 @@
     "id": "hm2",
     "type": "drive_timed",
     "text": "Three stars, Lounge to Plaza, 100 seconds. Cameras rolling.",
+    "time": 100,
     "from": "poi_noir_lounge",
     "to": "poi_plaza",
-    "time": 100,
     "pursuit": 3
+   },
+   {
+    "id": "hm3",
+    "type": "survive",
+    "text": "Nia wants the aftermath on camera. Hold the plaza.",
+    "poi": "poi_plaza",
+    "enemy": "thug_light",
+    "count": 2,
+    "time": 50,
+    "wave_every": 20.0,
+    "leash": 44.0
+   },
+   {
+    "id": "hm4",
+    "type": "goto",
+    "text": "Get the footage back to Nia.",
+    "poi": "poi_noir_lounge"
    }
   ],
   "rewards": {
@@ -1220,8 +1551,28 @@
    {
     "id": "tj2",
     "type": "objective",
-    "text": "Wreck 2 vehicles \u2014 drive them into oblivion or let them burn.",
+    "text": "Wreck 2 vehicles — drive them into oblivion or let them burn.",
     "check": "statd:wrecks>=2"
+   },
+   {
+    "id": "tj3",
+    "type": "plant",
+    "text": "Now the refinery gate. Two charges on the pump line and be off the yard when they go.",
+    "poi": "poi_refinery_gate",
+    "count": 2,
+    "fuse": 16.0,
+    "clean_xp": 90
+   },
+   {
+    "id": "tj4",
+    "type": "survive",
+    "text": "Vale's yard boss brought friends. Hold the gate.",
+    "poi": "poi_refinery_gate",
+    "enemy": "thug_heavy",
+    "count": 2,
+    "time": 55,
+    "wave_every": 20.0,
+    "leash": 46.0
    }
   ],
   "rewards": {
@@ -1250,7 +1601,7 @@
    {
     "id": "cw2",
     "type": "objective",
-    "text": "Lift a car \u2014 lockpick or window, dealer's choice.",
+    "text": "Lift a car — lockpick or window, dealer's choice.",
     "check": "statd:thefts>=1"
    },
    {
@@ -1285,7 +1636,7 @@
   "repeatable": false,
   "requires_flag": "game_complete",
   "district": "ashfall_docks",
-  "summary": "The lever is pulled, the tower is quiet, and Marcus is home. Ruth puts a glass on the bar like it's any other night. It isn't. One last errand for the block that raised you \u2014 then the night is yours.",
+  "summary": "The lever is pulled, the tower is quiet, and Marcus is home. Ruth puts a glass on the bar like it's any other night. It isn't. One last errand for the block that raised you — then the night is yours.",
   "stages": [
    {
     "id": "ep1",
@@ -1317,7 +1668,7 @@
     "options": [
      {
       "id": "hang",
-      "label": "Hang it up \u2014 the block over the score",
+      "label": "Hang it up — the block over the score",
       "effects": {
        "flag": "epilogue_quiet",
        "rel": [
@@ -1333,7 +1684,7 @@
      },
      {
       "id": "ride",
-      "label": "One more ride \u2014 the city still owes you",
+      "label": "One more ride — the city still owes you",
       "effects": {
        "flag": "epilogue_rider",
        "money": 2000,

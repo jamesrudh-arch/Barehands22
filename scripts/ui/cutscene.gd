@@ -44,6 +44,7 @@ func _ready() -> void:
 	_skip_lbl.visible = false
 	add_child(_skip_lbl)
 	_card = Label.new()
+	Type.apply(_card, "display")
 	_card.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_card.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_card.set_anchors_preset(Control.PRESET_FULL_RECT)

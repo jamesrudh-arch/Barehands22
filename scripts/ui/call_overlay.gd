@@ -43,6 +43,7 @@ func setup(info: Dictionary) -> void:
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	root.add_child(face)
 	_who = Label.new()
+	Type.apply(_who, "display")
 	_who.text = str(ch.get("name", info.get("char", "UNKNOWN")))
 	_who.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_who.set_meta("fit_half", 180.0)

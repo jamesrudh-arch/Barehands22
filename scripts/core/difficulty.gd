@@ -12,14 +12,67 @@ extends Node
 ##   - recent deaths                      -> light rubber-band relief so a
 ##                                           stuck player gets a breather
 ## Threat is clamped 0..1.6 (late game can exceed 1.0 — no ceiling on pain).
+##
+## The DIFFICULTY PRESET does not replace that rule, it scales it. A preset is
+## a single multiplier on the progress-derived curve, so a Street player still
+## escalates exactly as the story advances — just along a gentler slope, with
+## the same headroom at the top. Nothing is flattened and nothing is a flat
+## stat bonus bolted on beside the real director.
 
 const STORY_TOTAL := 12.0
 
+## Presets, in menu order. `mult` scales threat and only threat, so every
+## consumer (enemy HP/damage/accuracy/aggression/loadout, mission wave counts,
+## police cap and dispatch, crowd + traffic density, fight purses) moves
+## together and stays internally consistent.
+const PRESETS := [
+	{"id": "street", "name": "STREET", "mult": 0.72,
+	 "desc": "The city still keeps score, but it lets you keep some of your teeth."},
+	{"id": "ledger", "name": "LEDGER", "mult": 1.0,
+	 "desc": "As authored. Threat climbs with the story and nothing is forgiven."},
+	{"id": "crowe", "name": "CROWE", "mult": 1.34,
+	 "desc": "Somebody is reading your book too. Harder hits, more of them, faster."},
+]
+
 var _deaths_since_clear := 0
+## Index into PRESETS. Persisted through Game.settings["difficulty"], NOT the
+## save file: it is a player preference, so it survives starting a new game.
+var preset: int = 1
 
 
 func reset() -> void:
 	_deaths_since_clear = 0
+
+
+# ----------------------------------------------------------------- presets --
+func preset_count() -> int:
+	return PRESETS.size()
+
+
+func preset_mult() -> float:
+	var i := clampi(preset, 0, PRESETS.size() - 1)
+	return float(PRESETS[i]["mult"])
+
+
+func preset_name(i: int = -999) -> String:
+	var k := clampi(i if i != -999 else preset, 0, PRESETS.size() - 1)
+	return String(PRESETS[k]["name"])
+
+
+func preset_desc(i: int = -999) -> String:
+	var k := clampi(i if i != -999 else preset, 0, PRESETS.size() - 1)
+	return String(PRESETS[k]["desc"])
+
+
+func set_preset(i: int, announce: bool = true) -> void:
+	var k := clampi(i, 0, PRESETS.size() - 1)
+	if k == preset and not announce:
+		return
+	preset = k
+	if announce:
+		Bus.notification.emit("DIFFICULTY — %s" % preset_name(), "info")
+		AudioDirector.sfx("ui_confirm", 0.3)
+	Bus.settings_changed.emit()
 
 
 func note_death() -> void:
@@ -40,7 +93,11 @@ func threat() -> float:
 	story = clampf(story / STORY_TOTAL, 0.0, 1.0)
 	var lvl: float = clampf(float(Progression.level - 1) / 14.0, 0.0, 1.0)
 	var relief: float = clampf(float(_deaths_since_clear) * 0.08, 0.0, 0.24)
-	return clampf(story * 0.75 + lvl * 0.35 - relief, 0.0, 1.6)
+	# Shape first, then scale. The clamp scales with the preset so Crowe keeps
+	# the same late-game headroom instead of saturating at the Ledger ceiling.
+	var base := clampf(story * 0.75 + lvl * 0.35 - relief, 0.0, 1.6)
+	var m := preset_mult()
+	return clampf(base * m, 0.0, 1.6 * m)
 
 
 # ------------------------------------------------------------ enemy stats --

@@ -8,6 +8,7 @@ var settings: Dictionary = {
 	"master": 0.9, "music": 0.7, "sfx": 0.9, "vox": 0.9,
 	"sensitivity": 1.0, "subtitles": true, "quality": 1,  # 0 low 1 med 2 high
 	"touch_scale": 1.0, "invert_y": false, "shake": true,
+	"difficulty": 1,   # index into Difficulty.PRESETS: 0 street 1 ledger 2 crowe
 }
 const SETTINGS_PATH := "user://settings.json"
 
@@ -26,6 +27,7 @@ func _ready() -> void:
 		"master": settings["master"], "music": settings["music"],
 		"sfx": settings["sfx"], "vox": settings["vox"]}
 	AudioDirector.apply_settings()
+	_apply_difficulty()
 	Bus.crime_committed.connect(_on_crime)
 
 
@@ -39,6 +41,16 @@ func _load_settings() -> void:
 				settings[k] = d[k]
 
 
+func _apply_difficulty() -> void:
+	## settings.json is the persisted home of the preset; Difficulty owns the
+	## live value. Pushed at boot and on every change so a save file never has
+	## to carry a preference that belongs to the player, not the playthrough.
+	var diff := get_node_or_null("/root/Difficulty")
+	if diff == null:
+		return
+	diff.set_preset(int(settings.get("difficulty", 1)), false)
+
+
 func save_settings() -> void:
 	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	f.store_string(JSON.stringify(settings))
@@ -47,6 +59,7 @@ func save_settings() -> void:
 		"master": settings["master"], "music": settings["music"],
 		"sfx": settings["sfx"], "vox": settings["vox"]}
 	AudioDirector.apply_settings()
+	_apply_difficulty()
 	Bus.settings_changed.emit()
 
 

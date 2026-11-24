@@ -53,7 +53,7 @@
    },
    "give": {
     "spk": "marcus",
-    "text": "You're\u2014 okay. Okay. I'll make it right, Eli. I swear on Ma.",
+    "text": "You're— okay. Okay. I'll make it right, Eli. I swear on Ma.",
     "next": null
    },
    "refuse": {
@@ -166,7 +166,7 @@
    },
    "c": {
     "spk": "clerk",
-    "text": "That's client information. That's\u2014 ...that's two hundred. And you didn't smell like cop when you came in, so I'll say it once.",
+    "text": "That's client information. That's— ...that's two hundred. And you didn't smell like cop when you came in, so I'll say it once.",
     "next": "d"
    },
    "d": {
@@ -475,7 +475,7 @@
    },
    "steal": {
     "spk": "tess",
-    "text": "You absolute\u2014 fine. FINE. Then we do this the loud way and I hate you slightly more per floor.",
+    "text": "You absolute— fine. FINE. Then we do this the loud way and I hate you slightly more per floor.",
     "next": null
    },
    "copy": {
@@ -495,12 +495,12 @@
    },
    "b": {
     "spk": "eli",
-    "text": "The grab at Ruth's\u2014",
+    "text": "The grab at Ruth's—",
     "next": "c"
    },
    "c": {
     "spk": "marcus",
-    "text": "Was Julian improvising! He needed a show to flush the drive out. I played along because if Crowe's son thinks I'm his prisoner, Dad's\u2014 YOUR name stays out of the book. That was the whole plan. I'm an idiot, but it was a plan.",
+    "text": "Was Julian improvising! He needed a show to flush the drive out. I played along because if Crowe's son thinks I'm his prisoner, Dad's— YOUR name stays out of the book. That was the whole plan. I'm an idiot, but it was a plan.",
     "next": "d"
    },
    "d": {
@@ -550,7 +550,7 @@
   "nodes": {
    "a": {
     "spk": "okoro",
-    "text": "The hearing's a theatre piece and everybody knows their seats. But if someone brings ACTUAL paper\u2014 filings, signatures, shells\u2014 then my badge stops being decoration.",
+    "text": "The hearing's a theatre piece and everybody knows their seats. But if someone brings ACTUAL paper— filings, signatures, shells— then my badge stops being decoration.",
     "next": "b"
    },
    "b": {
@@ -973,7 +973,7 @@
    },
    "c": {
     "spk": "ruth",
-    "text": "It is. And the block knows it. Which is why I've got one more box for you \u2014 Bishop's shelter ran dry overnight. Medicine. Bridges are crawling with whoever's left of Crowe's paperwork.",
+    "text": "It is. And the block knows it. Which is why I've got one more box for you — Bishop's shelter ran dry overnight. Medicine. Bridges are crawling with whoever's left of Crowe's paperwork.",
     "next": "d"
    },
    "d": {
@@ -984,7 +984,7 @@
    "e": {
     "spk": "ruth",
     "text": "The last ones are the ones that decide what kind of name you keep. Go on, child. I'll leave the light on.",
-    "next": ""
+    "next": null
    }
   }
  },
@@ -999,7 +999,260 @@
    "b": {
     "spk": "eli",
     "text": "Keep it that way.",
-    "next": ""
+    "next": null
+   }
+  }
+ },
+ "dlg_m12_eli": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "eli",
+    "text": "You came up here as a kid to count the trains. You said if you could count them all the row would still be there in the morning.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "player",
+    "text": "I was eight. The counting was the point. Nobody could take the counting away.",
+    "next": "c"
+   },
+   "c": {
+    "spk": "eli",
+    "text": "So count them now. Halcyon's money, Crowe's book, Okoro's cases, Bishop's cots, Ruth's kitchen. That's the ledger, and you're the only name on every line.",
+    "next": "d"
+   },
+   "d": {
+    "spk": "player",
+    "text": "That's not a ledger. That's a list of people who can still say no.",
+    "next": "e"
+   },
+   "e": {
+    "spk": "eli",
+    "text": "Same thing in this city. Saying no costs the same as owing.",
+    "next": "f"
+   },
+   "f": {
+    "spk": "eli",
+    "text": "Marcus would have signed. You know he would have. He'd have signed and slept fine and eaten well and never once looked at the smoke line.",
+    "next": "g"
+   },
+   "g": {
+    "spk": "player",
+    "text": "Marcus looked at it every day. That's why he started drinking, not because he didn't.",
+    "next": "h"
+   },
+   "h": {
+    "spk": "eli",
+    "text": "Then what do we do with it? The leverage. Everybody's waiting on you and you've been quiet for two days.",
+    "next": "i"
+   },
+   "i": {
+    "spk": "player",
+    "text": "Quiet isn't nothing. Quiet is the only part of this nobody can price.",
+    "next": null
+   }
+  }
+ },
+ "dlg_m12_ruth": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "ruth",
+    "text": "Sit. Eat. I made too much and I am not pretending that was an accident.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "ruth",
+    "text": "They're calling it the Kiln Row Clause downtown. Vivian Halcyon wrote it in pencil and you made her write it in ink.",
+    "next": "c"
+   },
+   "c": {
+    "spk": "player",
+    "text": "I made her a deal. That's different from making her do right.",
+    "next": "d"
+   },
+   "d": {
+    "spk": "ruth",
+    "text": "Child. In this city a deal that feeds four hundred people IS doing right. You want a saint, join the parish. You want dinner, sit down.",
+    "next": "e"
+   },
+   "e": {
+    "spk": "ruth",
+    "text": "Your brother came by Tuesday. Didn't eat. Talked about you for an hour and never once said your name wrong, which for Marcus is a miracle.",
+    "next": "f"
+   },
+   "f": {
+    "spk": "player",
+    "text": "What did he say.",
+    "next": "g"
+   },
+   "g": {
+    "spk": "ruth",
+    "text": "That you were always the one who kept the book. Not the money. The book. Who owed what, who was sick, whose rent was late.",
+    "next": "h"
+   },
+   "h": {
+    "spk": "ruth",
+    "text": "He was jealous of it his whole life and he never once tried to take it from you.",
+    "next": "i"
+   },
+   "i": {
+    "spk": "player",
+    "text": "Ruth. I have Crowe's ledger. The real one. Every debt in the underworld, including mine.",
+    "next": "j"
+   },
+   "j": {
+    "spk": "ruth",
+    "text": "I know.",
+    "next": "k"
+   },
+   "k": {
+    "spk": "ruth",
+    "text": "And I know you haven't burned it, and I know you haven't sold it, and I know you came down off that overlook to eat with me instead of deciding.",
+    "next": "l"
+   },
+   "l": {
+    "spk": "ruth",
+    "text": "So eat. The city will still be owed money tomorrow. It always is.",
+    "next": null
+   }
+  }
+ },
+ "dlg_m12_choice": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "player",
+    "text": "Crowe's ledger is in my coat. Every debt in this city, in one hand, and nobody knows I have it.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "player",
+    "text": "So. What kind of person does that make me on Thursday morning.",
+    "options": [
+     {
+      "label": "Burn it. Nobody owes anybody. Let the row start clean.",
+      "next": "burn"
+     },
+     {
+      "label": "Keep it. Someone has to hold the book, and it should be someone who eats here.",
+      "next": "keep"
+     },
+     {
+      "label": "Give it to Okoro. Put it in evidence, in daylight, on the record.",
+      "next": "law"
+     }
+    ]
+   },
+   "burn": {
+    "spk": "player",
+    "text": "Ash has no signatures. Four hundred people wake up owing nothing and Halcyon wakes up owning a very expensive empty lot.",
+    "next": "done"
+   },
+   "keep": {
+    "spk": "player",
+    "text": "Somebody keeps the book in this city. It was Crowe, then Julian, then Vivian's pencil. If it's me, at least the book lives above a kitchen.",
+    "next": "done"
+   },
+   "law": {
+    "spk": "player",
+    "text": "Okoro takes it into evidence and the whole thing becomes paper in daylight. Slower. Harder to undo. And I don't get to be the one who decides.",
+    "next": "done"
+   },
+   "done": {
+    "spk": "player",
+    "text": "Either way, Friday came and went. The smoke line is still running and the row is still standing.",
+    "next": null
+   }
+  }
+ },
+ "dlg_side_race_dex": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "dex",
+    "text": "Two laps, no brakes in the tunnel section, and the third checkpoint is a suggestion. That's the whole briefing.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "dex",
+    "text": "I've got three boys saying you can't hold a line under pressure. I've got eight hundred saying you can. I like the eight hundred better.",
+    "next": "c"
+   },
+   "c": {
+    "spk": "player",
+    "text": "What happens if I lose.",
+    "next": "d"
+   },
+   "d": {
+    "spk": "dex",
+    "text": "Then I owe three boys an apology and you owe me a favour, which in my experience is the more expensive of the two.",
+    "next": "e"
+   },
+   "e": {
+    "spk": "dex",
+    "text": "Car's out back. It's ugly, it's fast, and I already told everybody it's yours if you win. So. No pressure.",
+    "next": null
+   }
+  }
+ },
+ "dlg_side_fight_mags": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "mags",
+    "text": "Yard Four takes bets on anybody with hands and no sense. You've got both, so you're on the card.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "mags",
+    "text": "Three rounds. They'll put a grappler in the second because grapplers are cheap and they make the crowd nervous.",
+    "next": "c"
+   },
+   "c": {
+    "spk": "player",
+    "text": "And the third.",
+    "next": "d"
+   },
+   "d": {
+    "spk": "mags",
+    "text": "The third is whoever Julian paid. That one's not cheap and that one's not for the crowd.",
+    "next": "e"
+   },
+   "e": {
+    "spk": "mags",
+    "text": "I do the wraps. You do the not dying. That's the whole arrangement and I've never had cause to regret it.",
+    "next": null
+   }
+  }
+ },
+ "dlg_side_dock_gunnar": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "gunnar",
+    "text": "Manifest closes at six and there are eight crates sitting where the surveyor can see them, which means they are technically already a fine.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "gunnar",
+    "text": "Move them to the line. Don't drop them. Don't sell them. I know that's a lot of instructions so I'll say it again: move them to the line.",
+    "next": "c"
+   },
+   "c": {
+    "spk": "player",
+    "text": "What's in them.",
+    "next": "d"
+   },
+   "d": {
+    "spk": "gunnar",
+    "text": "Machine parts. Boring, heavy, legal. That's the best kind of cargo in Ashfall and it is rarer than you'd think.",
+    "next": "e"
+   },
+   "e": {
+    "spk": "gunnar",
+    "text": "Three hundred when the manifest stamps. And Gunnar Voss always stamps.",
+    "next": null
    }
   }
  }

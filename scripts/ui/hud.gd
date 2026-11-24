@@ -106,8 +106,12 @@ func _on_state(s: StringName) -> void:
 
 
 # ------------------------------------------------------------------- build --
-func _lbl(size: int, col: Color = Color(0.92, 0.9, 0.85)) -> Label:
+func _lbl(size: int, col: Color = Color(0.92, 0.9, 0.85), role: String = "body") -> Label:
+	## role is a Type role: "body" for sentences, "mono" for anything that is a
+	## number (proportional figures make a credit counter crawl sideways as it
+	## counts), "display" for the amber names and titles.
 	var l := Label.new()
+	Type.apply(l, role)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
@@ -150,7 +154,7 @@ func _refresh_phone_badge() -> void:
 
 
 func _build_top() -> void:
-	_money_lbl = _lbl(20, Color(0.6, 0.9, 0.6))
+	_money_lbl = _lbl(20, Color(0.6, 0.9, 0.6), "mono")
 	_money_lbl.anchor_left = 1.0
 	_money_lbl.anchor_right = 1.0
 	_money_lbl.offset_left = -220
@@ -159,7 +163,7 @@ func _build_top() -> void:
 	_money_lbl.offset_bottom = 40
 	_money_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_root.add_child(_money_lbl)
-	_stars_lbl = _lbl(20, Color(0.95, 0.3, 0.25))
+	_stars_lbl = _lbl(20, Color(0.95, 0.3, 0.25), "mono")
 	_stars_lbl.anchor_left = 1.0
 	_stars_lbl.anchor_right = 1.0
 	_stars_lbl.offset_left = -220
@@ -168,7 +172,7 @@ func _build_top() -> void:
 	_stars_lbl.offset_bottom = 64
 	_stars_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_root.add_child(_stars_lbl)
-	_clock_lbl = _lbl(14, Color(0.75, 0.73, 0.68))
+	_clock_lbl = _lbl(14, Color(0.75, 0.73, 0.68), "mono")
 	_clock_lbl.anchor_left = 0.5
 	_clock_lbl.anchor_right = 0.5
 	_clock_lbl.offset_left = -120
@@ -188,7 +192,7 @@ func _build_top() -> void:
 	_phone_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_phone_lbl.text = ""
 	_root.add_child(_phone_lbl)
-	_district_lbl = _lbl(16, Color(0.95, 0.72, 0.25))
+	_district_lbl = _lbl(16, Color(0.95, 0.72, 0.25), "display")
 	_district_lbl.anchor_left = 0.5
 	_district_lbl.anchor_right = 0.5
 	_district_lbl.offset_left = -160
@@ -219,7 +223,7 @@ func _build_top() -> void:
 	_street_lbl.offset_bottom = 80
 	_street_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(_street_lbl)
-	_ammo_lbl = _lbl(17, Color(0.9, 0.85, 0.7))
+	_ammo_lbl = _lbl(17, Color(0.9, 0.85, 0.7), "mono")
 	_ammo_lbl.anchor_left = 1.0
 	_ammo_lbl.anchor_right = 1.0
 	_ammo_lbl.offset_left = -200
@@ -229,7 +233,7 @@ func _build_top() -> void:
 	_ammo_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_ammo_lbl.visible = false
 	_root.add_child(_ammo_lbl)
-	_style_lbl = _lbl(13, Color(0.7, 0.75, 0.9))
+	_style_lbl = _lbl(13, Color(0.7, 0.75, 0.9), "mono")
 	_style_lbl.anchor_left = 1.0
 	_style_lbl.anchor_right = 1.0
 	_style_lbl.offset_left = -200
@@ -238,7 +242,7 @@ func _build_top() -> void:
 	_style_lbl.offset_bottom = -264
 	_style_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_root.add_child(_style_lbl)
-	_speed_lbl = _lbl(22, Color(0.85, 0.85, 0.8))
+	_speed_lbl = _lbl(22, Color(0.85, 0.85, 0.8), "mono")
 	_speed_lbl.anchor_left = 1.0
 	_speed_lbl.anchor_right = 1.0
 	# BUG FIXED: these are negative offsets, so the anchors must be the BOTTOM
@@ -318,6 +322,7 @@ func _build_bars() -> void:
 	_focus_vignette.visible = false
 	_root.add_child(_focus_vignette)
 	_lvl_lbl = Label.new()
+	Type.apply(_lvl_lbl, "mono")
 	_lvl_lbl.add_theme_font_size_override("font_size", 12)
 	_lvl_lbl.add_theme_color_override("font_color", Color(0.23, 0.91, 0.69))
 	_lvl_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -345,7 +350,7 @@ func _build_fuel_gauge() -> void:
 	## Fuel is a real resource now (filling stations, money, theft), so it gets
 	## a real readout: a bar with the reserve line marked on it, a litre count,
 	## and a red pulse when the tank is on the reserve.
-	_fuel_lbl = _lbl(13, Color(0.80, 0.80, 0.76))
+	_fuel_lbl = _lbl(13, Color(0.80, 0.80, 0.76), "mono")
 	_fuel_lbl.anchor_left = 1.0
 	_fuel_lbl.anchor_right = 1.0
 	_fuel_lbl.anchor_top = 1.0
@@ -400,7 +405,7 @@ func _draw_fuel() -> void:
 
 
 func _build_objective() -> void:
-	_mission_lbl = _lbl(14, Color(0.95, 0.72, 0.25))
+	_mission_lbl = _lbl(14, Color(0.95, 0.72, 0.25), "display")
 	_mission_lbl.position = Vector2(16, 350)
 	_root.add_child(_mission_lbl)
 	_objective_lbl = _lbl(14, Color(0.88, 0.86, 0.8))
@@ -1004,12 +1009,14 @@ func _build_pause() -> void:
 	_pause_menu.add_child(vb)
 	var t := Label.new()
 	t.text = "LEVERAGE"
+	Type.apply(t, "display")
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.add_theme_font_size_override("font_size", 34)
 	t.add_theme_color_override("font_color", Color(0.95, 0.72, 0.25))
 	vb.add_child(t)
 	var sub := Label.new()
 	sub.text = "PAUSED"
+	Type.apply(sub, "display")
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.add_theme_color_override("font_color", Color(0.6, 0.6, 0.55))

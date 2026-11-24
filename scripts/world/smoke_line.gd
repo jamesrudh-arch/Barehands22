@@ -34,6 +34,9 @@ var _x1 := 360.0
 
 
 func _ready() -> void:
+	## Missions reach the consist through this group (rail_cross), because the
+	## harness boots city.tscn without going through city.gd's named member.
+	add_to_group("smoke_line")
 	if WorldGen.has_method("rail_height"):
 		_y = WorldGen.rail_height()
 	# the deck runs the width of the city; keep a margin so the train enters
@@ -355,6 +358,25 @@ func _player() -> Node3D:
 
 ## Where the locomotive is right now — the HUD, missions and the harness can
 ## all ask without walking the tree.
+func speed() -> float:
+	## Consist speed in m/s. Exposed because `SPEED` is a const, and constants
+	## are not properties — Object.get("SPEED") silently returns null.
+	return SPEED
+
+
+func span() -> float:
+	## Full west-to-east traverse in metres, including the horizon margins the
+	## consist wraps through. One lap of the line takes span()/SPEED seconds.
+	return _x1 - _x0
+
+
+func seconds_to_crossing(x: float) -> float:
+	## How long until the locomotive reaches world x — counting the wrap, so a
+	## consist that has already passed gives you the NEXT one rather than a
+	## negative number. Missions use this as a deadline that is always fair.
+	return fposmod(x - _x, _x1 - _x0) / SPEED
+
+
 func train_position() -> Vector3:
 	return _loco.global_position if _loco != null else Vector3.ZERO
 
