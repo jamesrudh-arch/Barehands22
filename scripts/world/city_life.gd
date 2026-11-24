@@ -81,6 +81,8 @@ func _process(delta: float) -> void:
 	_fire_tick(delta, player)
 	# radio
 	_radio_tick(delta, player)
+	_gossip_tick(delta, player)
+	_intervene_tick(delta, player)
 	# adaptive music (explore -> tension -> combat -> chase)
 	_music_tick(delta, player)
 	# events
@@ -98,6 +100,9 @@ func _process(delta: float) -> void:
 	for a in event_actors.duplicate():
 		if not is_instance_valid(a):
 			event_actors.erase(a)
+	if _event_kind != "" and event_actors.is_empty():
+		_event_kind = ""
+		_event_helped = false
 
 
 func _player() -> Node:
@@ -676,6 +681,16 @@ func _spawn_event(pp: Vector3) -> void:
 	var r := randf_range(18.0, 40.0)
 	var pos := pp + Vector3(cos(ang) * r, 0, sin(ang) * r)
 	Bus.world_event.emit(eid, {"pos": pos, "district": did})
+	if eid == "mugging":
+		_event_kind = "mugging"
+		_event_kind_district = did
+		_intervene_pos = pos
+		_intervene_cd = 0.0
+	elif eid in ["citizen_dispute", "street_fight"]:
+		_event_kind = "brawl"
+		_event_kind_district = did
+		_intervene_pos = pos
+		_intervene_cd = 0.0
 	match eid:
 		"citizen_dispute", "street_fight":
 			for i in 2:
@@ -721,6 +736,7 @@ func _spawn_event(pp: Vector3) -> void:
 			get_parent().add_child(t)
 			t.setup_enemy("thug_light", pos, "none")
 			t.hostile = true
+			t.set_meta("event_role", "mugger")
 			event_actors.append(t)
 			var vic := CharacterBody3D.new()
 			vic.set_script(load(PED_SCENE))
@@ -728,6 +744,7 @@ func _spawn_event(pp: Vector3) -> void:
 			vic.setup_ped(rand_pick(Db.peds.keys()), did, pos + Vector3(1.2, 0, 0))
 			vic.state = vic.State.GAWK
 			vic._flee_from = pos
+			vic.set_meta("event_role", "victim")
 			event_actors.append(vic)
 		"police_sweep":
 			for i in 2:
@@ -1137,3 +1154,180 @@ func traffic_green_at(pos: Vector3) -> bool:
 		if (tl["node"].global_position - pos).length() < 12.0:
 			return tl.get("green", true)
 	return true
+
+
+# --------------------------------------------- overheard conversations ---
+# Sleeping Dogs / GTA V lesson: a city where nobody talks to each other is
+# a ghost town. Pairs of locals hold short overheard conversations — and
+# when you linger, they notice you and the block's opinion of you colors
+# what they do next.
+var _gossip_t := 12.0
+var _gossip_until := 0.0
+var gossip_pair: Array = []
+
+
+func _gossip_tick(delta: float, player: Node) -> void:
+	if player.in_vehicle != null or bool(Game.get("cutscene_active")):
+		return
+	# 1) maintain a live pair
+	if _gossip_until > 0.0:
+		_gossip_until -= delta
+		var pair := gossip_pair.duplicate()
+		var alive: Array = []
+		for n in pair:
+			if is_instance_valid(n):
+				alive.append(n)
+		if alive.size() < 2:
+			_end_gossip()
+			return
+		var a = alive[0]
+		var b = alive[1]
+		if a.state != a.State.ROUTINE or b.state != b.State.ROUTINE:
+			_end_gossip()
+			return
+		if (a.global_position - player.global_position).length() < 3.5:
+			# overheard up close — the conversation turns to YOU
+			_end_gossip()
+			if WorldState.street_rep() <= -8:
+				a._bark("watch_it")
+			elif randf() < 0.5:
+				a._bark("interrupted")
+			else:
+				a._bark("greet")
+			return
+		var dir_b: Vector3 = (b.global_position - a.global_position)
+		dir_b.y = 0.0
+		if dir_b.length() > 0.1:
+			a._face(dir_b.normalized(), delta * 6.0)
+			b._face(-dir_b.normalized(), delta * 6.0)
+		return
+	# 2) start a new pair
+	_gossip_t -= delta
+	if _gossip_t > 0.0:
+		return
+	_gossip_t = randf_range(18.0, 34.0)
+	var near: Array = []
+	for n in get_tree().get_nodes_in_group("humanoid"):
+		if not is_instance_valid(n) or bool(n.get("hostile")) or n.char_id != "":
+			continue
+		if n.state != n.State.ROUTINE or n.get("_chat_idle") == true:
+			continue
+		if (n.global_position - player.global_position).length() < 30.0:
+			near.append(n)
+	if near.size() < 2:
+		return
+	near.shuffle()
+	var pa = near[0]
+	var pb: Node = null
+	for i in range(1, near.size()):
+		if (near[i].global_position - pa.global_position).length() < 12.0:
+			pb = near[i]
+			break
+	if pb == null:
+		return
+	pa._chat_idle = true
+	pb._chat_idle = true
+	pa.chatter_peer = pb
+	pb.chatter_peer = pa
+	gossip_pair = [pa, pb]
+	_gossip_until = randf_range(12.0, 20.0)
+	pa._bark("gossip")
+	await get_tree().create_timer(1.1).timeout
+	if is_instance_valid(pb) and gossip_pair.size() == 2:
+		pb._bark("gossip")
+
+
+func _end_gossip() -> void:
+	for n in gossip_pair:
+		if is_instance_valid(n):
+			n._chat_idle = false
+			n.chatter_peer = null
+	gossip_pair.clear()
+	_gossip_until = 0.0
+
+
+# ------------------------------------------------- street-event agency ---
+# GTA V / Sleeping Dogs lesson: random street events are only alive if the
+# player can INTERVENE and the world scores the choice. Step into a mugging
+# or a street fight and decide whose side you're on — the block remembers.
+var _intervene_cd := 0.0
+var _intervene_pos := Vector3.ZERO
+var _event_kind := ""
+var _event_helped := false
+
+
+func _intervene_tick(delta: float, player: Node) -> void:
+	_intervene_cd -= delta
+	if player.in_vehicle != null or bool(Game.get("cutscene_active")):
+		return
+	if _event_kind == "" or player.global_position.distance_to(_intervene_pos) > 7.0:
+		return
+	if _intervene_cd > 0.0:
+		return
+	_intervene_cd = 45.0
+	var kind := _event_kind
+	var opts: Array = []
+	var cl := self
+	if kind == "mugging":
+		opts.append({"label": "Step in — nobody gets robbed on this block", "act": func():
+			cl._event_helped = true
+			for a in cl.event_actors:
+				if is_instance_valid(a) and String(a.get_meta("event_role", "")) == "mugger":
+					a.hostile = true
+					a.combat.combat_timer = 8.0
+			Bus.notification.emit("You stepped in. The mugger turns on you.", "warn")})
+		opts.append({"label": "Walk past — not your business", "act": func(): pass})
+		opts.append({"label": "Back the mugger — hand over your cut", "act": func():
+			cl._event_helped = false
+			for a in cl.event_actors:
+				if is_instance_valid(a) and String(a.get_meta("event_role", "")) == "mugger":
+					a.hostile = false
+					a.combat.combat_timer = 8.0
+			var cut := int(clampi(WorldState.money / 40, 1, 25))
+			WorldState.money = maxi(0, WorldState.money - cut)
+			WorldState.note_deed("helped_mugger", String(cl._event_kind_district), false)
+			Bus.notification.emit("You took the mugger's side. Word travels fast — the block won't forget. (-$%d)" % cut, "warn")})
+	else:
+		opts.append({"label": "Break it up", "act": func():
+			cl._event_helped = true
+			cl._calm_event_actors()
+			Bus.notification.emit("You broke it up. Heads nod — the block noticed.", "info")})
+		opts.append({"label": "Watch it play out", "act": func(): pass})
+		opts.append({"label": "Jump in and swing", "act": func():
+			cl._event_helped = false
+			cl._provoke_event_actors()
+			Bus.notification.emit("You swung first. Now everyone's swinging at you.", "warn")})
+	DialogueUI.start_choices("The street is watching. What do you do?", opts, func(opt):
+		var c: Callable = opt.get("act", Callable())
+		if c.is_valid():
+			c.call()
+		if cl._event_kind == "mugging" and not opt.get("label", "").begins_with("Back"):
+			if bool(opt.get("label", "").begins_with("Step")):
+				pass  # deed lands when the mugger drops (npc._on_died)
+			else:
+				WorldState.note_deed("ignored_mugging", String(cl._event_kind_district), false)
+		elif cl._event_kind != "mugging":
+			WorldState.note_deed("brawl_" + ("helped" if cl._event_helped else "joined"), String(cl._event_kind_district), cl._event_helped)
+		cl._event_kind = "")
+
+
+var _event_kind_district := ""
+
+
+func _calm_event_actors() -> void:
+	for a in event_actors:
+		if is_instance_valid(a) and a.has_method("end_talk"):
+			a.state = a.State.ROUTINE
+			a.hostile = false
+			a._bark("respect")
+
+
+func _provoke_event_actors() -> void:
+	var pp: Vector3 = _intervene_pos
+	for a in event_actors:
+		if not is_instance_valid(a) or not a.has_method("end_talk"):
+			continue
+		if (a.global_position - pp).length() < 14.0:
+			a.hostile = true
+			if a.combat != null:
+				a.combat.combat_timer = 8.0

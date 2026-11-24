@@ -43,6 +43,10 @@ var iframes: float = 0.0
 
 # states
 var counter_t: float = 0.0        # post-parry counter window
+var last_attacker: Node3D = null    # who hit me last — deeds need a name
+var posture: float = 0.0           # GUARD BREAK: blocked hits build posture
+var posture_max: float = 100.0     # breach it -> guard broken, wide open
+var guard_broken_t: float = 0.0    # vulnerable window after a break
 var stagger: float = 0.0          # accumulates; threshold -> knockdown
 var stagger_decay: float = 0.0
 var knocked: bool = false
@@ -201,6 +205,14 @@ func tick(delta: float, move_dir: Vector3) -> Vector3:
 		block_t += delta
 	else:
 		block_t = 0.0
+	# posture decay/broken window (Sifu: guards don't stay chipped forever,
+	# and a break buys the attacker a real punish window)
+	if guard_broken_t > 0.0:
+		guard_broken_t -= delta
+		if guard_broken_t <= 0.0:
+			posture = 0.0
+	else:
+		posture = maxf(0.0, posture - 12.0 * delta)
 	return impulse
 
 
@@ -343,6 +355,7 @@ func _damage_for(kind: String) -> float:
 func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 	if dead or iframes > 0.0:
 		return
+	last_attacker = attacker
 	# dodge iframe handled above; block?
 	var fwd := -owner_node.global_transform.basis.z
 	var facing_attacker := dir.normalized().dot(fwd) < 0.2
@@ -364,8 +377,27 @@ func take_hit(dmg: float, dir: Vector3, kind: String, attacker: Node3D) -> void:
 		dmg *= (1.0 - gs * 0.8)
 		AudioDirector.sfx_at("block_hit", owner_node.global_position + Vector3(0, 1.4, 0))
 		apply_stagger(6.0, dir)
+		# POSTURE: every blocked hit chips the guard. Breach it and the
+		# guard shatters — staggered, can't block, eating +45% for 2.2 s.
+		if guard_broken_t <= 0.0:
+			posture += dmg * (2.2 if kind == "heavy" else 1.0) + 8.0
+			if posture >= posture_max:
+				posture = posture_max
+				guard_broken_t = 2.2
+				blocking = false
+				AudioDirector.sfx_at("parry_clang", owner_node.global_position + Vector3(0, 1.4, 0), 0.7)
+				Effects.burst(owner_node.global_position + Vector3(0, 1.4, 0), "spark", dir)
+				Cinematics.hitstop(0.10)
+				apply_stagger(30.0, dir)
+				if is_player:
+					Bus.notification.emit("Your guard broke — you're wide open!", "warn")
+				else:
+					Bus.notification.emit("GUARD BROKEN — finish them!", "warn")
+		return
 	else:
 		dmg *= (1.0 - armor_prot)
+		if guard_broken_t > 0.0:
+			dmg *= 1.45
 		# SOFT COVER: crouched behind geometry halves incoming damage and
 		# kills stagger (you're braced), but you still can't camp forever —
 		# flanking AI (aggression) punishes turtles.

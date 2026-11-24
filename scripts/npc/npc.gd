@@ -65,6 +65,7 @@ func setup_ped(pid: String, district: String, pos: Vector3) -> void:
 		"outfit_colors": Db.outfits.get(app.get("outfit", "outfit_default"), {}).get("colors", {}),
 		"fem": voice == "ped_f",
 	})
+	bark_ctx = str(d.get("barks", ""))
 	if d.get("routine", "") == "guard":
 		state = State.GUARD
 	if d.get("routine", "") == "vendor":
@@ -342,10 +343,13 @@ func _routine(dt: float, player: Node, dist: float) -> void:
 		if randf() < 2.2 * dt:
 			_bark("gunshots")
 			_react_crime(player)
+	_greet_respect_cd = maxf(0.0, _greet_respect_cd - dt)
 	if _wait_t > 0.0:
 		_wait_t -= dt
 		velocity = Vector3.ZERO
 		if _chat_idle and _day_part() == "nightlife":
+			if bark_ctx == "drunk" and randf() < 0.02:
+				_bark("drunk")
 			anim.mode = "talk" if randf() < 0.6 else "listen"
 			anim.talk_t = maxf(anim.talk_t, 0.0) + dt
 		elif WorldState.weather == WorldState.Weather.RAIN:
@@ -725,6 +729,19 @@ func _combat_state(dt: float, player: Node) -> void:
 				if randf() < 0.25:
 					_backoff_t = randf_range(0.5, 1.0)   # feint-and-reset, not a punching bag
 			anim.mode = "locomote"
+		# GUARD AI (Sifu lesson): trained enemies raise hands in rhythm —
+		# chip their posture with hits to break the guard, then punish.
+		# A broken guard can't re-block until it recovers, so aggression
+		# is rewarded, but turtling enemies are no longer punching bags.
+		if _guard_t > 0.0:
+			_guard_t -= dt
+			if _guard_t <= 0.0:
+				combat.set_block(false)
+		elif not combat.attacking and combat.guard_broken_t <= 0.0 \
+				and float(combat.style.get("guard_strength", 0.0)) >= 0.5 \
+				and dist < 3.4 and randf() < (0.12 + Difficulty.aggression() * 0.2) * dt * 8.0:
+			combat.set_block(true)
+			_guard_t = randf_range(0.6, 1.2)
 		anim.tick(dt, combat.style.get("stance", {}))
 
 
@@ -811,6 +828,10 @@ func react(event: String, from: Vector3) -> void:
 				_flee_from = from
 		"crime":
 			_react_crime(null)
+		"respect_deed":
+			# you just protected someone — the block says so out loud
+			if WorldState.street_rep() >= 0:
+				_bark("respect")
 		"siren":
 			if randf() < 0.4:
 				state = State.GAWK
@@ -826,6 +847,11 @@ func react(event: String, from: Vector3) -> void:
 
 
 var _snitch_cd := 0.0
+var _guard_t := 0.0                 # trained-guard raise timer (posture system)
+var bark_ctx := ""                  # per-ped bark override ("young", "drunk")
+var _greeted_player := false          # already gave the player the time of day
+var _greet_respect_cd := 0.0          # can't farm street rep off one local
+var chatter_peer: Node = null         # mid-conversation partner (overheard)
 
 
 func _react_crime(player: Node) -> void:
@@ -836,7 +862,9 @@ func _react_crime(player: Node) -> void:
 	# suspect is, not where the screaming is. Throttled per-witness so
 	# one crime doesn't become a dozen sirens.
 	_snitch_cd -= get_physics_process_delta_time()
-	if randf() < 0.5 and _snitch_cd <= 0.0:
+	# the block decides whether to talk to the CCPD: protect people and
+	# they lie for you; prey on them and every witness sings
+	if randf() < WorldState.snitch_chance() and _snitch_cd <= 0.0:
 		_snitch_cd = 20.0
 		var tip := _flee_from if player != null else global_position
 		Bus.crime_committed.emit("witnessed", 1, tip)
@@ -855,14 +883,42 @@ func _bark(context: String) -> void:
 
 # ------------------------------------------------------------ conversation --
 func interact(player: Node) -> void:
-	if state == State.DEAD:
+	if state == State.DEAD or state == State.FLEE:
 		return
 	if hostile:
 		return
 	if char_id != "":
 		Bus.world_event.emit("talk_request", {"char": char_id, "node": self})
-	else:
-		_bark(["greet", "city", "rain" if WorldState.weather == WorldState.Weather.RAIN else "night"][randi() % 3])
+		return
+	# CIVILIAN AGENCY: talking to a local is a choice, not a coin-flip bark.
+	# Greet them like a person, show the block respect, or rough them up
+	# for nothing — each path feeds street rep the same way deeds do.
+	if _greeted_player:
+		_bark(bark_ctx if bark_ctx != "" and Db.barks.has(bark_ctx) else "greet")
+		return
+	var opts: Array = []
+	var self_node := self
+	var pl := player
+	var casual := bark_ctx if bark_ctx != "" and Db.barks.has(bark_ctx) else "greet"
+	opts.append({"label": "Ask what's going on in the block", "act": func():
+		self_node._greeted_player = true
+		self_node._bark(casual)})
+	if _greet_respect_cd <= 0.0:
+		opts.append({"label": "Show respect — how's the street doing?", "act": func():
+			self_node._greet_respect_cd = 240.0
+			self_node._bark("respect")
+			WorldState.note_deed("showed_respect", WorldGen.district_at(self_node.global_position), true)})
+	opts.append({"label": "Antagonize them", "act": func():
+		self_node._bark("hostile")
+		WorldState.note_deed("bully", WorldGen.district_at(self_node.global_position), false)
+		if pl != null and randf() < 0.6:
+			self_node._flee_from = pl.global_position
+			self_node.state = State.FLEE})
+	opts.append({"label": "Walk away", "act": func(): pass})
+	DialogueUI.start_choices("The local eyes you.", opts, func(opt):
+		var c: Callable = opt.get("act", Callable())
+		if c.is_valid():
+			c.call())
 
 
 func begin_talk(partner: Node) -> void:
@@ -904,13 +960,40 @@ func _on_died(_cause: String) -> void:
 	add_to_group("corpse")
 	if hostile:
 		_drop_loot()
+	var by_player: bool = combat != null and combat.last_attacker != null \
+			and is_instance_valid(combat.last_attacker) and combat.last_attacker.is_in_group("player")
+	var did_slain := WorldGen.district_at(global_position)
 	if hostile:
 		WorldState.stats["kos"] += 1
+		if by_player and faction_tag != "law":
+			# saved a mugging victim? they say thank you — and the deed
+			# lands even with no other witnesses around
+			if get_meta("event_role", "") == "mugger":
+				for n in get_tree().get_nodes_in_group("humanoid"):
+					if is_instance_valid(n) and String(n.get_meta("event_role", "")) == "victim" \
+							and (n.global_position - global_position).length() < 25.0:
+						WorldState.note_deed("stood_up", did_slain, true)
+						n.react("respect_deed", global_position)
+						n._bark("thank")
+						break
+			# THE BLOCK WATCHES: put down a predator while civilians see
+			# it and the street remembers who protected it
+			for n in get_tree().get_nodes_in_group("humanoid"):
+				if n == self or not is_instance_valid(n) or bool(n.get("hostile")):
+					continue
+				if n.is_in_group("player") or not n.has_method("react"):
+					continue
+				if (n.global_position - global_position).length() < 14.0:
+					WorldState.note_deed("stood_up", did_slain, true)
+					n.react("respect_deed", global_position)
+					break
 		for n in get_tree().get_nodes_in_group("enemy"):
 			if n != self and is_instance_valid(n) and n.has_method("react") and (n.global_position - global_position).length() < 30.0:
 				n.react("ally_down", global_position)
 	else:
 		Bus.crime_committed.emit("homicide", 5, global_position)
+		if by_player:
+			WorldState.note_deed("preyed_on", did_slain, false)
 		for n in get_tree().get_nodes_in_group("humanoid"):
 			if n != self and is_instance_valid(n) and n.has_method("react") and (n.global_position - global_position).length() < 25.0:
 				n.react("gunshots", global_position)

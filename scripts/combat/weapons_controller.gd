@@ -189,6 +189,10 @@ func _impact(obj: Object, hit: Dictionary, w: Dictionary, shooter_is_player: boo
 				dmg *= 1.0
 			cc.take_hit(dmg, (obj.global_position - owner_node.global_position).normalized() * -1.0, "bullet", owner_node)
 			if shooter_is_player:
+				# HITSTOP ON BULLETS (Max Payne 3 lesson): a confirmed hit
+				# freezes the world for a beat — kills freeze longest. This
+				# was melee-only before; guns felt like they punched paper.
+				Cinematics.hitstop(0.09 if cc.dead else 0.045)
 				Bus.crime_committed.emit("assault", 3, pos)
 				# gunplay feeds the WEAPON mastery track: hits grow it,
 				# kills grow it faster — mastery pays back as steadier hands
@@ -200,10 +204,21 @@ func _impact(obj: Object, hit: Dictionary, w: Dictionary, shooter_is_player: boo
 		if obj.has_method("damage"):
 			obj.damage(float(w.get("dmg", 20)) * 0.5)
 		return
-	# world surface
+	# world surface — IMPACT MATERIAL VARIETY: the same concrete ping on
+	# every surface is what makes gunplay feel cheap. Docks ring metal,
+	# the Mile and Heights shatter glass, the Furnace splinters wood.
 	var mat := "concrete"
-	AudioDirector.sfx_at("imp_" + mat, pos, 0.8)
-	Effects.burst(pos, "spark", nrm)
+	match WorldGen.district_at(pos):
+		"ashfall_docks", "slagworks":
+			mat = "metal"
+		"crown_heights":
+			mat = "glass"
+		"neon_mile":
+			mat = "glass" if randf() < 0.5 else "concrete"
+		"the_furnace", "kiln_row":
+			mat = "wood" if randf() < 0.5 else "concrete"
+	AudioDirector.sfx_at("imp_" + mat, pos, 0.8 + randf_range(-0.06, 0.06))
+	Effects.burst(pos, "spark" if mat != "wood" else "dust", nrm)
 	Effects.decal(pos, nrm, "scorch", 0.25)
 
 

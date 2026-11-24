@@ -191,6 +191,28 @@ func _build_top() -> void:
 	_district_lbl.offset_bottom = 48
 	_district_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(_district_lbl)
+	# GUARD-POSTURE BAR: floats under the district name whenever you've
+	# locked a trained fighter. Chip it with pressure; break it and punish.
+	_posture_bar = _bar(Color(0.95, 0.45, 0.2), 220.0)
+	_posture_bar.anchor_left = 0.5
+	_posture_bar.anchor_right = 0.5
+	_posture_bar.offset_left = -110
+	_posture_bar.offset_right = 110
+	_posture_bar.offset_top = 50
+	_posture_bar.offset_bottom = 58
+	_posture_bar.custom_minimum_size = Vector2(220, 8)
+	_posture_bar.visible = false
+	_root.add_child(_posture_bar)
+	# STREET REP chip: the block's verdict on you, always in view
+	_street_lbl = _lbl(13, Color(0.7, 0.85, 0.75))
+	_street_lbl.anchor_left = 0.5
+	_street_lbl.anchor_right = 0.5
+	_street_lbl.offset_left = -160
+	_street_lbl.offset_right = 160
+	_street_lbl.offset_top = 62
+	_street_lbl.offset_bottom = 80
+	_street_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_root.add_child(_street_lbl)
 	_ammo_lbl = _lbl(17, Color(0.9, 0.85, 0.7))
 	_ammo_lbl.anchor_left = 1.0
 	_ammo_lbl.anchor_right = 1.0
@@ -592,6 +614,28 @@ func _process(delta: float) -> void:
 		_update_lock_pos(player)
 	else:
 		_lock_marker.visible = false
+	# guard-posture readout on the locked target
+	if _posture_bar != null:
+		var tc = null
+		if player.lock_target != null and is_instance_valid(player.lock_target):
+			tc = player.lock_target.get("combat")
+		if tc != null and (tc.posture > 1.0 or tc.guard_broken_t > 0.0):
+			_posture_bar.visible = true
+			_posture_bar.value = clampf(tc.posture / tc.posture_max * 100.0, 0.0, 100.0)
+			_posture_bar.modulate = Color(1.6, 0.5, 0.3) if tc.guard_broken_t > 0.0 else Color(1, 1, 1)
+		else:
+			_posture_bar.visible = false
+	# street rep chip
+	if _street_lbl != null:
+		var sr := WorldState.street_rep()
+		if sr >= 8:
+			_street_lbl.text = "STREET REP: THE BLOCK HAS YOUR BACK"
+			_street_lbl.modulate = Color(0.55, 0.95, 0.7)
+		elif sr <= -8:
+			_street_lbl.text = "STREET REP: THE BLOCK TALKS ABOUT YOU"
+			_street_lbl.modulate = Color(0.95, 0.45, 0.4)
+		else:
+			_street_lbl.text = ""
 	_update_visibility()
 	# gun UI
 	var has_gun: bool = player.weapons != null and bool(player.weapons.is_gun())
@@ -610,6 +654,8 @@ func _process(delta: float) -> void:
 
 
 var _lock_screen := Vector2.ZERO
+var _posture_bar: ProgressBar = null
+var _street_lbl: Label = null
 
 
 func _update_lock_pos(player: Node) -> void:

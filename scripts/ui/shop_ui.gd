@@ -114,7 +114,7 @@ func open_shop(shop_id: String) -> void:
 	_tab = "buy"
 	_build_list()
 	AudioDirector.sfx("shop_bell", 0.2)
-	var keeper: String = s.get("keeper", "")
+	_keeper_id = str(s.get("keeper", ""))
 	var dlg: String = s.get("dialogue", "")
 	if dlg != "" and Db.dialogue.has(dlg) and not DialogueUI.is_open():
 		DialogueUI.start_tree(dlg)
@@ -407,6 +407,7 @@ func _row(name: String, price: String, blurb: String, cb) -> Control:
 
 
 var _grudge := 0.0     # price markup when the keeper's faction hates you
+var _keeper_id := ""   # who's behind the till (thanks bark on purchase)
 
 
 func _make_buy(id: String, price: int) -> void:
@@ -440,6 +441,12 @@ func _make_buy(id: String, price: int) -> void:
 		Bus.notification.emit("Outfit equipped — look at you.", "info")
 	AudioDirector.sfx("cash", 0.3)
 	Bus.notification.emit("Bought %s." % _stock_entry(id).get("name", id), "info")
+	# RDR2 lesson: the till is a relationship, not a vending machine —
+	# keepers thank you, and they remember who the block respects
+	var kthanks: Array = Db.barks.get("thank", [])
+	if _keeper_id != "" and not kthanks.is_empty() and WorldState.street_rep() >= 0:
+		var kname: String = Db.character(_keeper_id).get("short", Db.character(_keeper_id).get("name", "Keeper"))
+		Bus.dialogue_line.emit(kname, kthanks[randi() % kthanks.size()], "")
 	_refresh_money()
 
 
