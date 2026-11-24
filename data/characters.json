@@ -448,5 +448,50 @@
   },
   "home_district": "kiln_row",
   "role": "minor"
+ },
+ "pawnkeep": {
+  "name": "Solomon Pike",
+  "short": "Pike",
+  "title": "runs Pawn 24H",
+  "voice": "ped_m",
+  "faction": "none",
+  "age": 54,
+  "personality": [
+   "wary",
+   "appraiser",
+   "seen-it-all"
+  ],
+  "appearance": {
+   "height": 1.75,
+   "build": 0.6,
+   "skin": 3,
+   "hair": "buzz",
+   "hair_color": 7,
+   "face": 5,
+   "outfit": "outfit_default"
+  },
+  "home_district": "neon_mile"
+ },
+ "vendor": {
+  "name": "Street Vendor",
+  "short": "Vendor",
+  "title": "noodle stall, corner of Row",
+  "voice": "ped_f",
+  "faction": "none",
+  "age": 38,
+  "personality": [
+   "brisk",
+   "gossip-fluent"
+  ],
+  "appearance": {
+   "height": 1.66,
+   "build": 0.55,
+   "skin": 5,
+   "hair": "bun",
+   "hair_color": 1,
+   "face": 9,
+   "outfit": "outfit_default"
+  },
+  "home_district": "neon_mile"
  }
 }

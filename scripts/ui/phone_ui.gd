@@ -729,11 +729,16 @@ func _show_stats() -> void:
 		if WorldState.district_heat[did] > 12.0:
 			hot.append("%s %d%%" % [Db.district(did).get("name", did), int(WorldState.district_heat[did])])
 	vb.add_child(_stat_line("STREET HEAT", ", ".join(hot) if not hot.is_empty() else "quiet everywhere"))
-	# career numbers
+	# the street ledger — every number the game has been keeping all along
 	var st: Dictionary = WorldState.stats
-	vb.add_child(_stat_line("CAREER", "KOs %d · jobs %d · ghost runs %d · bodies hidden %d · fights won %d" % [
-		int(st.get("kos", 0)), int(st.get("jobs_done", 0)), int(st.get("ghost_runs", 0)),
-		int(st.get("bodies_hidden", 0)), int(st.get("fights_won", 0))]))
+	var mins := int(float(st.get("playtime", 0.0)) / 60.0)
+	vb.add_child(_stat_line("THE STREET LEDGER", "time on the clock: %dh %dm" % [mins / 60, mins % 60]))
+	vb.add_child(_stat_line("MOVEMENT", "%.1f km on foot · %.1f km driven" % [float(st.get("on_foot_km", 0.0)), float(st.get("driven_km", 0.0))]))
+	vb.add_child(_stat_line("CRIMES", "%d thefts · %d kills · %d arrests · %d deaths" % [int(st.get("thefts", 0)), int(st.get("kos", 0)), int(st.get("arrests", 0)), int(st.get("deaths", 0))]))
+	vb.add_child(_stat_line("FIGHTS", "%d won · %d gambles" % [int(st.get("fights_won", 0)), int(st.get("gambled", 0))]))
+	vb.add_child(_stat_line("WHEELS", "%d races won · %d wrecks · %d resprays · %d ghost runs" % [int(st.get("races_won", 0)), int(st.get("wrecks", 0)), int(st.get("resprays", 0)), int(st.get("ghost_runs", 0))]))
+	vb.add_child(_stat_line("BODIES", "%d found · %d hidden · %d collectibles" % [int(st.get("bodies_found", 0)), int(st.get("bodies_hidden", 0)), int(st.get("collectibles", 0))]))
+	vb.add_child(_stat_line("CAREER", "jobs done: %d" % int(st.get("jobs_done", 0))))
 
 
 func _stat_line(title: String, sub: String) -> VBoxContainer:

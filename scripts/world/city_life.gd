@@ -313,6 +313,14 @@ func _on_crime(crime: String, severity: int, pos: Vector3) -> void:
 	# SOUND PROPAGATION: loud crimes ripple outward — peds within earshot
 	# panic even if they never saw a thing. Rain muffles the city; a
 	# suppressor keeps the ripple from starting at all (no gunfire crime).
+	# a carjacking in the street: whoever SEES it reacts (smashed glass
+	# is loud, hot-wiring is not — severity tells them apart)
+	if crime == "theft" and severity >= 3:
+		for n in get_tree().get_nodes_in_group("humanoid"):
+			if not is_instance_valid(n) or not n.has_method("react"):
+				continue
+			if (n.global_position - pos).length() < 20.0:
+				n.react("crime", pos)
 	var loud := crime in ["gunfire", "explosion", "homicide"]
 	if loud:
 		var radius := 45.0 if crime == "explosion" else 34.0
@@ -425,14 +433,36 @@ func _police_tick(delta: float, player: Node) -> void:
 				u["shoot_t"] = randf_range(1.6, 3.2) * (1.35 - Difficulty.aggression() * 0.35)
 				_cruiser_shot(n, player, dist)
 		else:
-			if n.state != n.State.COMBAT and n.state != n.State.DEAD:
-				n.state = n.State.COMBAT
-			if dist < 2.0 and player.in_vehicle == null and (pp - n.global_position).length() < 2.6:
-				_try_arrest(delta, player, dist)
+			if _is_investigator(n):
+				pass   # crime-scene officers work the wreck, not the chase
+			else:
+				if n.state != n.State.COMBAT and n.state != n.State.DEAD:
+					n.state = n.State.COMBAT
+				if dist < 2.0 and player.in_vehicle == null and (pp - n.global_position).length() < 2.6:
+					_try_arrest(delta, player, dist)
+	# RUBBERNECKING: sirens are theater — the block watches the show
+	_siren_gawk_t -= delta
+	if _siren_gawk_t <= 0.0:
+		_siren_gawk_t = 1.1
+		for u in police_units:
+			if not is_instance_valid(u["node"]) or u["kind"] != "car":
+				continue
+			for n in get_tree().get_nodes_in_group("humanoid"):
+				if not is_instance_valid(n) or not n.has_method("react"):
+					continue
+				if n.state in [n.State.COMBAT, n.State.DEAD, n.State.FLEE]:
+					continue
+				if (n.global_position - u["node"].global_position).length() < 16.0:
+					n.react("siren", u["node"].global_position)
 	# roadblocks at 3+
 	if wanted >= 3 and _roadblock_nodes.is_empty():
 		_make_roadblock(pp)
 	# --- pursuit escalation: the deeper the heat, the nastier the tactics ---
+	# pursuit chatter: a police radio cutting through the cabin
+	_radio_chatter_t -= delta
+	if wanted >= 2 and _radio_chatter_t <= 0.0:
+		_radio_chatter_t = randf_range(9.0, 18.0)
+		AudioDirector.sfx("police_radio", 0.18, 0.3)
 	_spike_t -= delta
 	if wanted >= 4 and player.in_vehicle != null and _spike_t <= 0.0:
 		_spike_t = 18.0
@@ -444,6 +474,8 @@ func _police_tick(delta: float, player: Node) -> void:
 var _spike_t := 0.0
 var _spikes: Array = []
 var _pit_cd := 0.0
+var _radio_chatter_t := 6.0
+var _siren_gawk_t := 1.0
 
 
 func _drop_spike_strips(pp: Vector3) -> void:
@@ -505,7 +537,12 @@ func _pit_tick(delta: float, player: Node) -> void:
 	if _pit_cd > 0.0 or player.in_vehicle == null:
 		return
 	var pv: Node = player.in_vehicle
-	var pvel: Vector3 = pv.velocity if "velocity" in pv else Vector3.ZERO
+	# VehicleBody3D carries linear_velocity; CharacterBody3D carries velocity
+	var pvel: Vector3 = Vector3.ZERO
+	if "linear_velocity" in pv:
+		pvel = pv.linear_velocity
+	elif "velocity" in pv:
+		pvel = pv.velocity
 	if pvel.length() < 9.0:
 		return                          # PIT needs speed to matter
 	for u in police_units:
@@ -947,9 +984,54 @@ const TURF_TAG := {"crew": "crew", "corp": "corp"}
 ## negative) and they send collectors. Scales with Difficulty — late game
 ## the collections arrive heavier.
 var _fires: Array = []
+var _invest_cd := 0.0
+var _investigators: Array = []   # {node, t} — cops working a fire scene
+
+
+func _is_investigator(n: Node) -> bool:
+	for inv in _investigators:
+		if inv["node"] == n:
+			return true
+	return false
+
+
+func _investigate_fires(delta: float) -> void:
+	## A burning hulk in the street is a crime scene with a countdown.
+	## CCPD rolls up to work it: two officers loiter by the wreck for a
+	## while, then get bored and wander off (despawn). Witnesses to your
+	## arson will find badges standing in the ashes.
+	_invest_cd -= delta
+	# retire finished investigators
+	for inv in _investigators.duplicate():
+		inv["t"] -= delta
+		if inv["t"] <= 0.0 or not is_instance_valid(inv["node"]):
+			if is_instance_valid(inv["node"]):
+				inv["node"].queue_free()
+			_investigators.erase(inv)
+	if _invest_cd > 0.0:
+		return
+	for n in get_tree().get_nodes_in_group("burning"):
+		if not is_instance_valid(n) or not n.is_in_group("vehicle"):
+			continue
+		_invest_cd = 25.0
+		for i in 2:
+			var cop := CharacterBody3D.new()
+			cop.set_script(load(PED_SCENE))
+			get_parent().add_child(cop)
+			cop.setup_enemy("cop", n.global_position + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3)), "law")
+			cop.hostile = false
+			cop.display_name = "CCPD Investigator"
+			cop.state = cop.State.GAWK
+			cop._flee_from = n.global_position
+			cop._gawk_t = 30.0
+			_investigators.append({"node": cop, "t": randf_range(40.0, 70.0)})
+			police_units.append({"node": cop, "kind": "foot", "t": 0.0})
+		Bus.notification.emit("CCPD are working the burning wreck.", "info")
+		break
 
 
 func _fire_tick(delta: float, player: Node) -> void:
+	_investigate_fires(delta)
 	for f in _fires.duplicate():
 		f["t"] -= delta
 		if f["t"] <= 0.0 or not is_instance_valid(f["node"]):

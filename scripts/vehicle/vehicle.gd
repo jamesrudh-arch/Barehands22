@@ -435,15 +435,49 @@ func player_drive(delta: float, mv: Vector2, brake: bool, handbrake: bool, horn:
 	_update_audio_and_lights(delta, true)
 
 
+static var _driver_mesh: CapsuleMesh = null
+static var _driver_mat: StandardMaterial3D = null
+
+
 func set_lane(loop: PackedVector3Array, speed: float) -> void:
 	_lane = loop
 	_lane_i = 0
 	_traffic_speed = speed
 	is_traffic = true
 	parked = false
+	# OCCUPIED CARS: traffic has drivers you can see — a shared low-poly
+	# silhouette per cabin, so the streets read as full of people, not
+	# rolling empty boxes. Taxis also fly a lit roof sign.
+	if vehicle_type == "car" and _civ_driver == null:
+		if _driver_mesh == null:
+			_driver_mesh = CapsuleMesh.new()
+			_driver_mesh.radius = 0.22
+			_driver_mesh.height = 0.95
+			_driver_mat = StandardMaterial3D.new()
+			_driver_mat.albedo_color = Color(0.22, 0.21, 0.25)
+		_civ_driver = MeshInstance3D.new()
+		_civ_driver.mesh = _driver_mesh
+		_civ_driver.material_override = _driver_mat
+		_civ_driver.position = Vector3(-0.38, 0.95, -0.05)
+		add_child(_civ_driver)
+		_civ_driver_perm = true
+	if vehicle_def_id == "taxi":
+		var sign := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.42, 0.14, 0.18)
+		sign.mesh = box
+		var sm := StandardMaterial3D.new()
+		sm.albedo_color = Color(0.95, 0.75, 0.15)
+		sm.emission_enabled = true
+		sm.emission = Color(0.95, 0.75, 0.15)
+		sm.emission_energy_multiplier = 0.9
+		sign.material_override = sm
+		sign.position = Vector3(0, 1.32, -0.1)
+		add_child(sign)
 
 
 var _civ_driver: MeshInstance3D = null
+var _civ_driver_perm := false   # true when installed by set_lane (traffic)
 
 
 func civ_panic() -> void:
@@ -498,9 +532,10 @@ func traffic_tick(delta: float) -> void:
 		blocked = false
 		if _horn_ai_t <= 0.0:
 			_horn_ai_t = randf_range(1.4, 3.0)
-			AudioDirector.sfx_at("veh_horn", global_position, 0.5)
-		if _panic_t <= 0.0 and _civ_driver != null:
-			# calmed down: they park up and walk out of frame
+			AudioDirector.sfx_at("veh_horn_long" if randf() < 0.4 else "veh_horn", global_position, 0.5)
+		if _panic_t <= 0.0 and _civ_driver != null and not _civ_driver_perm:
+			# calmed down: the hijacker parks up and walks out of frame
+			# (permanent traffic drivers stay behind the wheel)
 			_civ_driver.queue_free()
 			_civ_driver = null
 	# living traffic: rain slows everyone; sirens nearby pull cars to the

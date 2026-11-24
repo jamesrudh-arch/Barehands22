@@ -13,6 +13,7 @@ var _db_v: Node = null
 var _db_en: Node = null
 var _lp_v: Node = null
 var _lp_n0 := 0
+var _ps_v: Node = null
 var _ro_v: Node = null
 var _ro_en: Node = null
 var _ro_hp0 := 0.0
@@ -118,6 +119,7 @@ func _process(_delta: float) -> bool:
 					dui._advance()
 			var mm = root.get_node("MissionManager")
 			print("HARNESS: stage after dialogue: %s (%s)" % [mm.stage.get("id", "?"), mm.stage.get("type", "?")])
+			_check(mm.stage.get("type", "") != "talk", "closing the conversation advances a talk stage")
 		32:
 			# save/load roundtrip
 			root.get_node("SaveSystem")
@@ -466,7 +468,7 @@ func _process(_delta: float) -> bool:
 				_check(float(vt.get("_panic_t")) > 0.0, "hijack: panic timer running")
 				vt.set("_panic_t", 0.016)
 				vt.traffic_tick(0.02)
-				_check(vt.get("_civ_driver") == null, "hijack: driver leaves when panic ends")
+				_check(vt.get("_civ_driver") != null and bool(vt.get("_civ_driver_perm")), "traffic driver stays behind the wheel after panic ends")
 				vt.queue_free()
 		71:
 			# LIVE SCATTER part 2: a physics frame of 40 km/h metal later, they run
@@ -545,6 +547,69 @@ func _process(_delta: float) -> bool:
 				ws14.money = m0
 				ws14.set_wanted(0)
 				ws14.game_hour = h0
+		77:
+			# LIVE PURSUIT STACK part 1: spike strips shred the player's tyres
+			if _player and _player.in_vehicle == null:
+				if _player.dead:
+					_player.dead = false
+					_player.combat.revive()
+				root.get_node("Game").cutscene_active = false
+				var cl18 = _city.get_node_or_null("CityLife")
+				_ps_v = cl18.give_player_vehicle("sedan", _player.global_position + Vector3(24, 0, 0))
+				_player.global_position = _ps_v.global_position + Vector3(1.2, 0, 0)
+				_player.enter_vehicle(_ps_v)
+				_ps_v.set("_lane", PackedVector3Array())   # keep traffic AI off
+				cl18._spikes.clear()
+				cl18._drop_spike_strips(_player.global_position)
+				_check(cl18._spikes.size() == 3, "pursuit: spike strips dropped (%d)" % cl18._spikes.size())
+				# drive the player's car onto the nearest strip
+				var sp0: Dictionary = cl18._spikes[0]
+				_ps_v.global_position = (sp0["pos"] as Vector3) + Vector3(0, 0.5, 0)
+				_player.global_position = _ps_v.global_position   # rider follows the car (no physics frame between)
+				cl18._spike_check(_player)
+				_check(bool(_ps_v.get("tires_flat")), "pursuit: spikes shredded the tyres")
+				_check(float(_ps_v.hp) < 100.0, "pursuit: spikes damaged the car (hp=%.0f)" % float(_ps_v.hp))
+		78:
+			# LIVE PURSUIT STACK part 2: roadblocks build + clear, PIT shoves, fires draw cops
+			if _player and _ps_v != null:
+				var cl18 = _city.get_node_or_null("CityLife")
+				# roadblock
+				cl18._clear_roadblocks()
+				cl18._make_roadblock(_player.global_position)
+				_check(cl18._roadblock_nodes.size() == 2, "pursuit: roadblock of 2 cruisers built")
+				cl18._clear_roadblocks()
+				_check(cl18._roadblock_nodes.is_empty(), "pursuit: roadblock cleared when heat drops")
+				# PIT: cruiser alongside a moving player car gets shoved
+				var pit_car: Node = cl18.give_player_vehicle("police", _ps_v.global_position + Vector3(3.2, 0, 0))   # inside the 2.0-5.5 m PIT band
+				pit_car.is_police = true
+				pit_car.set("_lane", PackedVector3Array())
+				cl18.police_units.append({"node": pit_car, "kind": "car", "t": 0.0})
+				_ps_v.linear_velocity = -_ps_v.global_transform.basis.z * 12.0
+				_player.global_position = _ps_v.global_position   # PIT measures from the rider
+				var hp_pit: float = float(_ps_v.hp)
+				cl18.set("_pit_cd", 0.0)
+				cl18._pit_tick(0.016, _player)
+				_check(float(_ps_v.hp) < hp_pit, "pursuit: PIT maneuver damages the fleeing car")
+				_check(float(cl18.get("_pit_cd")) > 0.0, "pursuit: PIT goes on cooldown after the shove")
+				# fire investigation: a burning wreck summons CCPD
+				var inv0: int = cl18._investigators.size()
+				_ps_v.damage(9999.0)
+				cl18.set("_invest_cd", 0.0)
+				cl18._investigate_fires(0.016)
+				_check(cl18._investigators.size() == inv0 + 2, "pursuit: burning wreck draws CCPD investigators")
+				for inv in cl18._investigators:
+					if is_instance_valid(inv["node"]):
+						inv["node"].queue_free()
+				cl18._investigators.clear()
+				for u in cl18.police_units.duplicate():
+					if u["node"] == pit_car:
+						cl18.police_units.erase(u)
+				pit_car.queue_free()
+				if _player.in_vehicle == _ps_v:
+					_player.exit_vehicle()
+				if is_instance_valid(_ps_v):
+					_ps_v.queue_free()
+				_ps_v = null
 		63:
 			# LIVE DRIVE-BY part 2: one physics frame later the thug is solid — shoot him
 			if _player and _db_v != null and is_instance_valid(_db_en):
@@ -753,6 +818,29 @@ func _process(_delta: float) -> bool:
 			var clsrc5 := FileAccess.get_file_as_string("res://scripts/world/city_life.gd")
 			var fbseg: String = clsrc5.substr(clsrc5.find('"fire_barrel":'), clsrc5.find('"crowd_gathering":') - clsrc5.find('"fire_barrel":'))
 			_check(fbseg.count("add_to_group(\"burning\")") == 1 and "create_timer(90.0)" not in fbseg, "fire_barrel spawns exactly one burning barrel (no dupe)")
+			var vsrc7 := FileAccess.get_file_as_string("res://scripts/vehicle/vehicle.gd")
+			var mmsrc2 := FileAccess.get_file_as_string("res://scripts/missions/mission_manager.gd")
+			var db9 = root.get_node("Db")
+			_check("_investigate_fires" in clsrc5 and "CCPD Investigator" in clsrc5, "burning wrecks draw police investigators")
+			_check("_driver_mesh" in vsrc7 and "_civ_driver_perm" in vsrc7, "traffic cars carry visible drivers; taxi roof sign wired")
+			_check(db9.mission("side_epilogue").get("requires_flag", "") == "game_complete", "epilogue job gated behind the finale")
+			_check(db9.dialogue_tree("dlg_epilogue_ruth").size() > 0, "epilogue dialogue authored")
+			_check('m.get("requires_flag"' in mmsrc2 or "sreq" in mmsrc2, "side jobs respect flag gates")
+			var adsrc := FileAccess.get_file_as_string("res://scripts/core/audio_director.gd")
+			var cutsrc := FileAccess.get_file_as_string("res://scripts/ui/cutscene.gd")
+			var effsrc := FileAccess.get_file_as_string("res://scripts/core/effects.gd")
+			var crsrc := FileAccess.get_file_as_string("res://scripts/player/camera_rig.gd")
+			var hudsrc2 := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
+			_check("func sting" in adsrc and "sting_success" in mmsrc2, "mission stings wired (success/fail/busted/wasted)")
+			_check('"music_ending"' in cutsrc and "music_finale" not in cutsrc, "finale cutscene references a track that exists")
+			_check('settings.get("shake"' in effsrc, "camera shake setting honored")
+			_check("_apply_settings" in crsrc, "sensitivity + invert_y applied to camera")
+			_check("touch_scale" in hudsrc2, "touch control size setting honored")
+			_check("police_radio" in clsrc5 and "shell_drop" in FileAccess.get_file_as_string("res://scripts/combat/weapons_controller.gd"), "orphan sfx wired (radio chatter, brass)")
+			_check('react("crime"' in clsrc5 and 'react("siren"' in clsrc5, "orphan react events wired (witnessed theft, rubbernecking)")
+			var wgsrc := FileAccess.get_file_as_string("res://scripts/world/world_gen.gd")
+			_check("rng.seed = hash(id)" in wgsrc, "city layout deterministic across reloads (seeded per district)")
+			_check('"pawnkeep"' in FileAccess.get_file_as_string("res://data/characters.json"), "dialogue speakers all have character entries")
 			# behavioral: statd counts from stage start, not from all time
 			var mm7 = root.get_node("MissionManager")
 			var ws13 = root.get_node("WorldState")

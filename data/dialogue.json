@@ -957,5 +957,50 @@
     }
    }
   ]
+ },
+ "dlg_epilogue_ruth": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "ruth",
+    "text": "There you are. Whole city's been saying your name in whispers this week. Funny how quiet a name sounds when nobody's shouting it.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "eli",
+    "text": "Marcus is home. That's the only part that matters.",
+    "next": "c"
+   },
+   "c": {
+    "spk": "ruth",
+    "text": "It is. And the block knows it. Which is why I've got one more box for you \u2014 Bishop's shelter ran dry overnight. Medicine. Bridges are crawling with whoever's left of Crowe's paperwork.",
+    "next": "d"
+   },
+   "d": {
+    "spk": "eli",
+    "text": "One last errand.",
+    "next": "e"
+   },
+   "e": {
+    "spk": "ruth",
+    "text": "The last ones are the ones that decide what kind of name you keep. Go on, child. I'll leave the light on.",
+    "next": ""
+   }
+  }
+ },
+ "dlg_epilogue_choice": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "spk": "bishop",
+    "text": "You made it. Half the shelter's already sleeping easier and they'll never know whose hands carried it.",
+    "next": "b"
+   },
+   "b": {
+    "spk": "eli",
+    "text": "Keep it that way.",
+    "next": ""
+   }
+  }
  }
 }

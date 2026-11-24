@@ -216,6 +216,7 @@ func start_reload() -> bool:
 	reloading = true
 	reload_t = 0.0
 	AudioDirector.sfx("reload_magout", 0.04)
+	AudioDirector.sfx("shell_drop", 0.03, 0.4)
 	return true
 
 

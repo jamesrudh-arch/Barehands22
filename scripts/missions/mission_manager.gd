@@ -77,9 +77,12 @@ func _refresh_offers() -> void:
 		var giver: String = Db.mission(mid).get("giver", Db.mission(mid).get("contact", "marcus"))
 		CallManager.schedule_call(giver, "offer", mid, 6.0)
 		break
-	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait", "side_repo", "side_partner", "side_heatmagnet", "side_torch", "side_clean_wheels"]:
+	for sid in ["side_courier", "side_race1", "side_race2", "side_nightshift", "side_dockwork", "side_fightclub", "side_ledger", "side_favors", "side_ghost", "side_rooftops", "side_bait", "side_repo", "side_partner", "side_heatmagnet", "side_torch", "side_clean_wheels", "side_epilogue"]:
 		var m := Db.mission(sid)
 		if not m.get("repeatable", false) and completed.has(sid):
+			continue
+		var sreq: String = m.get("requires_flag", "")
+		if sreq != "" and not WorldState.get_flag(sreq, false):
 			continue
 		side_offer.append(sid)
 
@@ -399,6 +402,10 @@ func _on_dialogue_ended() -> void:
 			var opts: Array = rt["pending_opts"]
 			rt.erase("pending_opts")
 			DialogueUI.start_choices(stage.get("text", "Choose:"), opts, _on_choice_picked)
+	elif t == "talk":
+		# closing the conversation IS the objective — advance the beat
+		if rt.get("done", false):
+			_advance_stage()
 	elif t == "phone":
 		if rt.get("tree", "") != "" and rt.get("answered", false):
 			rt["answered"] = false
@@ -704,6 +711,7 @@ func _complete(success: bool) -> void:
 		if rew.has("stats"):
 			WorldState.stats[rew["stats"][0]] = WorldState.stats.get(rew["stats"][0], 0) + int(rew["stats"][1])
 		AudioDirector.sfx("ui_confirm", 0.4)
+		AudioDirector.sting("sting_success")
 		Bus.notification.emit("JOB COMPLETE: %s (+%d cr)" % [m.get("title", mid), int(rew.get("money", 0))], "mission")
 		Progression.add_xp(int(rew.get("xp", 150)) if rew.has("xp") else 150, m.get("title", mid))
 		if WorldState.get_flag("game_complete", false):
@@ -713,6 +721,7 @@ func _complete(success: bool) -> void:
 		failed[mid] = true
 		mission_failed.emit(mid)
 		AudioDirector.sfx("ui_error", 0.4)
+		AudioDirector.sting("sting_fail")
 		Bus.notification.emit("JOB FAILED: %s" % m.get("title", mid), "error")
 	_refresh_offers()
 
@@ -733,6 +742,7 @@ func _on_busted() -> void:
 		player.global_position = _poi_pos("poi_precinct") + Vector3(0, 0.1, 6.0)
 	if active_id != "" and stage.get("type", "") in ["stealth", "drive_timed", "race"]:
 		_complete(false)
+	AudioDirector.sting("sting_busted")
 	Bus.notification.emit("BUSTED. Fine: %d cr." % fine, "error")
 
 

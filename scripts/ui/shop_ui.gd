@@ -90,6 +90,9 @@ func open_shop(shop_id: String) -> void:
 	if s.is_empty():
 		return
 	_shop_id = shop_id
+	# working doors: garages and pawn shops have roller shutters, not bells
+	if shop_id in ["motors", "pawn", "gunsmith"]:
+		AudioDirector.sfx("door_metal_open", 0.35)
 	# FACTION CONSEQUENCES AT THE TILL: burn a keeper's faction and the
 	# welcome curdles — surly service at +25% prices, and past -60 rep
 	# they refuse you outright.
@@ -118,6 +121,8 @@ func open_shop(shop_id: String) -> void:
 
 
 func close_shop() -> void:
+	if _shop_id in ["motors", "pawn", "gunsmith"]:
+		AudioDirector.sfx("door_metal_close", 0.3)
 	open = false
 	_panel.visible = false
 	AudioDirector.sfx("ui_back", 0.15)

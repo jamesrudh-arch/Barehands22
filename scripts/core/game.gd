@@ -148,6 +148,7 @@ func pause_toggle() -> void:
 
 func game_over(kind: String) -> void:
 	set_state(State.GAMEOVER)
+	AudioDirector.sting("sting_wasted" if kind != "busted" else "sting_busted")
 	Bus.notification.emit(kind.to_upper(), "gameover")
 
 
