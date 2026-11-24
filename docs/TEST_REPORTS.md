@@ -11,13 +11,16 @@ Results below are *sandbox logic* proof only (see TRACEABILITY vocabulary).
 ## T-01 Asset import
 
 Command: `godot --headless --path . --import`
-Result: **PASS** — 333 assets imported; no errors. (Only historical error
-was the then-missing boot.tscn, since created.)
+Result: **PASS** — **369** assets imported; **0 errors** (re-run at wave 49.5
+after `rm -rf .godot/imported`, ~10 s). The `[remap]` metadata on all 96 world
+textures reads `"imported_formats": ["s3tc_bptc", "etc2_astc"]` with
+`"vram_texture": true` — 96 × 2 `.ctex` artefacts, every one mipmapped and
+`DATA_FORMAT_IMAGE`. (Earlier runs reported 333 assets; the set has grown.)
 
 ## T-02 GDScript syntax gate (per-write)
 
 Command: `/tmp/gvenv/bin/gdparse <file>` after every script write.
-Result: **PASS** — all 33 scripts (+ tests) parse-clean. Note: gdparse
+Result: **PASS** — all **44** scripts (+ tests) parse-clean. Note: gdparse
 misses engine-level typing rules; T-04/T-05 are the authority.
 
 ## T-03 City soak (main scene = city, 100–110 s)
@@ -35,7 +38,19 @@ no errors.
 ## T-05 Gameplay harness (`tests/harness.gd`, SceneTree script)
 
 Command: `godot --headless --path . -s res://tests/harness.gd`
-Result: **PASS — 26/26 checks, 0 fails, 0 script errors** (latest run, 2026-11-23 defect burn-down; checks 46 added: traffic-light query, touch JMP button, mission stage serialization):
+Result: **PASS — 585/585 checks, 0 fails, 0 script errors, exit 0** (latest run,
+wave 49.5). The 26-check table below is the *original* wave-1 skeleton, kept for
+history; the suite has since grown to 585 across 98 steps, the last of which
+(step 98) is XOGOT/iPhone compliance — 24 assertions covering texture import
+params, POT/size, both VRAM format flags, the `.ctex` header, Virtual
+Controller, `config/features`, touch-button→Input-Map binding, the GDScript-only
+ban, stretch/scale_mode, the audio name cross-reference and the iOS lifecycle
+save.
+
+**Determinism is now part of the result**: 585 was reproduced on plain ×2 and
+`--verbose` ×1. It had been 584 plain / 583 verbose, because step 46 guarded an
+assertion with an `if` and no `else` (K-21). A count that moves means the suite
+tested different things on each run, so the two modes must agree.
 
 | Check | Result |
 |---|---|
@@ -55,8 +70,11 @@ Result: **PASS — 26/26 checks, 0 fails, 0 script errors** (latest run, 2026-11
 | shop: gunsmith opens; buy gun_pistol @ 900 with 5000 cr → owned_weapons | OK |
 | gunfire: pistol equipped, reserve 60, try_fire hitscan executes | OK |
 
-Exit-time leak warnings (7 resources / 2 RIDs) are harness-quit artifacts
-(queue_free at quit), not runtime leaks — see KNOWN_DEFECTS K-07.
+Exit-time leak warnings are harness-quit artifacts (queue_free at quit), not
+runtime leaks — see KNOWN_DEFECTS K-05/K-07. Judge that list by **type**, never
+by count: identical code has measured 15–18 resources and 16–26
+`RendererSceneCull::Instance` RIDs across runs, so the number moves with teardown
+ordering. A *new type* is the signal (that is how C1 was caught).
 
 ## T-06 Menu → New Game flow probe
 
@@ -85,8 +103,23 @@ items registries (2 missing dialogues + 3 missing POIs found and added).
 ## T-09 Audio reference audit
 
 Command: grep all `sfx*("name")` calls vs `assets/audio/sfx/` inventory.
-Result: **PASS** — every referenced SFX name exists (14 mismatches found
-in session 3 and remapped, e.g. cash_register→cash, ui_open→shop_bell).
+Result: **PASS at the time, but the method was unsound and it missed K-19.**
+14 mismatches were found in session 3 and remapped (e.g. cash_register→cash,
+ui_open→shop_bell). A later grep-style sweep then reported this clean while
+`fuel_pump.gd` still called `sfx_at("engine_start", …)` — a file that has never
+existed, so the moment the player had just paid for was silent. Two reasons it
+slipped through: a hand-run grep is not repeated, and a naive pattern matches
+the prefix of genuinely dynamic names (`"imp_" + mat`), which trains you to
+ignore hits.
+
+Now done **in-engine every run** as part of step 98: a `RegEx` over every `.gd`
+under `res://scripts` and `res://tests` requires the closing quote to be
+followed by `,` or `)`, so dynamic concatenations are excluded rather than
+false-flagged, and every literal is checked against disk — **152 `sfx()`/`sfx_at()`
+calls (67 distinct), 16 `play_music()`/`sting()` calls (8 distinct), 19 voiced
+characters × complete `_0/_1/_2` banks**, all resolving, 0 dead. The four
+`"imp_" + mat` targets (`concrete`/`glass`/`metal`/`wood`) were verified by hand
+since no pattern can see them.
 
 ---
 

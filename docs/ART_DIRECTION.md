@@ -99,7 +99,7 @@ render-to-texture, no fake dashboards: every element shows real game state.
 ## 7. Audio identity (companion to the look)
 
 Radio-noir: 15 original tracks (down-tempo noir keys, dockside percussion,
-neon synth, furnace drone, finale swell); 105 SFX forged by additive/
+neon synth, furnace drone, finale swell); 138 SFX forged by additive/
 noise synthesis (wet impacts, distant thunder, sodium-buzz ambience);
 voice is stylized — 60 bark blips per gender/color, subtitles always on by
 default. The city sounds like it looks: rain on everything, warmth

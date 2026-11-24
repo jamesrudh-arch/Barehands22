@@ -15,16 +15,18 @@ playability pass, W6 animation depth, W7 audio identity, W8 device passes.
 VERTICAL GAMEPLAY COMPLETE IN SANDBOX — the full city boots headless in the
 real Godot 4.7.2 binary; player, combat, vehicles, traffic, crowds, police,
 missions, dialogue, interiors, shops, phone, saves all execute with 0 script
-errors (harness 26/26 checks). Presentation flow (boot→title→notice→menu→city)
+errors (harness **585/585 checks**). Presentation flow (boot→title→notice→menu→city)
 wired. Remaining: tutorial layer, radio-in-vehicle, news feed polish, device
 docs/verification guide, final audit.
 
 ## Completed (all committed, branch arena/9f25f474-barehands22)
 - ENGINE: Godot 4.7.2-stable editor built from source (45 min, /tmp/godot-4.7.2-stable/bin/godot.linuxbsd.editor.x86_64).
-  Project imports clean (333 assets). Headless smoke + gameplay harness both green.
-- ASSETS: 96 world textures (incl. 8 facade albedos + 8 emission), 105 SFX,
-  15 music OGG, 60 vox blips, 29 UI PNGs, 24 face albedos, DejaVu fonts.
-- DATA: 15 JSONs valid — characters(16), combat_styles(5), weapons(9), armor(4),
+  Project imports clean (**369** assets). Headless smoke + gameplay harness both green.
+- ASSETS: 96 world textures (incl. 8 facade albedos + 8 emission), 138 SFX,
+  16 music OGG, 60 vox blips (20 banks × 3), 29 UI PNGs, 24 face albedos,
+  6 DejaVu fonts. All 96 world textures VRAM-compressed + mipmapped (D-25);
+  369 importable assets total.
+- DATA: 16 JSONs valid — characters(16), combat_styles(5), weapons(9), armor(4),
   items(10), outfits(6), vehicles(8), peds(25), city (6 districts, 109 lane
   loops, 27 POIs incl. 3 added: poi_ruths_alley/poi_plaza/poi_refinery_gate),
   missions(20: m01–m12 + 8 side), dialogue(49 trees incl. 2 added choice trees),
@@ -56,15 +58,15 @@ docs/verification guide, final audit.
   spawner on 109 lane loops, parked cars, police dispatch/pursuit/roadblocks/
   arrest, 12 world events w/ actor staging, pooled night lamp lighting (28
   OmniLights), traffic-light cycle, district ambience+music routing).
-- MISSIONS: mission_manager.gd (stage machine for 16 stage types: goto/talk/
+- MISSIONS: mission_manager.gd (stage machine for 22 stage types: goto/talk/
   choice/objective/cutscene/event/combat/collect/carry/drive/drive_timed/race/
   escort/search/stealth/phone; choice effects; rewards; 3-act story chain w/
   requires_flag + act gating; bust/death recovery w/ fines + respawn; save/
   apply_save; race tracks; pickup.gd glowing collectibles).
 - UI: dialogue_ui.gd (portraits, typewriter, voiced lines, node choices +
   mission choices via callback), cutscene.gd (letterbox/cards/cam moves/spawn/
-  teleport/weather/music/fade verbs; 4 scripted cutscenes cs_kidnap/exchange/
-  finale/ending), shop_ui.gd (buy/sell/vehicles/clinic heal, keeper dialogue),
+  teleport/weather/music/fade verbs; 5 scripted cutscenes cs_intro/kidnap/
+  exchange/finale/ending), shop_ui.gd (buy/sell/vehicles/clinic heal, keeper dialogue),
   phone_ui.gd (9 apps: MAP w/ live city draw, JOBS, RADIO tune, CALLS w/
   contact chats, BAG equip/use, MSGS, SAVE 3 slots, SETTINGS, NEWS),
   hud.gd (vitals bars, money, wanted stars, clock/weather/district, minimap
