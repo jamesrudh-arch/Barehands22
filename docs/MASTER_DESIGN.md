@@ -43,7 +43,8 @@ a city that keeps score.
   Act 2: gathering leverage — docks, Static-88, the shelter, Yard 4 fight
   night, Halcyon Tower, the exchange (m05–m09). Act 3: the finale — smoke
   line alliances, the plaza, everyone (m10–m12).
-- **20 missions** total: 12 story + 8 side jobs (courier, 2 street races,
+- **29 missions shipped** (the original design target was 20: 12 story + 8 side
+  jobs — courier, 2 street races,
   night shift escort, dockwork, fight club, ledger pages, favors).
 - **Meaningful choices** with persistent flags: give Marcus the money or
   refuse; work for the Crew, legit, or shake down collectors; sign Crowe's

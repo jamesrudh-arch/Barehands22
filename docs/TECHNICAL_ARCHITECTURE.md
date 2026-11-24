@@ -176,7 +176,7 @@ PROCESS_MODE_ALWAYS.
 ## 10. Save system
 
 `SaveSystem.save_game(slot, extra)` writes JSON to `user://save_slot_N.json`
-(WorldState.serialize v3 + Game's extra: player transform/vitals/weapons/
+(WorldState.serialize v5 + Game's extra: player transform/vitals/weapons/
 reserves, mission manager completed/failed/active, district). Autosave =
 slot 0 on mission complete and pause-menu save. Load = `Game.continue_game`
 → city boots → `player.apply_save` + `MissionManager.apply_save` (active
@@ -187,7 +187,9 @@ persisted, documented limitation). Settings persist separately in
 ## 11. Performance budget (Mobile renderer)
 
 - ~90 merged meshes + ≤28 dynamic omnis (pooled) + 1 shadowed directional.
-- Textures ≤1024², POT (mobile GPU limit 4096², non-POT repeat risk).
+- Textures POT and ≤2048² (mobile GPU limit 4096², non-POT repeat risk);
+  all 96 world textures VRAM-compressed with mipmaps, UI/faces left Lossless.
+  Census: 68×512², 18×256², 5×128², 2×1024², 2×2048², 1×64².
 - Particles pooled; decals pooled; tracers 60 ms lifetime.
 - No real-time GI, no SSAO, no SDFGI (Mobile renderer feature set);
   night atmosphere comes from emissive facades + lamp pool + glow.
@@ -198,10 +200,14 @@ persisted, documented limitation). Settings persist separately in
 
 - `tools/forge/*` — Python generators (deterministic, seeded).
 - `/tmp/gvenv/bin/gdparse` — fast syntax gate after every script write.
-- `godot --headless --import` — asset import validation (333 assets).
-- `tests/harness.gd` — SceneTree harness booting the real city: 21 checks
+- `godot --headless --import` — asset import validation (**369** assets; also
+  the step that applies the texture import params, and a prerequisite for the
+  parse gate below because `class_name` globals are registered by the scan).
+- `tests/harness.gd` — SceneTree harness booting the real city: **585 checks**
   across spawn/movement/combat/vehicles/missions/dialogue/interiors/shops/
-  saves/police (0 fails at time of writing).
+  saves/police plus XOGOT-iPhone compliance (step 98), 0 fails. The count must
+  match across a plain run and a `--verbose` run — a moving count means a guard
+  silently skipped an assertion (K-21).
 - Flow probes (`/tmp/flow*.gd`, ad hoc): boot→title→menu→new_game→city
   path, ground-support raycasts, collision winding regression.
 - Status discipline: sandbox-headless results are **TESTED (sandbox)**,

@@ -15,11 +15,11 @@ A complete, playable, from-zero open-world crime-action game project:
   npc/vehicle/missions/ui/scenes, 5 scene flows + the city scene.
 - **15 data JSONs** driving everything: 16 characters, 25 ped archetypes,
   5 combat styles, 9 weapons, 4 armors, 10 items, 6 outfits, 8 vehicles,
-  6 districts with 27 POIs and 109 traffic lane loops, 20 missions
+  6 districts with 27 POIs and 109 traffic lane loops, 29 missions
   (3 acts + 8 side jobs), 49 dialogue trees, 12 world events, 6 shops,
   4 radio stations, news + bark pools.
 - **329 original assets** forged procedurally (96 world textures incl. 16
-  facade+emission, 29 UI, 24 faces, 105 SFX, 15 music, 60 vox) + DejaVu
+  facade+emission, 29 UI, 24 faces, 138 SFX, 16 music, 60 vox) + DejaVu
   fonts (licensed). Zero store assets.
 - **Full presentation flow:** D'Youngs splash → title → content notice →
   menus → opening cinematic (cs_kidnap) → 8-step contextual tutorial →
